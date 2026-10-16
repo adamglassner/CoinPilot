@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CoinPilot Mobile Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&amp;family=Instrument+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F6B4F}a:hover{color:#134531}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F3F4EF; color: #15201B; font-family: 'Instrument Sans', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+<div style="flex: 1; overflow: hidden; padding: 28px 20px 16px; display: flex; flex-direction: column; gap: 18px">
+
+<header style="display: flex; align-items: center; justify-content: space-between">
+<div style="display: flex; align-items: center; gap: 8px">
+<svg width="28" height="28" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="15" fill="none" stroke="{{accent}}" stroke-width="2.5"></circle><path d="M11 21 L17 9 L23 21 L17 18 Z" fill="{{accent}}"></path></svg>
+<span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 20px">CoinPilot</span>
+</div>
+<div style="display: flex; align-items: center; gap: 6px; background: #FFFFFF; border: 1px solid #DCE0D8; border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 600"><span style="width: 7px; height: 7px; border-radius: 50%; background: #1F9D62"></span>Synced</div>
+</header>
+
+<section aria-label="Left to spend" style="background: #15201B; color: #FFFFFF; border-radius: 22px; padding: 22px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 14px; color: #B9C4BD">Left to spend in October</span>
+<span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 40px; font-weight: 700; letter-spacing: -0.02em">$1,284.50</span>
+<div style="height: 8px; background: #2C3B34; border-radius: 99px; overflow: hidden"><div style="height: 100%; width: 63%; border-radius: 99px; background: #5FD39B"></div></div>
+<div style="display: flex; justify-content: space-between; font-size: 13px; color: #B9C4BD"><span>$2,215.50 spent</span><span>15 days left</span></div>
+</section>
+
+<section aria-labelledby="m-bud" style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><h2 id="m-bud" style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px">Budgets</h2><a href="#" style="font-size: 14px; font-weight: 600">See all</a></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{budgets}}" as="b" hint-placeholder-count="4">
+<div style="background: #FFFFFF; border: 1px solid #E2E5DE; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14px; font-weight: 600">{{b.name}}</span>
+<span style="font-size: 13px; color: #56635C">{{b.left}}</span>
+<div style="height: 6px; background: #ECEEE8; border-radius: 99px; overflow: hidden"><div style="{{b.barStyle}}"></div></div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-labelledby="m-tx" style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><h2 id="m-tx" style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px">Recent</h2><a href="#" style="font-size: 14px; font-weight: 600">View all</a></div>
+<div style="background: #FFFFFF; border: 1px solid #E2E5DE; border-radius: 16px; padding: 4px 14px">
+<sc-for list="{{tx}}" as="t" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid #F0F2EC">
+<div style="width: 36px; height: 36px; border-radius: 10px; background: #EEF2EC; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: #1F6B4F">{{t.initial}}</div>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 600">{{t.who}}</span><span style="font-size: 12px; color: #56635C">{{t.cat}} · {{t.date}}</span></div>
+<span style="{{t.amtStyle}}">{{t.amt}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+</div>
+
+<div style="position: relative">
+<button type="button" aria-label="Add transaction" style="position: absolute; left: 50%; top: -30px; transform: translateX(-50%); width: 58px; height: 58px; border-radius: 50%; border: 4px solid #F3F4EF; background: {{accent}}; color: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
+<nav aria-label="Tabs" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 64px; background: #FFFFFF; border-top: 1px solid #E2E5DE; padding: 10px 20px 26px">
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; text-decoration: none; color: {{accent}}; min-height: 44px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Home</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; text-decoration: none; color: #56635C; min-height: 44px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v9l6 4"></path></svg>Budgets</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; text-decoration: none; color: #56635C; min-height: 44px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"></path></svg>Goals</a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; text-decoration: none; color: #56635C; min-height: 44px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>Reports</a>
+</nav>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#1F6B4F","options":["#1F6B4F","#2B5FA8","#B5651D","#6B3FA0"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const accent = this.props.accent ?? '#1F6B4F';
+    const raw = [['Groceries', 412, 600], ['Dining out', 236, 250], ['Transport', 148, 300], ['Shopping', 310, 280]];
+    const budgets = raw.map(b => {
+      const pct = Math.min(100, Math.round(b[1] / b[2] * 100));
+      const over = b[1] > b[2];
+      const color = over ? '#C2410C' : (pct > 85 ? '#C8781E' : accent);
+      return { name: b[0], left: over ? '$' + (b[1] - b[2]) + ' over' : '$' + (b[2] - b[1]) + ' left', barStyle: 'height: 100%; border-radius: 99px; width: ' + pct + '%; background: ' + color };
+    });
+    const t = [['Fresh Thyme Market', 'Groceries', 'Today', -86.42], ['Paycheck', 'Income', 'Today', 2050], ['Shell', 'Transportation', 'Yesterday', -41.10]];
+    const tx = t.map(r => ({ who: r[0], cat: r[1], date: r[2], initial: r[0].charAt(0), amt: (r[3] > 0 ? '+$' : '−$') + Math.abs(r[3]).toFixed(2), amtStyle: 'font-size: 15px; font-weight: 600; color: ' + (r[3] > 0 ? '#1F6B4F' : '#15201B') }));
+    return { accent, budgets, tx };
+  }
+}
+</script>
+</body>
+</html>
