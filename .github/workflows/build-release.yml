@@ -1,0 +1,151 @@
+name: Build, test and release
+
+# - Every push / pull request: build the exe, portable zip and installer on Windows and run the tests.
+# - Push to main with a <Version> in the .csproj that has no release yet (or push a tag like v0.1.1):
+#   the same, then publish GitHub Release v<version> with the Setup .exe and the portable zip.
+#   The Bytehawk Studio Launcher reads this repo's latest release to install and update CoinPilot.
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Work out version
+        id: ver
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like 'refs/tags/v*') {
+            $v = $env:GITHUB_REF_NAME.Substring(1)
+          } else {
+            $v = ([xml](Get-Content src/CoinPilot.Desktop/CoinPilot.Desktop.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          # Release when a tag was pushed, or when main has a version that hasn't been released yet
+          $release = 'false'
+          if ($env:GITHUB_REF -like 'refs/tags/v*') { $release = 'true' }
+          elseif ($env:GITHUB_EVENT_NAME -eq 'push' -and $env:GITHUB_REF -eq 'refs/heads/main') {
+            git fetch --tags --quiet
+            if (-not (git tag -l "v$v")) { $release = 'true' }
+          }
+          "release=$release" >> $env:GITHUB_OUTPUT
+          Write-Host "Version $v, release: $release"
+
+      - name: Install Inno Setup if needed
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Build exe, zip and installer
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'build.log'
+          $ok = $true
+          try { ./build.ps1 -Version ${{ steps.ver.outputs.version }} *>&1 | Tee-Object -FilePath $log } catch { $ok = $false; "$_" | Add-Content $log }
+          if (-not $ok -or $LASTEXITCODE -ne 0) {
+            # Surface errors as annotations (visible on the run page without signing in)
+            $errs = Select-String -Path $log -Pattern 'error|failed|exception' | Select-Object -First 40
+            if (-not $errs) { $errs = Get-Content $log -Tail 30 }
+            foreach ($e in $errs) { Write-Host "::error::$(($e -replace '%','%25') -replace '\r?\n',' ')" }
+            exit 1
+          }
+
+      - name: Self-test (every page in both themes, navigation)
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'selftest.txt'
+          $p = Start-Process dist/CoinPilot.exe -ArgumentList '--self-test', "`"$out`"" -PassThru
+          if (-not $p.WaitForExit(180000)) { Stop-Process -Id $p.Id -Force; throw 'Self-test timed out' }
+          if (Test-Path $out) { Get-Content $out | Tee-Object -Variable lines | Write-Host } else { $lines = @('(no output file)') }
+          "## Self-test`n``````n$($lines -join "`n")`n``````" >> $env:GITHUB_STEP_SUMMARY
+          foreach ($l in $lines | Where-Object { $_ -like 'FAIL*' }) { Write-Host "::error::$(($l -replace '%','%25') -replace '\r?\n',' ')" }
+          if ($p.ExitCode -ne 0) { throw "Self-test failed ($($p.ExitCode) failures)" }
+
+      - name: Installer test (silent install like the launcher, run, uninstall)
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist/CoinPilot-*-Setup.exe | Select-Object -First 1
+          $dir = Join-Path $env:RUNNER_TEMP 'coinpilot-install'
+          $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/NOICONS', "/DIR=`"$dir`"" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Setup exited with $($p.ExitCode)" }
+          if (-not (Test-Path (Join-Path $dir 'CoinPilot.exe'))) { throw 'CoinPilot.exe not installed' }
+          $app = Start-Process (Join-Path $dir 'CoinPilot.exe') -PassThru
+          Start-Sleep -Seconds 8
+          if ($app.HasExited) { throw "Installed app exited during startup ($($app.ExitCode))" }
+          Stop-Process -Id $app.Id -Force
+          Start-Sleep -Seconds 2
+          $unins = Get-ChildItem $dir -Filter 'unins*.exe' | Select-Object -First 1
+          $u = Start-Process $unins.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
+          Start-Sleep -Seconds 3
+          if (Test-Path (Join-Path $dir 'CoinPilot.exe')) { throw 'Uninstall left CoinPilot.exe behind' }
+          "## Installer test`n- Silent install to a custom folder, start, silent uninstall: OK" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Screenshots (light and dark)
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $data = Join-Path $env:APPDATA 'CoinPilot'
+          New-Item -ItemType Directory -Force $data | Out-Null
+          New-Item -ItemType Directory -Force screenshots | Out-Null
+          foreach ($shot in @(@('Light', 'dashboard'), @('Dark', 'dashboard'), @('Light', 'budgets'), @('Dark', 'settings'))) {
+            @{ Theme = $shot[0] } | ConvertTo-Json | Set-Content (Join-Path $data 'settings.json')
+            $p = Start-Process dist/CoinPilot.exe -ArgumentList '--page', $shot[1] -PassThru
+            Start-Sleep -Seconds 8
+            if ($p.HasExited) { throw "CoinPilot exited on page $($shot[1]) ($($p.ExitCode))" }
+            try {
+              $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+              $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+              [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+              $bmp.Save("screenshots/$($shot[1])-$($shot[0]).png")
+            } catch { Write-Host "Screenshot not available: $_" }
+            Stop-Process -Id $p.Id -Force
+            Start-Sleep -Seconds 2
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CoinPilot-${{ steps.ver.outputs.version }}
+          path: |
+            dist/CoinPilot-*-Setup.exe
+            dist/CoinPilot-*-win-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: screenshots/
+          if-no-files-found: ignore
+
+      - name: Publish GitHub Release
+        if: steps.ver.outputs.release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          name: CoinPilot ${{ steps.ver.outputs.version }}
+          body: |
+            CoinPilot ${{ steps.ver.outputs.version }} for Windows 10/11 (x64). Early preview: every section is in place and marked coming soon.
+
+            - **CoinPilot-${{ steps.ver.outputs.version }}-Setup.exe**: installer (Start Menu + optional desktop shortcut, uninstaller). Installs for just you by default, no administrator needed.
+            - **CoinPilot-${{ steps.ver.outputs.version }}-win-x64.zip**: portable. Unzip and run `CoinPilot.exe`. No install or .NET needed.
+
+            Also available in the **Bytehawk Studio Launcher**, which installs CoinPilot and keeps it up to date.
+          files: |
+            dist/CoinPilot-*-Setup.exe
+            dist/CoinPilot-*-win-x64.zip

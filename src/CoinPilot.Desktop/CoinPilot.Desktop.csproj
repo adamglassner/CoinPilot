@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>CoinPilot</RootNamespace>
+    <AssemblyName>CoinPilot</AssemblyName>
+    <Product>CoinPilot</Product>
+    <Company>Bytehawk Studio</Company>
+    <Authors>Bytehawk Studio</Authors>
+    <Description>Budgeting app that keeps your budgets, spending and goals in sync across your devices.</Description>
+    <!-- Releasing: change this and push to main. CI builds, tests and publishes GitHub Release v<Version>. -->
+    <Version>0.1.0</Version>
+    <Copyright>© 2026 Bytehawk Studio</Copyright>
+    <!-- Lets the project at least restore/compile on non-Windows machines; the app itself is Windows-only. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationIcon>Assets\coinpilot.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- Single-file publish (build.ps1): bundle WPF's native DLLs into the exe too. -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\coinpilot.ico" />
+    <Resource Include="Assets\coinpilot.png" />
+  </ItemGroup>
+
+</Project>

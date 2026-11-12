@@ -1,0 +1,37 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Dark palette. Every key here must also exist in Light.xaml. -->
+    <SolidColorBrush x:Key="Brush.Bg" Color="#0F1512" />
+    <SolidColorBrush x:Key="Brush.Surface" Color="#18211D" />
+    <SolidColorBrush x:Key="Brush.SurfaceAlt" Color="#202B26" />
+    <SolidColorBrush x:Key="Brush.Border" Color="#2A3631" />
+    <SolidColorBrush x:Key="Brush.Skeleton" Color="#25302B" />
+    <SolidColorBrush x:Key="Brush.Track" Color="#26312C" />
+    <SolidColorBrush x:Key="Brush.Text" Color="#E6ECE8" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#9AA8A0" />
+    <SolidColorBrush x:Key="Brush.HoverOverlay" Color="#14FFFFFF" />
+
+    <SolidColorBrush x:Key="Brush.Sidebar" Color="#0A0F0D" />
+    <SolidColorBrush x:Key="Brush.SidebarText" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Brush.SidebarMuted" Color="#A9B5AE" />
+    <SolidColorBrush x:Key="Brush.SidebarHover" Color="#16201B" />
+    <SolidColorBrush x:Key="Brush.SidebarSelected" Color="#1E2B25" />
+    <SolidColorBrush x:Key="Brush.SidebarCard" Color="#141D19" />
+
+    <SolidColorBrush x:Key="Brush.Hero" Color="#1F6B4F" />
+    <SolidColorBrush x:Key="Brush.HeroText" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Brush.HeroMuted" Color="#CFE3D8" />
+    <SolidColorBrush x:Key="Brush.HeroTrack" Color="#17513C" />
+
+    <SolidColorBrush x:Key="Brush.Accent" Color="#4FBF8A" />
+    <SolidColorBrush x:Key="Brush.AccentText" Color="#0B120F" />
+    <SolidColorBrush x:Key="Brush.AccentSoft" Color="#1C3329" />
+    <SolidColorBrush x:Key="Brush.Mint" Color="#7BE3B1" />
+    <SolidColorBrush x:Key="Brush.BarMuted" Color="#3A4741" />
+    <SolidColorBrush x:Key="Brush.Warn" Color="#E9A24A" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="#F07A4E" />
+    <SolidColorBrush x:Key="Brush.Positive" Color="#6FD3A0" />
+
+    <SolidColorBrush x:Key="Brush.ToastBg" Color="#E6ECE8" />
+    <SolidColorBrush x:Key="Brush.ToastText" Color="#0F1512" />
+</ResourceDictionary>
