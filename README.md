@@ -5,7 +5,7 @@
 **A budgeting app that keeps your budgets, spending and goals in sync between your PC and your phone.**
 Made by Bytehawk Studio.
 
-> **Status: early preview (v0.1.0), Windows only.** This is the app's shell: the window, navigation,
+> **Status: early preview (v0.1.1), Windows only.** This is the app's shell: the window, navigation,
 > light and dark mode and settings work, the Dashboard shows the planned layout with sample data, and every
 > other section is a "coming soon" page describing what it will do. Nothing is tracked or saved yet.
 

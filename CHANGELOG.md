@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 — 2026-11-11
+
+- New app icon: a gold coin stamped with the CoinPilot heading arrow.
+
 ## 0.1.0 — 2026-11-11
 
 First preview of CoinPilot for Windows: the app's shell.
