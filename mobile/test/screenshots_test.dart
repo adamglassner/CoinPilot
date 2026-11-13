@@ -64,6 +64,8 @@ void main() {
           await t.pumpAndSettle();
         }));
     testWidgets('erase $mode', (t) => shot(t, id(7, 'confirm-erase'), mode: mode, tab: 3, then: () async {
+          await t.ensureVisible(find.text('Erase everything'));
+          await t.pumpAndSettle();
           await t.tap(find.text('Erase everything'));
           await t.pumpAndSettle();
         }));

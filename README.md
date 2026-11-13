@@ -41,6 +41,13 @@ from your PIN/password with PBKDF2-SHA256 (600,000 rounds); CoinPilot never stor
 Ctrl+N add a transaction · Ctrl+F search · Ctrl+1…9 go to a section · Ctrl+, settings · Ctrl+L lock ·
 Ctrl+Enter save in an add/edit window · Esc close a window.
 
+## CoinPilot for Android
+
+A Flutter app in [`mobile/`](mobile): Home (left to spend, income and net, budgets, spending by week, recent),
+Transactions (by month, search, filters, swipe to delete), Budgets and Settings (light/dark, the same eight color themes,
+currency). Everything is saved on the phone, using the same field names as the Windows app so the two can sync later.
+Get the APK from the newest `android-v…` release. See [mobile/README.md](mobile/README.md).
+
 ## Download
 
 Windows 10/11 (x64). Install it from the **[Bytehawk Studio Launcher](https://github.com/adamglassner/bytehawklauncher)**,
@@ -116,7 +123,8 @@ tools/                   icon and installer image generators (Python + Pillow)
 1. ~~Transactions and Budgets~~ (0.2.0)
 2. ~~Accounts, Debts, Bills, Goals and Reports~~ (0.3.0)
 3. ~~Everything else on the desktop: import, rules, splits, transfers, rollover, templates, reminders, taxes, protection, themes~~ (1.0.0)
-4. CoinPilot mobile app (iPhone and Android), sign-in and sync between devices
+4. ~~CoinPilot for Android: transactions and budgets~~ (android 0.1.0)
+5. Sign-in and sync between devices, more of the desktop features on Android, iPhone
 
 ## License
 

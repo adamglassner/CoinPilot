@@ -26,7 +26,7 @@ SampleData sampleData(DateTime now) {
   for (var d = start; !d.isAfter(today); d = DateTime(d.year, d.month, d.day + 1)) {
     final dow = d.weekday;
     if (d.day == 1) t(d, 'Maple Court Apartments', 'Housing', 'Checking', -145000);
-    if (d.difference(start).inDays % 14 == 4) t(d, 'Paycheck · Acme Corp', 'Paycheck', 'Checking', 218640);
+    if (d.day == 1 || d.day == 15) t(d, 'Paycheck · Acme Corp', 'Paycheck', 'Checking', 218640);
     if (dow == DateTime.tuesday || dow == DateTime.saturday) {
       t(d, grocers[rng.nextInt(grocers.length)], 'Groceries', 'Credit card', -r(38, 118));
     }
