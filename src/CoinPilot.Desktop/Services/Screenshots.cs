@@ -168,7 +168,7 @@ public static class Screenshots
                     dc.DrawRoundedRectangle(Brushes.Black, null, spread, 18 + i * 2, 18 + i * 2);
                     dc.Pop();
                 }
-                dc.DrawRectangle(new VisualBrush(card) { Stretch = Stretch.Fill }, null, at);
+                dc.DrawRectangle(new VisualBrush(card) { Stretch = Stretch.Fill, ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(0, 0, w, h) }, null, at);
             }
             card.Effect = effect;
             var bitmap = new RenderTargetBitmap((int)(Width * Scale), (int)(Height * Scale), 96 * Scale, 96 * Scale, PixelFormats.Pbgra32);
@@ -227,6 +227,7 @@ public static class DemoData
             new Account { Name = "High-Yield Savings", Type = AccountTypes.Savings, Institution = "Ally Bank", StartingBalance = 6900m, BalanceDate = start.AddDays(-1) },
             new Account { Name = "Visa Signature", Type = AccountTypes.CreditCard, Institution = "Chase", StartingBalance = -412m, BalanceDate = start.AddDays(-1) },
             new Account { Name = "Cash", Type = AccountTypes.Cash, StartingBalance = 140m, BalanceDate = start.AddDays(-1) },
+            new Account { Name = "Fidelity 401(k)", Type = AccountTypes.Investment, Institution = "Fidelity", StartingBalance = 38450m, BalanceDate = start.AddDays(-1) },
         ]);
 
         // Categories: a subcategory and a rule
