@@ -3,6 +3,8 @@ import 'package:coinpilot/store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fonts.dart';
+
 Future<void> settle(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 5)); // let any message time out
   await tester.pumpAndSettle();
@@ -11,6 +13,7 @@ Future<void> settle(WidgetTester tester) async {
 Finder tab(String name) => find.descendant(of: find.byType(BottomAppBar), matching: find.text(name));
 
 void main() {
+  setUpAll(loadAppFonts);
   setUp(() => EditableText.debugDeterministicCursor = true);
   tearDown(() => EditableText.debugDeterministicCursor = false);
 

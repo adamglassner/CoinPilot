@@ -29,8 +29,11 @@ class HomeScreen extends StatelessWidget {
             children: [
               const CoinLogo(size: 32),
               const SizedBox(width: 10),
-              Text('CoinPilot', style: display(22, p.text, weight: FontWeight.w800)),
-              const Spacer(),
+              Expanded(
+                child: Text('CoinPilot',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: display(22, p.text, weight: FontWeight.w800)),
+              ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
                 decoration: BoxDecoration(
@@ -184,9 +187,11 @@ class _Hero extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                Text('${Money.format(spent, whole: true)} of ${Money.format(budgeted, whole: true)} spent',
-                    style: TextStyle(fontSize: 13.5, color: p.heroMuted)),
-                const Spacer(),
+                Expanded(
+                  child: Text('${Money.format(spent, whole: true)} of ${Money.format(budgeted, whole: true)} spent',
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, color: p.heroMuted)),
+                ),
+                const SizedBox(width: 8),
                 Text('$days ${days == 1 ? 'day' : 'days'} left', style: TextStyle(fontSize: 13.5, color: p.heroMuted)),
               ],
             ),
@@ -197,8 +202,10 @@ class _Hero extends StatelessWidget {
                 children: [
                   Icon(Icons.add_circle_outline_rounded, size: 18, color: p.mint),
                   const SizedBox(width: 6),
-                  Text('Set a budget to see what\'s left',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: p.mint)),
+                  Flexible(
+                    child: Text('Set a budget to see what\'s left',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: p.mint)),
+                  ),
                 ],
               ),
             ),
@@ -226,7 +233,10 @@ class _Stat extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: p.muted),
               const SizedBox(width: 6),
-              Text(label, style: TextStyle(fontSize: 13.5, color: p.muted)),
+              Flexible(
+                child: Text(label,
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, color: p.muted)),
+              ),
             ],
           ),
           const SizedBox(height: 8),

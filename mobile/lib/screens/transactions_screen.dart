@@ -105,12 +105,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    for (final (i, label) in const ['All', 'Spending', 'Income'].indexed) ...[
+                    for (final (i, label) in const ['All', 'Spending', 'Income'].indexed)
                       ChoicePill(label: label, selected: _filter == i, onTap: () => setState(() => _filter = i)),
-                      const SizedBox(width: 8),
-                    ],
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -191,8 +191,10 @@ class _DayGroup extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
           child: Row(
             children: [
-              Text(dayLabel(items.first.date), style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: p.text)),
-              const Spacer(),
+              Expanded(
+                child: Text(dayLabel(items.first.date),
+                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: p.text)),
+              ),
               Text(Money.format(net, signed: true), style: TextStyle(fontSize: 13, color: p.muted)),
             ],
           ),

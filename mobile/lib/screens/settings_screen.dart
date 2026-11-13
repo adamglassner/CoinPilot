@@ -36,7 +36,7 @@ class SettingsScreen extends StatelessWidget {
               crossAxisCount: 4,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 0.92,
+              childAspectRatio: 0.82,
               padding: EdgeInsets.zero,
               children: [
                 for (final t in colorThemes)
@@ -200,6 +200,9 @@ class _Swatch extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                softWrap: false,
                 style: TextStyle(
                     fontSize: 12.5, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: selected ? p.text : p.muted)),
           ],

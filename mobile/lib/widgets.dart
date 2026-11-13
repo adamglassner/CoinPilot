@@ -198,6 +198,7 @@ class TxnTile extends StatelessWidget {
             const SizedBox(width: 10),
             Text(
               Money.format(t.cents, signed: true),
+              maxLines: 1,
               style: TextStyle(
                 fontSize: 15.5,
                 fontWeight: FontWeight.w600,
