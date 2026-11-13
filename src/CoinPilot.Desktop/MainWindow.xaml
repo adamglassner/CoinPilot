@@ -10,7 +10,7 @@
         FontFamily="Segoe UI" FontSize="13.5"
         TextOptions.TextFormattingMode="Display"
         UseLayoutRounding="True">
-    <Grid>
+    <Grid Background="{DynamicResource Brush.Bg}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="248" />
             <ColumnDefinition Width="*" />

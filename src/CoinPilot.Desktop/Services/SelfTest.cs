@@ -16,7 +16,8 @@ namespace CoinPilot.Services;
 public static class SelfTest
 {
     public static string? OutputFile { get; set; }
-    public static bool IsRunning => OutputFile != null;
+    /// <summary>True for any automated run (self-test or screenshots): throwaway data, no settings saved, no animations.</summary>
+    public static bool IsRunning => OutputFile != null || Screenshots.IsRunning;
 
     public static readonly string TempDataFolder =
         Path.Combine(Path.GetTempPath(), "coinpilot-selftest-" + Guid.NewGuid().ToString("N")[..8]);

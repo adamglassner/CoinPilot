@@ -51,7 +51,12 @@ public partial class MainWindow : Window
             if (DataLock.IsEnabled && !SelfTest.IsRunning) ShowLock();
             else OpenPending();
 
-            if (SelfTest.IsRunning)
+            if (Screenshots.IsRunning)
+            {
+                int failed = await Screenshots.RunAsync(this);
+                Application.Current.Shutdown(failed);
+            }
+            else if (SelfTest.IsRunning)
             {
                 int failed = await SelfTest.RunAsync(this);
                 Application.Current.Shutdown(failed);

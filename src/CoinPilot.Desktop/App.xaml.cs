@@ -43,6 +43,7 @@ public partial class App : Application
             if (e.Args[i] == "--background") StartInBackground = true;
             if (i + 1 >= e.Args.Length) continue;
             if (e.Args[i] == "--self-test") SelfTest.OutputFile = e.Args[i + 1];
+            if (e.Args[i] == "--screenshots") Screenshots.OutputFolder = e.Args[i + 1];
             if (e.Args[i] == "--page") StartPage = e.Args[i + 1].ToLowerInvariant();
         }
 
