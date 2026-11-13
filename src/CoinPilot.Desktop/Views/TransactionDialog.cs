@@ -28,7 +28,7 @@ public sealed class TransactionDialog : DialogShell
                allowDelete: existing != null,
                saveText: existing == null ? "Add" : "Save")
     {
-        _target = existing ?? new Transaction { Date = defaultDate ?? DateTime.Today, Account = Categories.Accounts[0] };
+        _target = existing ?? new Transaction { Date = defaultDate ?? DateTime.Today, Account = DataStore.AccountChoices()[0] };
         bool income = existing?.IsIncome ?? false;
         _currentIncome = income;
 
@@ -66,12 +66,7 @@ public sealed class TransactionDialog : DialogShell
         return list;
     }
 
-    private static IEnumerable<string> AccountsFor(string? current)
-    {
-        var list = Categories.Accounts.ToList();
-        if (!string.IsNullOrEmpty(current) && !list.Contains(current, StringComparer.OrdinalIgnoreCase)) list.Add(current);
-        return list;
-    }
+    private static IEnumerable<string> AccountsFor(string? current) => DataStore.AccountChoices(current);
 
     protected override string? TrySave()
     {
@@ -87,7 +82,7 @@ public sealed class TransactionDialog : DialogShell
         _target.Amount = income ? amount : -amount;
         _target.Payee = _payee.Text.Trim();
         _target.Category = category;
-        _target.Account = Selected(_account) ?? Categories.Accounts[0];
+        _target.Account = Selected(_account) ?? DataStore.AccountChoices()[0];
         _target.Date = date.Date;
         _target.Note = _note.Text.Trim();
         return null;

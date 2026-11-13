@@ -208,7 +208,7 @@
                 <ControlTemplate TargetType="RadioButton">
                     <Grid Margin="0,2">
                         <Border x:Name="bd" Background="Transparent" CornerRadius="10" />
-                        <DockPanel Margin="14,11">
+                        <DockPanel Margin="14,10">
                             <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="{StaticResource IconFont}"
                                        FontSize="16" Width="30" VerticalAlignment="Center" />
                             <Border DockPanel.Dock="Right" Background="{DynamicResource Brush.SidebarCard}" CornerRadius="8" Padding="6,1"

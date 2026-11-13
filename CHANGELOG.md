@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.3.0 — 2026-11-13
+
+Every section now works except sync with the mobile app.
+
+- **Accounts:** add checking, savings, credit cards, cash and investment accounts with a balance as of a date.
+  Balances then update from your transactions. Shows net worth (accounts minus card balances and debts), lists
+  account names used in transactions that aren't set up yet ("Set up"), and keeps closed accounts out of the way.
+  Renaming an account renames it in its transactions and bills. New transactions pick from your accounts.
+- **Debts (new):** track credit cards and loans with the amount owed, interest rate (APR) and minimum payment.
+  Record payments (optionally added to Transactions under the new **Debt payments** category). A payoff plan
+  shows your debt-free date and the interest you'll pay, using **avalanche** (highest rate first) or **snowball**
+  (smallest balance first) with an optional extra monthly amount, and compares the two.
+- **Bills:** add bills and subscriptions with an amount, due date and schedule (weekly, every 2 weeks, monthly,
+  every 3 months, yearly or one time). See what's overdue, due soon and still to pay this month, plus your monthly
+  bill and subscription totals. **Mark paid** adds the payment to Transactions and moves the bill to its next due date.
+- **Goals:** savings goals with a target amount and optional date, progress bars, add or take out money, and the
+  monthly amount needed to hit the date.
+- **Reports:** income vs. spending by month, spending by category with percentages, a month-by-month table with
+  savings rate, and averages for the last 3, 6 or 12 months or this year. **Export** saves the table as CSV.
+- **Dashboard:** new "Coming up" (bills due in the next two weeks) and "Goals" cards.
+- New spending categories: **Debt payments** and **Savings**.
+- The sidebar scrolls on short windows.
+
 ## 0.2.0 — 2026-11-13
 
 The first two features are here: **Transactions** and **Budgets**. Everything is saved on this PC.

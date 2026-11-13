@@ -19,7 +19,7 @@
         <Border Grid.Column="0" Background="{DynamicResource Brush.Sidebar}" Padding="16,22,16,16">
             <DockPanel>
                 <!-- Logo -->
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,26">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,20">
                     <Image Source="pack://application:,,,/Assets/coinpilot.png" Width="34" Height="34" Margin="0,0,10,0"
                            RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center" />
                     <TextBlock Text="CoinPilot" FontFamily="{StaticResource DisplayFont}" FontSize="22" FontWeight="Bold"
@@ -54,7 +54,8 @@
                     </Button>
                 </StackPanel>
 
-                <!-- Navigation -->
+                <!-- Navigation (scrolls if the window is short) -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Margin="0,0,0,8">
                 <ItemsControl x:Name="NavList" Focusable="False">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -66,6 +67,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                </ScrollViewer>
             </DockPanel>
         </Border>
 

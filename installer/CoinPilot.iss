@@ -9,7 +9,7 @@
 
 #define MyAppName "CoinPilot"
 #ifndef MyAppVersion
-  #define MyAppVersion "0.2.0"
+  #define MyAppVersion "0.3.0"
 #endif
 #define MyAppPublisher "Bytehawk Studio"
 #define MyAppExeName "CoinPilot.exe"

@@ -29,5 +29,17 @@ public static class Money
         return value < 100_000_000m;
     }
 
+    /// <summary>Reads an interest rate like "22.99" or "6.5%" (0 to 100, up to 3 decimals). Empty means 0.</summary>
+    public static bool TryParsePercent(string? text, out decimal value)
+    {
+        value = 0;
+        if (string.IsNullOrWhiteSpace(text)) return true;
+        string t = text.Trim().TrimEnd('%').Trim();
+        if (!decimal.TryParse(t, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out value)) return false;
+        return value <= 100 && decimal.Round(value, 3) == value;
+    }
+
+    public static string Percent(decimal rate) => rate.ToString("0.##", Us) + "%";
+
     public static string MonthName(DateTime month) => month.ToString("MMMM yyyy", Us);
 }

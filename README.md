@@ -5,24 +5,25 @@
 **A budgeting app that keeps your budgets, spending and goals in sync between your PC and your phone.**
 Made by Bytehawk Studio.
 
-> **Status: early preview (v0.2.0), Windows only.** Transactions and Budgets work and are saved on your PC, and the
-> Dashboard shows your real numbers. The other sections are "coming soon" pages describing what they will do.
+> **Status: v0.3.0, Windows only.** Every section works and is saved on your PC, except syncing with the CoinPilot
+> mobile app, which is coming soon.
 
 ## What works
 
-| Section | Status |
+| Section | What it does |
 | --- | --- |
-| **Dashboard** | Works: this month's left to spend, spent, income and net, your budgets, spending by week and recent transactions. |
-| **Transactions** | Works: add, edit and delete spending and income; month by month; search; totals; export to CSV. Import is coming soon. |
-| **Budgets** | Works: a monthly amount per spending category with progress bars, left to spend, over-budget warnings and "spending without a budget". |
-| Goals | Coming soon |
-| Accounts | Coming soon |
-| Bills | Coming soon |
-| Reports | Coming soon |
-| Sync & Devices | Coming soon (sync with the CoinPilot mobile app) |
-| Appearance | Works: light / dark mode from the sidebar, or Settings → Appearance → "Match Windows". |
+| **Dashboard** | This month's left to spend, spent, income and net; budgets; spending by week; bills coming up; goals; recent transactions. |
+| **Transactions** | Add, edit and delete spending and income; month by month; search; totals; export to CSV. (Importing statements is coming soon.) |
+| **Budgets** | A monthly amount per spending category with progress bars, left to spend, over-budget warnings and "spending without a budget". |
+| **Accounts** | Balances for checking, savings, credit cards, cash and investments, kept up to date from transactions; net worth. |
+| **Debts** | Credit cards and loans with APR and minimum payments; record payments; avalanche or snowball payoff plan with a debt-free date. |
+| **Bills** | Bills and subscriptions with schedules; overdue / due soon; mark paid (adds the transaction and moves to the next due date). |
+| **Goals** | Savings goals with progress, add or take out money, and the monthly amount needed to reach the target date. |
+| **Reports** | Income vs. spending by month, spending by category, month-by-month table with savings rate; 3/6/12 months or this year; CSV export. |
+| Sync & Devices | Coming soon: sync with the CoinPilot mobile app. |
+| Appearance | Light / dark mode from the sidebar, or Settings → Appearance → "Match Windows". |
 
-Each coming-soon page lists its planned features. They are defined in
+The coming-soon page lists its planned features. They are defined in
 [`Models/ModuleCatalog.cs`](src/CoinPilot.Desktop/Models/ModuleCatalog.cs).
 
 ## Download
@@ -35,7 +36,7 @@ which downloads the newest release, installs it and keeps it up to date. Or get 
   uninstaller. Installs just for you by default (no administrator prompt).
 - **`CoinPilot-<version>-win-x64.zip`**: portable. Unzip anywhere and run `CoinPilot.exe`.
 
-Neither needs .NET installed. Your transactions and budgets are saved in `%AppData%\CoinPilot\data\`
+Neither needs .NET installed. Your data (transactions, budgets, accounts, debts, bills and goals) is saved in `%AppData%\CoinPilot\data\`
 (Settings → Your data → Open data folder) and settings in `%AppData%\CoinPilot\settings.json`. Uninstalling keeps them.
 
 ## Releasing a new version
@@ -46,7 +47,8 @@ then, on a Windows machine:
 
 1. builds the single-file exe, the portable zip and the installer,
 2. runs the self-test (`CoinPilot.exe --self-test result.txt`) on a throwaway data folder: money parsing, budget math,
-   saving and reloading, every page in light and dark (empty and with data), the add/edit dialogs and navigation,
+   account balances, payoff plans, bill schedules, goals, reports, saving and reloading, every page in light and dark
+   (empty and with data), the add/edit dialogs and navigation,
 3. silently installs the Setup .exe to a custom folder (the way the launcher does), starts it, and uninstalls it,
 4. takes light/dark screenshots (attached to the run as artifacts),
 5. publishes GitHub Release `v<version>` with the Setup .exe and the zip.
@@ -75,11 +77,13 @@ src/CoinPilot.Desktop/
   MainWindow.xaml(.cs)   sidebar, page host, status bar, toast
   Assets/                app icon (.ico + .png)
   Themes/                Light.xaml, Dark.xaml (colors), Controls.xaml (styles)
-  Data/                  Records (Transaction, Budget), JsonStore (safe JSON files), DataStore,
-                         Categories, Budgeting (month totals, budget progress, weekly spending)
+  Data/                  Records (Transaction, Budget, Account, Debt, Bill, Goal), JsonStore (safe JSON files),
+                         DataStore, Categories, Budgeting (month totals, budget progress, weekly spending),
+                         Finance (account balances, debt payoff planner, bill schedule, goal pace, reports)
   Models/                ModuleCatalog.cs — every section, its planned features and columns
-  Views/                 DashboardView, TransactionsView, BudgetsView, ComingSoonView, SettingsView,
-                         TransactionDialog / BudgetDialog (on DialogShell), MonthSwitcher, Ui helpers
+  Views/                 DashboardView, TransactionsView, BudgetsView (XAML); AccountsView, DebtsView, BillsView,
+                         GoalsView, ReportsView (code, on DataPage + PageKit); ComingSoonView, SettingsView;
+                         dialogs on DialogShell (TransactionDialog, BudgetDialog, MoneyDialogs.cs); Ui helpers
   Services/              money formatting, CSV export, settings, Windows theme detection, toast, self-test
 installer/CoinPilot.iss  Inno Setup script (+ wizard images)
 build.ps1                exe + portable zip + installer
@@ -101,8 +105,8 @@ The look comes from the desktop and mobile mockup in [`design/mockup/`](design/m
 ## Roadmap
 
 1. ~~Transactions and Budgets, saved on this PC, which make the Dashboard real~~ (0.2.0)
-2. Accounts, Goals and Bills; importing bank statements; your own categories
-3. Reports
+2. ~~Accounts, Debts, Bills, Goals and Reports~~ (0.3.0)
+3. Importing bank statements; your own categories; transfers between accounts; bill reminders
 4. CoinPilot mobile app (iPhone and Android) and sync between devices
 
 ## License

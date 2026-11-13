@@ -70,6 +70,11 @@ public partial class MainWindow : Window
         "dashboard" => new DashboardView(),
         "transactions" => new TransactionsView(),
         "budgets" => new BudgetsView(),
+        "accounts" => new AccountsView(),
+        "debts" => new DebtsView(),
+        "bills" => new BillsView(),
+        "goals" => new GoalsView(),
+        "reports" => new ReportsView(),
         _ => new ComingSoonView(module),
     });
 

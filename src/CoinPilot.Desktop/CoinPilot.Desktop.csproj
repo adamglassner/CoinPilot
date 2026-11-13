@@ -14,7 +14,7 @@
     <Authors>Bytehawk Studio</Authors>
     <Description>Budgeting app that keeps your budgets, spending and goals in sync across your devices.</Description>
     <!-- Releasing: change this and push to main. CI builds, tests and publishes GitHub Release v<Version>. -->
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Copyright>© 2026 Bytehawk Studio</Copyright>
     <!-- Lets the project at least restore/compile on non-Windows machines; the app itself is Windows-only. -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>

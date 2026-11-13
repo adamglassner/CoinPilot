@@ -162,6 +162,19 @@ public abstract class DialogShell : Window
     protected static string? Selected(WrapPanel wrap) =>
         wrap.Children.OfType<RadioButton>().FirstOrDefault(r => r.IsChecked == true)?.Content as string;
 
+    protected static CheckBox Check(string text, bool value) => new() { Content = text, IsChecked = value };
+
+    protected static TextBox SmallBox(string text) => new() { Text = text, Width = 200, HorizontalAlignment = HorizontalAlignment.Left };
+
+    protected static DatePicker DateBox(DateTime? value) => new() { SelectedDate = value, Width = 200, HorizontalAlignment = HorizontalAlignment.Left };
+
+    /// <summary>Reads an amount box: blank is allowed (as 0) only when <paramref name="allowZero"/>.</summary>
+    protected static bool ReadAmount(TextBox box, bool allowZero, out decimal value)
+    {
+        if (allowZero && string.IsNullOrWhiteSpace(box.Text)) { value = 0; return true; }
+        return Money.TryParse(box.Text, out value) && (allowZero || value > 0);
+    }
+
     protected static TextBox AmountBox(decimal? value) => new()
     {
         Text = value is decimal v && v != 0 ? v.ToString("0.00", Money.Us) : "",

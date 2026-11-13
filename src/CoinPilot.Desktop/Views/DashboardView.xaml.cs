@@ -39,6 +39,8 @@ public partial class DashboardView : UserControl
         BuildSummary(summary, now);
         BuildBudgets(summary);
         BuildWeekChart(summary, now);
+        BuildBills(now.Date);
+        BuildGoals(now.Date);
         BuildRecent();
     }
 
@@ -161,6 +163,93 @@ public partial class DashboardView : UserControl
         }
     }
 
+    // ----- Coming up: bills due in the next 2 weeks (and anything overdue) -----
+
+    private void BuildBills(DateTime today)
+    {
+        BillList.Children.Clear();
+        var bills = DataStore.Bills.Items;
+        if (bills.Count == 0)
+        {
+            BillList.Children.Add(Ui.EmptyState("\uE787", "No bills yet",
+                "Add your bills and subscriptions to see what's due soon.",
+                "Add bill", (_, _) => BillDialog.Edit(null)));
+            return;
+        }
+
+        var soon = bills.Where(b => !b.IsDone && (b.NextDue.Date - today).Days <= 14).OrderBy(b => b.NextDue).Take(5).ToList();
+        if (soon.Count == 0)
+        {
+            var next = bills.Where(b => !b.IsDone).OrderBy(b => b.NextDue).FirstOrDefault();
+            var t = Ui.Text(next == null ? "Nothing due." : $"Nothing due in the next 2 weeks. Next up: {next.Name} on {next.NextDue:MMM d}.", muted: true);
+            t.TextWrapping = TextWrapping.Wrap;
+            t.Margin = new Thickness(0, 8, 0, 8);
+            BillList.Children.Add(t);
+            return;
+        }
+
+        foreach (var b in soon)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 7, 0, 7) };
+            var amount = Ui.Text(Money.Format(b.Amount), weight: FontWeights.SemiBold);
+            amount.Margin = new Thickness(12, 0, 0, 0);
+            DockPanel.SetDock(amount, Dock.Right);
+            row.Children.Add(amount);
+
+            var status = BillSchedule.Status(b, today);
+            string brush = status == BillStatus.Overdue ? "Brush.Danger" : status is BillStatus.DueToday or BillStatus.DueSoon ? "Brush.Warn" : "Brush.TextMuted";
+            var when = PageKit.Pill(BillSchedule.StatusText(b, today), brush);
+            DockPanel.SetDock(when, Dock.Right);
+            row.Children.Add(when);
+
+            row.Children.Add(Ui.Text(b.Name, weight: FontWeights.SemiBold));
+            BillList.Children.Add(row);
+        }
+    }
+
+    // ----- Goals: the ones still in progress -----
+
+    private void BuildGoals(DateTime today)
+    {
+        GoalList.Children.Clear();
+        var goals = DataStore.Goals.Items;
+        if (goals.Count == 0)
+        {
+            GoalList.Children.Add(Ui.EmptyState("\uE7C1", "No goals yet",
+                "Save toward an emergency fund, a trip or anything else.",
+                "New goal", (_, _) => GoalDialog.Edit(null)));
+            return;
+        }
+
+        var show = goals.Where(g => !g.IsReached).OrderBy(g => g.TargetDate ?? DateTime.MaxValue).Take(4).ToList();
+        if (show.Count == 0)
+        {
+            var t = Ui.Text($"All {goals.Count} goal{(goals.Count == 1 ? "" : "s")} reached. Time for a new one?", muted: true);
+            t.Margin = new Thickness(0, 8, 0, 8);
+            GoalList.Children.Add(t);
+            return;
+        }
+
+        foreach (var g in show)
+        {
+            var row = new StackPanel { Margin = new Thickness(0, 7, 0, 7) };
+            var top = new DockPanel { Margin = new Thickness(0, 0, 0, 7) };
+            var amounts = Ui.Text($"{Money.Format(g.Saved, cents: false)} / {Money.Format(g.Target, cents: false)}", muted: true);
+            DockPanel.SetDock(amounts, Dock.Right);
+            top.Children.Add(amounts);
+            top.Children.Add(Ui.Text(g.Name, weight: FontWeights.SemiBold));
+            row.Children.Add(top);
+            row.Children.Add(Ui.ProgressBar(g.Fraction, "Brush.Accent"));
+            if (GoalMath.MonthlyNeeded(g, today) is decimal monthly && g.TargetDate is DateTime date && date >= today)
+            {
+                var pace = Ui.Text($"Save {Money.Format(monthly)}/month to reach it by {date:MMM yyyy}", muted: true, size: 12);
+                pace.Margin = new Thickness(0, 5, 0, 0);
+                row.Children.Add(pace);
+            }
+            GoalList.Children.Add(row);
+        }
+    }
+
     // ----- Recent transactions -----
 
     private void BuildRecent()
@@ -203,6 +292,10 @@ public partial class DashboardView : UserControl
         MonthSwitcher.Current = Budgeting.MonthStart(DateTime.Today);
         MainWindow.Instance?.GoTo("transactions");
     }
+
+    private void GoBills_Click(object sender, RoutedEventArgs e) => MainWindow.Instance?.GoTo("bills");
+
+    private void GoGoals_Click(object sender, RoutedEventArgs e) => MainWindow.Instance?.GoTo("goals");
 
     private void GoBudgets_Click(object sender, RoutedEventArgs e)
     {

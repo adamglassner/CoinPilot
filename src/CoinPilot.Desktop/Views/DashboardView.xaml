@@ -87,6 +87,35 @@
             </Border>
         </Grid>
 
+        <!-- Upcoming bills + goals -->
+        <Grid Margin="0,0,0,18">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Style="{StaticResource Card}" Padding="22">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,6">
+                        <Button DockPanel.Dock="Right" Content="All bills" Style="{StaticResource LinkButton}" Click="GoBills_Click" />
+                        <TextBlock Text="Coming up" Style="{StaticResource CardTitle}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <StackPanel x:Name="BillList" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource Card}" Padding="22">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,6">
+                        <Button DockPanel.Dock="Right" Content="All goals" Style="{StaticResource LinkButton}" Click="GoGoals_Click" />
+                        <TextBlock Text="Goals" Style="{StaticResource CardTitle}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <StackPanel x:Name="GoalList" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
         <!-- Recent transactions -->
         <Border Style="{StaticResource Card}" Padding="14,14,14,8">
             <StackPanel>

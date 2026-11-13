@@ -133,6 +133,37 @@ public static class SelfTest
         Check("Weekly spending split by day of month", weeks[0] == 206.42m && weeks[1] == 275m && weeks[2] == 41.10m, string.Join(", ", weeks));
         Check("Last month's spending stays in last month", Budgeting.Summarize(lastMonth).Spent == 1500m);
 
+        // ----- Reports -----
+        var monthly = Reports.Monthly(month, 2, DataStore.Transactions.Items);
+        Check("Reports: two months, oldest first", monthly.Count == 2 && monthly[0].Month == lastMonth && monthly[1].Month == month);
+        Check("Reports: last month spent 1500, no income", monthly[0].Spent == 1500m && monthly[0].Income == 0 && monthly[0].SavingsRate == null);
+        Check("Reports: this month totals", monthly[1].Income == 2050m && monthly[1].Spent == 522.52m && monthly[1].Net == 1527.48m);
+        var byCat = Reports.ByCategory(month, month.AddMonths(1).AddDays(-1), DataStore.Transactions.Items);
+        Check("Reports: Dining out is the top category", byCat.Count == 3 && byCat[0].Category == "Dining out" && byCat[0].Spent == 275m,
+            string.Join(", ", byCat.Select(c => c.Category + "=" + c.Spent)));
+
+        // ----- Accounts -----
+        await Step("Add accounts", () =>
+        {
+            DataStore.Accounts.Add(new Account { Name = "Checking", Type = AccountTypes.Checking, StartingBalance = 1000m, BalanceDate = month.AddDays(-1) });
+            DataStore.Accounts.Add(new Account { Name = "Credit card", Type = AccountTypes.CreditCard, StartingBalance = -500m, BalanceDate = month.AddDays(-1) });
+        });
+        var checking = DataStore.Accounts.Items.Single(a => a.Name == "Checking");
+        var card = DataStore.Accounts.Items.Single(a => a.Name == "Credit card");
+        Check("Checking balance = start + later transactions (older ones ignored)", AccountMath.Balance(checking) == 2963.58m, AccountMath.Balance(checking).ToString());
+        Check("Credit card owes 936.10", AccountMath.Balance(card) == -936.10m && card.IsLiability, AccountMath.Balance(card).ToString());
+        Check("Net worth = 2963.58 - 936.10", AccountMath.NetWorth() == 2027.48m, AccountMath.NetWorth().ToString());
+        Check("Transaction account choices come from Accounts", DataStore.AccountChoices().SequenceEqual(new[] { "Checking", "Credit card" }));
+        await Step("Rename an account", () =>
+        {
+            card.Name = "Visa";
+            DataStore.Accounts.Update(card);
+            AccountMath.Rename("Credit card", "Visa");
+        });
+        Check("Rename moves its transactions", DataStore.Transactions.Items.Count(t => t.Account == "Visa") == 3
+                                                && !DataStore.Transactions.Items.Any(t => t.Account == "Credit card"));
+        Check("Balance follows the rename", AccountMath.Balance(card) == -936.10m);
+
         // ----- Saved to disk -----
         var reloadedT = new JsonStore<Transaction>(DataStore.Folder, "transactions");
         var reloadedB = new JsonStore<Budget>(DataStore.Folder, "budgets");
@@ -157,6 +188,11 @@ public static class SelfTest
             await Dialog($"[{theme}] Edit income dialog", () => new TransactionDialog(DataStore.Transactions.Items.First(t => t.IsIncome)));
             await Dialog($"[{theme}] New budget dialog", () => new BudgetDialog(null, "Transportation"));
             await Dialog($"[{theme}] Edit budget dialog", () => new BudgetDialog(DataStore.Budgets.Items[0]));
+            await Dialog($"[{theme}] Add account dialog", () => new AccountDialog(null, "Cash"));
+            await Dialog($"[{theme}] Edit account dialog", () => new AccountDialog(DataStore.Accounts.Items[0]));
+            await Dialog($"[{theme}] Add debt dialog", () => new DebtDialog(null));
+            await Dialog($"[{theme}] Add bill dialog", () => new BillDialog(null));
+            await Dialog($"[{theme}] Add goal dialog", () => new GoalDialog(null));
         }
 
         // ----- Edit + delete refresh the open page -----
@@ -176,9 +212,105 @@ public static class SelfTest
         Check("Delete persisted", new JsonStore<Transaction>(DataStore.Folder, "transactions").Items.Count == 5
                                   && new JsonStore<Budget>(DataStore.Folder, "budgets").Items.Count == 1);
 
+        // ----- Debts: payoff plans -----
+        var single = new Debt { Id = "a", Name = "Zero-rate", Balance = 1200m, InterestRate = 0, MinimumPayment = 100m };
+        var p1 = DebtPlanner.Plan([single], DebtPlanner.Avalanche, 0);
+        Check("Plan: $1,200 at 0% paying $100 takes 12 months", p1.Months == 12 && p1.TotalInterest == 0 && !p1.NeverPaysOff, p1.Months.ToString());
+        var p1x = DebtPlanner.Plan([single], DebtPlanner.Avalanche, 100m);
+        Check("Plan: an extra $100 halves it", p1x.Months == 6, p1x.Months.ToString());
+        var low = new Debt { Id = "low", Name = "Low", Balance = 1000m, InterestRate = 0, MinimumPayment = 100m };
+        var high = new Debt { Id = "high", Name = "High", Balance = 2000m, InterestRate = 24m, MinimumPayment = 100m };
+        var aval = DebtPlanner.Plan([low, high], DebtPlanner.Avalanche, 50m);
+        var snow = DebtPlanner.Plan([low, high], DebtPlanner.Snowball, 50m);
+        Check("Avalanche pays the highest rate first", aval.Order["high"] == 1 && aval.Order["low"] == 2);
+        Check("Snowball pays the smallest balance first", snow.Order["low"] == 1 && snow.Order["high"] == 2);
+        Check("Avalanche costs less interest than snowball", aval.TotalInterest < snow.TotalInterest && !aval.NeverPaysOff && !snow.NeverPaysOff,
+            $"{aval.TotalInterest} vs {snow.TotalInterest}");
+        var stuck = new Debt { Id = "s", Name = "Stuck", Balance = 10000m, InterestRate = 24m, MinimumPayment = 50m };
+        Check("Plan: payments below the interest never pay off", DebtPlanner.Plan([stuck], DebtPlanner.Avalanche, 0).NeverPaysOff);
+
+        int txBefore = DataStore.Transactions.Items.Count;
+        await Step("Add a debt and record a payment", () =>
+        {
+            var visa = new Debt { Name = "Visa card", Balance = 3000m, OriginalBalance = 3000m, InterestRate = 22.99m, MinimumPayment = 90m };
+            DataStore.Debts.Add(visa);
+            DataStore.Debts.Add(new Debt { Name = "Car loan", Type = "Car loan", Balance = 8000m, OriginalBalance = 9000m, InterestRate = 6.5m, MinimumPayment = 250m });
+            DebtPaymentDialog.Apply(visa, 500m, DateTime.Today, "Checking", addTransaction: true);
+        });
+        var visaDebt = DataStore.Debts.Items.Single(d => d.Name == "Visa card");
+        Check("Payment lowers the balance", visaDebt.Balance == 2500m && visaDebt.PaidOff == 500m && visaDebt.Payments.Count == 1);
+        Check("Payment added to Transactions as Debt payments", DataStore.Transactions.Items.Count == txBefore + 1
+            && DataStore.Transactions.Items.Any(t => t.Category == Categories.DebtPayments && t.Amount == -500m));
+        Check("Net worth subtracts debts", AccountMath.NetWorth() == AccountMath.Balance(checking) + AccountMath.Balance(card) - 10500m);
+        await Step("Debt plan settings save", () => { DataStore.DebtPlan.Strategy = DebtPlanner.Snowball; DataStore.DebtPlan.ExtraPayment = 75m; DataStore.DebtPlan.Save(); });
+        var reloadedPlan = DebtPlanSettings.Load(DataStore.Folder);
+        Check("Debt plan settings reload", reloadedPlan.Strategy == DebtPlanner.Snowball && reloadedPlan.ExtraPayment == 75m);
+
+        // ----- Bills -----
+        Check("Monthly bill on the 31st keeps its day", BillSchedule.Next(new DateTime(2027, 1, 31), BillSchedule.Monthly, 31) == new DateTime(2027, 2, 28)
+            && BillSchedule.Next(new DateTime(2027, 2, 28), BillSchedule.Monthly, 31) == new DateTime(2027, 3, 31));
+        Check("Weekly $12 costs $52 a month", BillSchedule.MonthlyCost(new Bill { Amount = 12m, Repeats = BillSchedule.Weekly }) == 52m);
+        Check("Yearly $120 costs $10 a month", BillSchedule.MonthlyCost(new Bill { Amount = 120m, Repeats = BillSchedule.Yearly }) == 10m);
+        var today = DateTime.Today;
+        Check("Yesterday's bill is overdue", BillSchedule.Status(new Bill { NextDue = today.AddDays(-1) }, today) == BillStatus.Overdue);
+        Check("Bill in 3 days is due soon", BillSchedule.Status(new Bill { NextDue = today.AddDays(3) }, today) == BillStatus.DueSoon);
+        Check("Bill in 20 days is upcoming", BillSchedule.Status(new Bill { NextDue = today.AddDays(20) }, today) == BillStatus.Upcoming);
+        Bill? rent = null, once = null;
+        await Step("Add bills and mark them paid", () =>
+        {
+            rent = new Bill { Name = "Rent", Amount = 1500m, NextDue = today, DueDay = today.Day, Repeats = BillSchedule.Monthly, Category = "Housing", Account = "Checking" };
+            once = new Bill { Name = "Car registration", Amount = 85m, NextDue = today.AddDays(2), Repeats = BillSchedule.Once, Category = "Transportation", Account = "Checking" };
+            DataStore.Bills.Add(rent);
+            DataStore.Bills.Add(once);
+            DataStore.Bills.Add(new Bill { Name = "Streaming", Amount = 15.49m, NextDue = today.AddDays(-2), Repeats = BillSchedule.Monthly, Category = "Subscriptions", Account = "Visa" });
+            BillSchedule.MarkPaid(rent, today);
+            BillSchedule.MarkPaid(once, today);
+        });
+        Check("Paid monthly bill moves to next month", rent != null && rent.NextDue == BillSchedule.Next(today, BillSchedule.Monthly, today.Day) && rent.LastPaid == today);
+        Check("Paid one-time bill is done", once != null && once.IsDone && BillSchedule.Status(once, today) == BillStatus.Paid);
+        Check("Mark paid adds transactions", DataStore.Transactions.Items.Any(t => t.Payee == "Rent" && t.Amount == -1500m && t.Category == "Housing")
+            && DataStore.Transactions.Items.Any(t => t.Payee == "Car registration" && t.Amount == -85m));
+
+        // ----- Goals -----
+        Goal? fund = null;
+        await Step("Add a goal and money to it", () =>
+        {
+            fund = new Goal { Name = "Emergency fund", Target = 1200m, TargetDate = today.AddMonths(12) };
+            DataStore.Goals.Add(fund);
+            DataStore.Goals.Add(new Goal { Name = "Trip", Target = 2000m, Saved = 2000m });
+            GoalMath.AddMoney(fund, 300m, today);
+        });
+        Check("Goal saved and history kept", fund != null && fund.Saved == 300m && fund.History.Count == 1);
+        Check("Goal: $900 left over 12 months = $75/month", fund != null && GoalMath.MonthlyNeeded(fund, today) == 75m,
+            fund == null ? "" : GoalMath.MonthlyNeeded(fund, today)?.ToString() ?? "null");
+        Check("Reached goal has no monthly amount", DataStore.Goals.Items.Single(g => g.Name == "Trip") is { IsReached: true } trip && GoalMath.MonthlyNeeded(trip, today) == null);
+        await Step("Take out more than saved", () => GoalMath.AddMoney(fund!, -500m, today));
+        Check("Goal can't go below zero", fund!.Saved == 0m);
+
+        var reloadedGoals = new JsonStore<Goal>(DataStore.Folder, "goals");
+        var reloadedBills = new JsonStore<Bill>(DataStore.Folder, "bills");
+        var reloadedDebts = new JsonStore<Debt>(DataStore.Folder, "debts");
+        Check("Goals, bills and debts saved to disk", reloadedGoals.Items.Count == 2 && reloadedBills.Items.Count == 3 && reloadedDebts.Items.Count == 2
+            && reloadedDebts.Items.Single(d => d.Name == "Visa card").Payments.Count == 1 && reloadedBills.Items.Single(b => b.Name == "Car registration").IsDone);
+
+        // ----- Every page with everything filled in -----
+        await AllPages(window, "full");
+        foreach (var range in ReportsView.Ranges)
+        {
+            await Step($"Reports: {range}", () => { ReportsView.Range = range; window.GoTo("reports"); });
+        }
+        ReportsView.Range = ReportsView.SixMonths;
+        await Step("Debts page with snowball plan and paid-off debt", () =>
+        {
+            var car = DataStore.Debts.Items.Single(d => d.Name == "Car loan");
+            DebtPaymentDialog.Apply(car, 8000m, DateTime.Today, "Checking", addTransaction: false);
+            window.GoTo("debts");
+        });
+        Check("Paying the full balance marks the debt paid off", DataStore.Debts.Items.Single(d => d.Name == "Car loan").IsPaidOff);
+
         // ----- Catalog / navigation -----
-        string[] working = ["dashboard", "transactions", "budgets"];
-        Check("Dashboard, Transactions and Budgets work; the rest are coming soon",
+        string[] working = ["dashboard", "transactions", "budgets", "accounts", "debts", "bills", "goals", "reports"];
+        Check("Every section works except Sync & Devices (coming soon)",
             ModuleCatalog.Sidebar.All(m => m.IsComingSoon == !working.Contains(m.Key)));
         Check("Every coming-soon section lists planned features",
             ModuleCatalog.Sidebar.Where(m => m.IsComingSoon).All(m => m.Features.Length > 0 && m.Description.Length > 0));

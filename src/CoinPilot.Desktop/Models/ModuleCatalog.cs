@@ -56,24 +56,7 @@ public static class ModuleCatalog
         },
         new()
         {
-            Key = "goals", Title = "Goals", Glyph = "",
-            Tagline = "Save toward the things that matter.",
-            Description = "Create savings goals like an emergency fund, a trip or a new car. Set a target and a date and CoinPilot works out how much to put away each month.",
-            PrimaryAction = "New goal",
-            Kpis = ["Active goals", "Saved so far", "Monthly contribution", "On track"],
-            Columns = ["Goal", "Target", "Saved", "Target date", "Status"],
-            Features =
-            [
-                "Savings goals with a target amount and date",
-                "Suggested monthly contribution",
-                "Progress rings and milestones",
-                "Debt payoff plans (snowball and avalanche)",
-                "Link a goal to a savings account",
-            ],
-        },
-        new()
-        {
-            Key = "accounts", Title = "Accounts", Glyph = "",
+            Key = "accounts", Title = "Accounts", Glyph = "", IsComingSoon = false,
             Tagline = "Checking, savings, credit cards and cash, together.",
             Description = "Keep track of every account's balance and see your net worth. Add accounts manually, or import statements to keep balances up to date.",
             PrimaryAction = "Add account",
@@ -90,7 +73,15 @@ public static class ModuleCatalog
         },
         new()
         {
-            Key = "bills", Title = "Bills", Glyph = "",
+            Key = "debts", Title = "Debts", Glyph = "", IsComingSoon = false,
+            Tagline = "See what you owe and the fastest way to pay it off.",
+            Description = "Track credit cards and loans with their interest rates and minimum payments, record payments, and follow a snowball or avalanche payoff plan.",
+            PrimaryAction = "Add debt",
+            Features = ["Balances, interest rates and minimum payments", "Record payments (added to Transactions)", "Snowball and avalanche payoff plans", "Debt-free date and interest to pay"],
+        },
+        new()
+        {
+            Key = "bills", Title = "Bills", Glyph = "", IsComingSoon = false,
             Tagline = "Never miss a due date.",
             Description = "List your bills and subscriptions with their due dates and amounts. CoinPilot reminds you before they're due and shows how much is still coming out this month.",
             PrimaryAction = "Add bill",
@@ -107,7 +98,24 @@ public static class ModuleCatalog
         },
         new()
         {
-            Key = "reports", Title = "Reports", Glyph = "",
+            Key = "goals", Title = "Goals", Glyph = "", IsComingSoon = false,
+            Tagline = "Save toward the things that matter.",
+            Description = "Create savings goals like an emergency fund, a trip or a new car. Set a target and a date and CoinPilot works out how much to put away each month.",
+            PrimaryAction = "New goal",
+            Kpis = ["Active goals", "Saved so far", "Monthly contribution", "On track"],
+            Columns = ["Goal", "Target", "Saved", "Target date", "Status"],
+            Features =
+            [
+                "Savings goals with a target amount and date",
+                "Suggested monthly contribution",
+                "Progress rings and milestones",
+                "Debt payoff plans (snowball and avalanche)",
+                "Link a goal to a savings account",
+            ],
+        },
+        new()
+        {
+            Key = "reports", Title = "Reports", Glyph = "", IsComingSoon = false,
             Tagline = "See where your money goes over time.",
             Description = "Charts of spending by category, income versus spending, and month-to-month trends. Pick any date range and export what you see.",
             PrimaryAction = "Run report",
