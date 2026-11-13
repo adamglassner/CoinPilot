@@ -407,7 +407,8 @@ Future<bool> confirm(BuildContext context,
   final ok = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      icon: Container(
+      icon: Center(
+        child: Container(
         width: 52,
         height: 52,
         decoration: BoxDecoration(
@@ -416,6 +417,7 @@ Future<bool> confirm(BuildContext context,
         ),
         child: Icon(danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
             color: danger ? p.danger : p.accent, size: 28),
+        ),
       ),
       title: Text(title, textAlign: TextAlign.center),
       content: Text(message, textAlign: TextAlign.center),
