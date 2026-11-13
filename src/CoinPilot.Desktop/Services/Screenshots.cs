@@ -27,6 +27,11 @@ public static class Screenshots
         DemoData.Seed();
         DataStore.Prefs.WelcomeDismissed = true;
         DataStore.Prefs.Save();
+        // A fixed window size whatever the runner's screen is (WPF lets a window be larger than the screen)
+        window.WindowState = WindowState.Normal;
+        window.Left = 0; window.Top = 0;
+        window.Width = Width; window.Height = Height;
+        await Idle();
 
         string[] pages = ["dashboard", "transactions", "budgets", "accounts", "debts", "bills", "goals", "reports", "taxes", "settings"];
         int n = 1;
@@ -124,17 +129,8 @@ public static class Screenshots
         try
         {
             var root = (FrameworkElement)window.Content;
-            for (int i = 0; i < 2; i++)
-            {
-                root.Measure(new Size(Width, Height));
-                root.Arrange(new Rect(0, 0, Width, Height));
-                root.UpdateLayout();
-                await Dispatcher.Yield(DispatcherPriority.Render);
-                root.Measure(new Size(Width, Height));
-                root.Arrange(new Rect(0, 0, Width, Height));
-                root.UpdateLayout();
-            }
-            Save(root, Width, Height, (Brush)Application.Current.FindResource("Brush.Bg"), name);
+            await Dispatcher.Yield(DispatcherPriority.Render);
+            Save(root, root.ActualWidth, root.ActualHeight, (Brush)Application.Current.FindResource("Brush.Bg"), name);
         }
         catch (Exception ex)
         {
@@ -151,9 +147,7 @@ public static class Screenshots
             dialog.Show();
             await Idle();
             var root = (FrameworkElement)window.Content;
-            root.Measure(new Size(Width, Height));
-            root.Arrange(new Rect(0, 0, Width, Height));
-            root.UpdateLayout();
+            double Width = root.ActualWidth, Height = root.ActualHeight;
 
             var card = dialog.Card;
             double w = card.ActualWidth, h = Math.Min(card.ActualHeight, Height - 40);

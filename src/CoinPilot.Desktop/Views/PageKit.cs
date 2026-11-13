@@ -103,6 +103,13 @@ public static class PageKit
         return b;
     }
 
+    /// <summary>Shrinks a big number to fit its tile instead of cutting it off with "…".</summary>
+    public static Viewbox FitWidth(FrameworkElement value) => new()
+    {
+        Child = value, Stretch = System.Windows.Media.Stretch.Uniform, StretchDirection = StretchDirection.DownOnly,
+        HorizontalAlignment = HorizontalAlignment.Left, Margin = value.Margin,
+    }.Also(_ => value.Margin = new Thickness(0));
+
     /// <summary>One summary tile. <paramref name="hero"/> uses the dark highlight style.</summary>
     public static Border Kpi(string label, string value, string? caption = null, bool hero = false, string? valueBrush = null)
     {
@@ -110,9 +117,9 @@ public static class PageKit
         var l = new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap };
         l.SetResourceReference(TextBlock.ForegroundProperty, hero ? "Brush.HeroMuted" : "Brush.TextMuted");
         panel.Children.Add(l);
-        var v = new TextBlock { Text = value, Style = S("BigNumber"), TextTrimming = TextTrimming.CharacterEllipsis };
+        var v = new TextBlock { Text = value, Style = S("BigNumber"), TextTrimming = TextTrimming.None };
         v.SetResourceReference(TextBlock.ForegroundProperty, valueBrush ?? (hero ? "Brush.HeroText" : "Brush.Text"));
-        panel.Children.Add(v);
+        panel.Children.Add(FitWidth(v));
         if (caption != null)
         {
             var c = new TextBlock { Text = caption, FontSize = 12.5, TextWrapping = TextWrapping.Wrap };

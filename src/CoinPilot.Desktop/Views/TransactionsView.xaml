@@ -46,12 +46,12 @@
                     </StackPanel>
                 </Button>
             </StackPanel>
-            <Grid HorizontalAlignment="Left" Width="340">
+            <Grid MaxWidth="380" Margin="0,0,12,0" HorizontalAlignment="Stretch">
                 <TextBox x:Name="SearchBox" Padding="32,7,8,7" TextChanged="Search_Changed"
                          AutomationProperties.Name="Search transactions" ToolTip="Search (Ctrl+F)" />
                 <TextBlock Text="&#xE721;" Style="{StaticResource Icon}" Margin="12,0,0,0" HorizontalAlignment="Left"
                            Foreground="{DynamicResource Brush.TextMuted}" IsHitTestVisible="False" />
-                <TextBlock x:Name="SearchHint" Text="Search payee, category, tag, note or amount" Margin="34,0,0,0"
+                <TextBlock x:Name="SearchHint" Text="Search payee, category, tag, note or amount" Margin="34,0,10,0" TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}" IsHitTestVisible="False" />
             </Grid>
         </DockPanel>
@@ -87,25 +87,25 @@
             <Border Background="{DynamicResource Brush.Hero}" CornerRadius="14" Padding="20" Margin="0,0,14,0">
                 <StackPanel>
                     <TextBlock Text="Spent" Foreground="{DynamicResource Brush.HeroMuted}" />
-                    <TextBlock x:Name="SpentText" Style="{StaticResource BigNumber}" Foreground="{DynamicResource Brush.HeroText}" />
+                    <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left"><TextBlock x:Name="SpentText" Style="{StaticResource BigNumber}" Foreground="{DynamicResource Brush.HeroText}" /></Viewbox>
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,14,0">
                 <StackPanel>
                     <TextBlock Text="Income" Style="{StaticResource Muted}" />
-                    <TextBlock x:Name="IncomeText" Style="{StaticResource BigNumber}" />
+                    <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left"><TextBlock x:Name="IncomeText" Style="{StaticResource BigNumber}" /></Viewbox>
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,14,0">
                 <StackPanel>
                     <TextBlock Text="Net (income − spent)" Style="{StaticResource Muted}" />
-                    <TextBlock x:Name="NetText" Style="{StaticResource BigNumber}" />
+                    <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left"><TextBlock x:Name="NetText" Style="{StaticResource BigNumber}" /></Viewbox>
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,14,0">
                 <StackPanel>
                     <TextBlock x:Name="CountLabel" Text="Transactions" Style="{StaticResource Muted}" />
-                    <TextBlock x:Name="CountText" Style="{StaticResource BigNumber}" />
+                    <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left"><TextBlock x:Name="CountText" Style="{StaticResource BigNumber}" /></Viewbox>
                 </StackPanel>
             </Border>
         </UniformGrid>

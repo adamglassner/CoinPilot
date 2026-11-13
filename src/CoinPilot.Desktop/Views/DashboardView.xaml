@@ -33,7 +33,7 @@
                 <Border Background="{DynamicResource Brush.Hero}" CornerRadius="14" Padding="20">
                     <StackPanel>
                         <TextBlock Text="Left to spend" Foreground="{DynamicResource Brush.HeroMuted}" />
-                        <TextBlock x:Name="LeftText" Style="{StaticResource BigNumber}" FontSize="30" Foreground="{DynamicResource Brush.HeroText}" />
+                        <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left"><TextBlock x:Name="LeftText" Style="{StaticResource BigNumber}" FontSize="30" Foreground="{DynamicResource Brush.HeroText}" /></Viewbox>
                         <TextBlock x:Name="LeftCaption" Foreground="{DynamicResource Brush.Mint}" FontSize="12.5" TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
@@ -42,7 +42,7 @@
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
                         <TextBlock Text="Spent this month" Style="{StaticResource Muted}" />
-                        <TextBlock x:Name="SpentText" Style="{StaticResource BigNumber}" />
+                        <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left"><TextBlock x:Name="SpentText" Style="{StaticResource BigNumber}" /></Viewbox>
                         <TextBlock x:Name="SpentCaption" Style="{StaticResource Muted}" FontSize="12.5" />
                     </StackPanel>
                 </Border>
@@ -51,7 +51,7 @@
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
                         <TextBlock Text="Income" Style="{StaticResource Muted}" />
-                        <TextBlock x:Name="IncomeText" Style="{StaticResource BigNumber}" />
+                        <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left"><TextBlock x:Name="IncomeText" Style="{StaticResource BigNumber}" /></Viewbox>
                         <TextBlock x:Name="IncomeCaption" Style="{StaticResource Muted}" FontSize="12.5" />
                     </StackPanel>
                 </Border>
@@ -60,7 +60,7 @@
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
                         <TextBlock Text="Net this month" Style="{StaticResource Muted}" />
-                        <TextBlock x:Name="NetText" Style="{StaticResource BigNumber}" />
+                        <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left"><TextBlock x:Name="NetText" Style="{StaticResource BigNumber}" /></Viewbox>
                         <TextBlock Text="Income minus spending" Style="{StaticResource Muted}" FontSize="12.5" />
                     </StackPanel>
                 </Border>

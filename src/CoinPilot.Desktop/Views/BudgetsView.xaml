@@ -47,27 +47,27 @@
             <Border Background="{DynamicResource Brush.Hero}" CornerRadius="14" Padding="20" Margin="0,0,14,0">
                 <StackPanel>
                     <TextBlock Text="Left to spend" Foreground="{DynamicResource Brush.HeroMuted}" />
-                    <TextBlock x:Name="LeftText" Style="{StaticResource BigNumber}" Foreground="{DynamicResource Brush.HeroText}" />
+                    <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left"><TextBlock x:Name="LeftText" Style="{StaticResource BigNumber}" Foreground="{DynamicResource Brush.HeroText}" /></Viewbox>
                     <Grid x:Name="LeftBarHost" Margin="0,4,0,0" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,14,0">
                 <StackPanel>
                     <TextBlock Text="Budgeted" Style="{StaticResource Muted}" />
-                    <TextBlock x:Name="BudgetedText" Style="{StaticResource BigNumber}" />
+                    <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left"><TextBlock x:Name="BudgetedText" Style="{StaticResource BigNumber}" /></Viewbox>
                     <TextBlock x:Name="CarryText" Style="{StaticResource Muted}" FontSize="12.5" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,14,0">
                 <StackPanel>
                     <TextBlock Text="Spent in budgets" Style="{StaticResource Muted}" />
-                    <TextBlock x:Name="SpentText" Style="{StaticResource BigNumber}" />
+                    <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left"><TextBlock x:Name="SpentText" Style="{StaticResource BigNumber}" /></Viewbox>
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,14,0">
                 <StackPanel>
                     <TextBlock Text="Over budget" Style="{StaticResource Muted}" />
-                    <TextBlock x:Name="OverText" Style="{StaticResource BigNumber}" />
+                    <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left"><TextBlock x:Name="OverText" Style="{StaticResource BigNumber}" /></Viewbox>
                 </StackPanel>
             </Border>
         </UniformGrid>

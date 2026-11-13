@@ -177,7 +177,7 @@ public partial class TransactionsView : UserControl, ISearchablePage
         var g = Ui.Columns(ColumnStars);
         var cell = new Thickness(10, 12, 10, 12);
 
-        g.Children.Add(Ui.Text(t.Date.ToString("ddd, MMM d", Money.Us), muted: true).At(0, cell));
+        g.Children.Add(Ui.Text(t.Date.ToString("MMM d", Money.Us), muted: true).At(0, cell));
 
         var payee = new StackPanel { VerticalAlignment = VerticalAlignment.Center }.At(1, cell);
         var nameLine = new StackPanel { Orientation = Orientation.Horizontal };

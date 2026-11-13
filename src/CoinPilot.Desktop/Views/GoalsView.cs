@@ -58,20 +58,15 @@ public sealed class GoalsView : DataPage
         layout.Children.Add(ring);
 
         var panel = new StackPanel().At(1);
-        var top = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
-        if (g.IsReached)
+        var top = new WrapPanel { Margin = new Thickness(0, 0, 0, 4) };
+        top.Children.Add(new TextBlock { Text = g.Name, Style = Res("CardTitle"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 0, 10, 2), VerticalAlignment = VerticalAlignment.Center });
+        if (g.IsReached || g.IsLinked)
         {
-            var pill = PageKit.Pill("Reached", "Brush.Positive");
-            DockPanel.SetDock(pill, Dock.Right);
+            var pill = g.IsReached ? PageKit.Pill("Reached", "Brush.Positive") : PageKit.Pill("Linked: " + g.LinkedAccount, "Brush.Accent");
+            pill.VerticalAlignment = VerticalAlignment.Center;
+            pill.Margin = new Thickness(0, 0, 0, 2);
             top.Children.Add(pill);
         }
-        else if (g.IsLinked)
-        {
-            var pill = PageKit.Pill("Linked: " + g.LinkedAccount, "Brush.Accent");
-            DockPanel.SetDock(pill, Dock.Right);
-            top.Children.Add(pill);
-        }
-        top.Children.Add(new TextBlock { Text = g.Name, Style = Res("CardTitle"), TextTrimming = TextTrimming.CharacterEllipsis });
         panel.Children.Add(top);
 
         var amounts = new TextBlock { Margin = new Thickness(0, 0, 0, 8) };
@@ -82,11 +77,11 @@ public sealed class GoalsView : DataPage
         panel.Children.Add(amounts);
 
         // Milestones: 25 / 50 / 75 / 100%
-        var stones = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+        var stones = new WrapPanel { Margin = new Thickness(0, 0, 0, 4) };
         foreach (int m in Milestones)
         {
             bool done = g.Fraction * 100 >= m - 0.0001;
-            var dot = new Border { CornerRadius = new CornerRadius(9), Padding = new Thickness(8, 2, 8, 3), Margin = new Thickness(0, 0, 6, 0) };
+            var dot = new Border { CornerRadius = new CornerRadius(9), Padding = new Thickness(8, 2, 8, 3), Margin = new Thickness(0, 0, 6, 4) };
             dot.SetResourceReference(Border.BackgroundProperty, done ? "Brush.AccentSoft" : "Brush.SurfaceAlt");
             dot.Child = Ui.Text((done ? "✓ " : "") + m + "%", size: 11.5, weight: done ? FontWeights.SemiBold : FontWeights.Normal,
                 brushKey: done ? "Brush.Accent" : "Brush.TextMuted");
