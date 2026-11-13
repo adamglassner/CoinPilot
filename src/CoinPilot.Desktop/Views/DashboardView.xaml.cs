@@ -71,7 +71,7 @@ public partial class DashboardView : UserControl
         DockPanel.SetDock(dismiss, Dock.Right);
         head.Children.Add(dismiss);
         var titles = new StackPanel();
-        titles.Children.Add(new TextBlock { Text = "Welcome to CoinPilot", Style = (Style)FindResource("CardTitle"), FontSize = 19 });
+        titles.Children.Add(new TextBlock { Text = "Welcome to WillowWallet", Style = (Style)FindResource("CardTitle"), FontSize = 19 });
         titles.Children.Add(Ui.Text($"{done} of {steps.Length} done · a few minutes to get set up", muted: true));
         head.Children.Add(titles);
         panel.Children.Add(head);

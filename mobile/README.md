@@ -1,6 +1,6 @@
-# CoinPilot for Android
+# WillowWallet for Android
 
-Budgets and spending on your phone. Flutter, Android 7+ (API 24). Made by Bytehawk Studio.
+Budgets and spending on your phone. Flutter, Android 7+ (API 24). Made by Bytehawk Studio. Formerly CoinPilot.
 
 | Screen | What it does |
 | --- | --- |
@@ -9,7 +9,7 @@ Budgets and spending on your phone. Flutter, Android 7+ (API 24). Made by Byteha
 | **Budgets** | A monthly limit per category with progress (amber near the limit, red over), totals, and spending that isn't budgeted yet ("Budget it"). New budgets suggest an amount from your last three months. |
 | **Settings** | Auto / Light / Dark, the eight color themes from the Windows app, currency, sample data, erase everything. |
 
-The **+** button adds spending or income from anywhere. CoinPilot remembers the category you use for each payee.
+The **+** button adds spending or income from anywhere. WillowWallet remembers the category you use for each payee.
 
 ## Your data
 
@@ -19,7 +19,7 @@ the two can be added later. Uninstalling the app deletes it.
 
 ## Install
 
-Download `CoinPilot-Android-<version>.apk` from the newest **android-v…** release on your phone and open it. Android
+Download `WillowWallet-Android-<version>.apk` from the newest **android-v…** release on your phone and open it. Android
 asks you to allow installs from your browser or Files app the first time.
 
 ## Building

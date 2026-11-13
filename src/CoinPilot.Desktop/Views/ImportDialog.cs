@@ -79,7 +79,7 @@ public sealed class ImportDialog : DialogShell
         Add(3, "Or: money out (debit)", _map.Debit, v => _map.Debit = v, true);
         Add(4, "Or: money in (credit)", _map.Credit, v => _map.Credit = v, true);
         Add(5, "Category (optional)", _map.Category, v => _map.Category = v, true);
-        AddField("Columns", grid, hint: "CoinPilot guessed these from the file's headings. Use Amount, or the two money out / money in columns.");
+        AddField("Columns", grid, hint: "WillowWallet guessed these from the file's headings. Use Amount, or the two money out / money in columns.");
 
         var flip = Check("Spending shows as positive numbers in this file (common for credit cards)", _map.FlipSign);
         flip.Checked += (_, _) => { _map.FlipSign = true; Refresh(); };
@@ -102,7 +102,7 @@ public sealed class ImportDialog : DialogShell
         else
         {
             var parts = new List<string> { fresh == 1 ? "1 new transaction will be added" : $"{fresh} new transactions will be added" };
-            if (dupes > 0) parts.Add(dupes == 1 ? "1 is already in CoinPilot and will be skipped" : $"{dupes} are already in CoinPilot and will be skipped");
+            if (dupes > 0) parts.Add(dupes == 1 ? "1 is already in WillowWallet and will be skipped" : $"{dupes} are already in WillowWallet and will be skipped");
             if (_skipped > 0) parts.Add(_skipped == 1 ? "1 row couldn't be read" : $"{_skipped} rows couldn't be read");
             _summary.Text = string.Join(" · ", parts) + ".";
         }
@@ -192,7 +192,7 @@ public sealed class ImportDialog : DialogShell
         }
         if (statement.Format == "CSV" ? statement.Cells.Count == 0 : statement.Rows.Count == 0 && statement.LedgerBalance == null)
         {
-            Toaster.Show("That file doesn't have any transactions CoinPilot can read.");
+            Toaster.Show("That file doesn't have any transactions WillowWallet can read.");
             return false;
         }
 

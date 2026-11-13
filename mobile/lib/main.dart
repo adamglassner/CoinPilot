@@ -30,7 +30,7 @@ class CoinPilotApp extends StatelessWidget {
         builder: (context, _) {
           final s = store.settings;
           return MaterialApp(
-            title: 'CoinPilot',
+            title: 'WillowWallet',
             debugShowCheckedModeBanner: false,
             theme: buildTheme(Palette.build(s.colorTheme, false)),
             darkTheme: buildTheme(Palette.build(s.colorTheme, true)),

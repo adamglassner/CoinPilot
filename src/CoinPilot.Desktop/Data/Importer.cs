@@ -276,7 +276,7 @@ public static class Importer
 
     // ----- Duplicates and saving -----
 
-    /// <summary>Marks rows already in CoinPilot (same bank id, or same date, amount and payee in that account).</summary>
+    /// <summary>Marks rows already in WillowWallet (same bank id, or same date, amount and payee in that account).</summary>
     public static void MarkDuplicates(List<ImportedRow> rows, string account)
     {
         var existing = DataStore.Transactions.Items.Where(t => string.Equals(t.Account, account, StringComparison.OrdinalIgnoreCase)).ToList();

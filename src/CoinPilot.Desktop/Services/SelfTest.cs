@@ -9,7 +9,7 @@ using CoinPilot.Views;
 namespace CoinPilot.Services;
 
 /// <summary>
-/// Headless checks run by CI: <c>CoinPilot.exe --self-test result.txt</c>.
+/// Headless checks run by CI: <c>WillowWallet.exe --self-test result.txt</c>.
 /// Uses a throwaway data folder, opens every page in both themes (empty and with data), exercises the
 /// add/edit dialogs, the budget math and saving to disk. Exit code = number of failures.
 /// </summary>
@@ -354,7 +354,7 @@ public static class SelfTest
 
     public static async Task<int> RunAsync(MainWindow window)
     {
-        Report.AppendLine($"CoinPilot {App.VersionText} self-test {DateTime.Now:u}");
+        Report.AppendLine($"WillowWallet {App.VersionText} self-test {DateTime.Now:u}");
         Report.AppendLine($"Data folder: {DataStore.Folder}");
         Check("Self-test uses a temp data folder", DataStore.Folder == TempDataFolder, DataStore.Folder);
 

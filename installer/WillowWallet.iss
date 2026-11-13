@@ -1,18 +1,18 @@
-﻿; Inno Setup script for CoinPilot
+﻿; Inno Setup script for WillowWallet (called CoinPilot before 1.0.2; same AppId so it upgrades in place)
 ; Build: run ..\build.ps1, or compile this file with Inno Setup 6 (ISCC.exe) after publishing.
 ;
 ; Installs per-user by default (no administrator prompt). The first page lets people choose
 ; "all users" instead, which installs under Program Files.
 ;
-; The Bytehawk Studio Launcher runs this setup silently to install and update CoinPilot:
-;   CoinPilot-<version>-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /NOICONS /DIR="<folder>"
+; The Bytehawk Studio Launcher runs this setup silently to install and update WillowWallet:
+;   WillowWallet-<version>-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /NOICONS /DIR="<folder>"
 
-#define MyAppName "CoinPilot"
+#define MyAppName "WillowWallet"
 #ifndef MyAppVersion
   #define MyAppVersion "1.0.0"
 #endif
 #define MyAppPublisher "Bytehawk Studio"
-#define MyAppExeName "CoinPilot.exe"
+#define MyAppExeName "WillowWallet.exe"
 #define MyAppUrl "https://github.com/adamglassner/coinpilot"
 #ifndef PublishDir
   #define PublishDir "..\dist\publish"
@@ -33,16 +33,18 @@ VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} Setup
 VersionInfoProductName={#MyAppName}
 VersionInfoProductVersion={#MyAppVersion}
-DefaultDirName={autopf}\CoinPilot
+DefaultDirName={autopf}\WillowWallet
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
+; The app was called CoinPilot before 1.0.2: put shortcuts under the new name instead of the old Start Menu folder
+UsePreviousGroup=no
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 OutputDir=..\dist
-OutputBaseFilename=CoinPilot-{#MyAppVersion}-Setup
+OutputBaseFilename=WillowWallet-{#MyAppVersion}-Setup
 SetupIconFile=..\src\CoinPilot.Desktop\Assets\coinpilot.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
@@ -52,8 +54,15 @@ WizardImageFile=wizard-large-1.bmp,wizard-large-2.bmp
 WizardSmallImageFile=wizard-small-55.bmp,wizard-small-110.bmp
 Compression=lzma2/max
 SolidCompression=yes
-; Ask to close CoinPilot if it's running (Windows Restart Manager)
+; Ask to close WillowWallet if it's running (Windows Restart Manager)
 CloseApplications=yes
+
+[InstallDelete]
+; Leftovers from when the app was called CoinPilot (before 1.0.2)
+Type: files; Name: "{app}\CoinPilot.exe"
+Type: filesandordirs; Name: "{autoprograms}\CoinPilot"
+Type: files; Name: "{autoprograms}\CoinPilot.lnk"
+Type: files; Name: "{autodesktop}\CoinPilot.lnk"
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -75,4 +84,4 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 
 ; NOTE: There is deliberately no [UninstallDelete] section.
 ; Uninstalling removes the program and its shortcuts only. Settings in
-; %APPDATA%\CoinPilot\ are left alone so a reinstall picks up where you left off.
+; %APPDATA%\WillowWallet\ are left alone so a reinstall picks up where you left off.

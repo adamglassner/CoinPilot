@@ -9,14 +9,15 @@ namespace CoinPilot.Services;
 /// <summary>
 /// Bill reminders and the notification-area (tray) icon.
 ///
-/// While CoinPilot is open it checks every 30 minutes for bills due within the reminder window (Settings) and shows
-/// a notification once per bill per day. With "Run in the background" on, CoinPilot starts when you sign in to
+/// While WillowWallet is open it checks every 30 minutes for bills due within the reminder window (Settings) and shows
+/// a notification once per bill per day. With "Run in the background" on, WillowWallet starts when you sign in to
 /// Windows, sits in the notification area, and closing the window keeps it running there.
 /// </summary>
 public static class Reminders
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string RunValue = "CoinPilot";
+    private const string RunValue = "WillowWallet";
+    private const string OldRunValue = "CoinPilot"; // the app's name before 1.0.2
 
     private static Forms.NotifyIcon? _tray;
     private static DispatcherTimer? _timer;
@@ -29,6 +30,7 @@ public static class Reminders
     public static void Start()
     {
         if (SelfTest.IsRunning) return;
+        RefreshStartup();
         UpdateTray();
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(30) };
         _timer.Tick += (_, _) => Check();
@@ -44,6 +46,22 @@ public static class Reminders
             _tray.Dispose();
             _tray = null;
         }
+    }
+
+    /// <summary>
+    /// Keeps the "start with Windows" entry pointing at this copy: drops the old CoinPilot entry and, when running in
+    /// the background is on, rewrites ours (the program may have been renamed or moved by an update).
+    /// </summary>
+    private static void RefreshStartup()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
+            if (key == null) return;
+            key.DeleteValue(OldRunValue, throwOnMissingValue: false);
+            if (BackgroundEnabled) key.SetValue(RunValue, $"\"{Environment.ProcessPath}\" --background");
+        }
+        catch (Exception) { /* not important enough to stop startup */ }
     }
 
     /// <summary>Turns "run in the background" on or off: the tray icon and starting with Windows.</summary>
@@ -78,12 +96,12 @@ public static class Reminders
             icon = new System.Drawing.Icon(stream, 32, 32);
 
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Open CoinPilot", null, (_, _) => ShowWindow());
+        menu.Items.Add("Open WillowWallet", null, (_, _) => ShowWindow());
         menu.Items.Add("Add transaction", null, (_, _) => { ShowWindow(); MainWindow.Instance?.QuickAdd(); });
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitApp());
 
-        _tray = new Forms.NotifyIcon { Icon = icon, Text = "CoinPilot", Visible = true, ContextMenuStrip = menu };
+        _tray = new Forms.NotifyIcon { Icon = icon, Text = "WillowWallet", Visible = true, ContextMenuStrip = menu };
         _tray.DoubleClick += (_, _) => ShowWindow();
         _tray.BalloonTipClicked += (_, _) => { ShowWindow(); MainWindow.Instance?.GoTo("bills"); };
     }

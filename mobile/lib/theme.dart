@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// A color theme: the same eight as CoinPilot for Windows.
+/// A color theme: the same eight as WillowWallet for Windows.
 class ColorThemeDef {
   const ColorThemeDef(this.name, this.hue, this.sat, this.description);
   final String name;

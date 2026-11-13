@@ -87,7 +87,7 @@
                                    Foreground="{DynamicResource Brush.Accent}" />
                         <TextBlock Text="Nothing here yet" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,8,0,2" />
                         <TextBlock HorizontalAlignment="Center" Style="{StaticResource Muted}">
-                            <Run Text="{Binding Title, Mode=OneWay}" /><Run Text=" is coming soon to CoinPilot." />
+                            <Run Text="{Binding Title, Mode=OneWay}" /><Run Text=" is coming soon to WillowWallet." />
                         </TextBlock>
                     </StackPanel>
                 </Border>

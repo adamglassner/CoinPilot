@@ -19,7 +19,7 @@ public partial class App : Application
     /// <summary>Raised after the light/dark palette or color theme has been swapped.</summary>
     public static event EventHandler? ThemeChanged;
 
-    /// <summary>Optional first page from the command line: <c>CoinPilot.exe --page budgets</c>.</summary>
+    /// <summary>Optional first page from the command line: <c>WillowWallet.exe --page budgets</c>.</summary>
     public static string? StartPage { get; private set; }
 
     /// <summary>Started by Windows at sign-in (<c>--background</c>): stay in the notification area until opened.</summary>
@@ -54,7 +54,7 @@ public partial class App : Application
             StartInBackground = false;
         }
 
-        // One CoinPilot at a time: a second launch just brings the running one to the front.
+        // One WillowWallet at a time: a second launch just brings the running one to the front.
         if (!SelfTest.IsRunning)
         {
             _single = new Mutex(true, @"Local\CoinPilot.SingleInstance", out bool first);
@@ -69,7 +69,7 @@ public partial class App : Application
             {
                 while (_showSignal.WaitOne())
                     Current.Dispatcher.BeginInvoke(() => Reminders.ShowWindow());
-            }) { IsBackground = true, Name = "CoinPilot show listener" };
+            }) { IsBackground = true, Name = "WillowWallet show listener" };
             listener.Start();
         }
 
@@ -82,7 +82,7 @@ public partial class App : Application
             args.Handled = true;
             if (SelfTest.IsRunning) { SelfTest.RecordUnhandled(args.Exception); return; }
             MessageBox.Show("Something went wrong, but your data is safe.\n\n" + args.Exception.Message,
-                "CoinPilot", MessageBoxButton.OK, MessageBoxImage.Warning);
+                "WillowWallet", MessageBoxButton.OK, MessageBoxImage.Warning);
         };
 
         // Follow Windows when the user picked "Match Windows".

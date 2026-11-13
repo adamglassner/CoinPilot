@@ -27,7 +27,7 @@ public partial class MainWindow : Window
         Instance = this;
 
         NavList.ItemsSource = ModuleCatalog.Sidebar;
-        StatusText.Text = $"CoinPilot {App.VersionText} · © 2026 Bytehawk Studio";
+        StatusText.Text = $"WillowWallet {App.VersionText} · © 2026 Bytehawk Studio";
 
         _toastTimer.Tick += (_, _) => { _toastTimer.Stop(); HideToast(); };
 

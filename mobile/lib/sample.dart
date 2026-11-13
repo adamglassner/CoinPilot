@@ -8,7 +8,7 @@ class SampleData {
   final List<Budget> budgets;
 }
 
-/// About three months of an ordinary household's money, for trying CoinPilot out (and screenshots).
+/// About three months of an ordinary household's money, for trying WillowWallet out (and screenshots).
 SampleData sampleData(DateTime now) {
   final rng = Random(42);
   final today = DateTime(now.year, now.month, now.day);

@@ -135,7 +135,7 @@ public sealed class BudgetTemplateDialog : DialogShell
     private Dictionary<string, decimal> _plan = [];
 
     public BudgetTemplateDialog()
-        : base("Set up budgets from a template", "Pick a method; CoinPilot works out amounts for each category. You can change any of them afterwards.",
+        : base("Set up budgets from a template", "Pick a method; WillowWallet works out amounts for each category. You can change any of them afterwards.",
                allowDelete: false, saveText: "Create budgets", width: 640)
     {
         decimal income = Budgeting.AverageIncome();

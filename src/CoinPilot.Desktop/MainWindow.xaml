@@ -1,7 +1,7 @@
 <Window x:Class="CoinPilot.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="CoinPilot"
+        Title="WillowWallet"
         Icon="pack://application:,,,/Assets/coinpilot.ico"
         Width="1360" Height="880" MinWidth="1040" MinHeight="660"
         WindowStartupLocation="CenterScreen"
@@ -23,7 +23,7 @@
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,20">
                     <Image Source="pack://application:,,,/Assets/coinpilot.png" Width="34" Height="34" Margin="0,0,10,0"
                            RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center" />
-                    <TextBlock Text="CoinPilot" FontFamily="{StaticResource DisplayFont}" FontSize="22" FontWeight="Bold"
+                    <TextBlock Text="WillowWallet" FontFamily="{StaticResource DisplayFont}" FontSize="22" FontWeight="Bold"
                                Foreground="{DynamicResource Brush.SidebarText}" VerticalAlignment="Center" />
                 </StackPanel>
 
@@ -131,7 +131,7 @@
                 <StackPanel>
                     <Image Source="pack://application:,,,/Assets/coinpilot.png" Width="72" Height="72"
                            RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center" />
-                    <TextBlock Text="CoinPilot is locked" FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="Bold"
+                    <TextBlock Text="WillowWallet is locked" FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="Bold"
                                HorizontalAlignment="Center" Margin="0,16,0,4" />
                     <TextBlock x:Name="LockPrompt" Style="{StaticResource Muted}" HorizontalAlignment="Center" TextAlignment="Center"
                                Margin="0,0,0,20" />

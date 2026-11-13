@@ -6,14 +6,14 @@ import 'models.dart';
 import 'money.dart';
 import 'theme.dart';
 
-/// The CoinPilot coin.
+/// The WillowWallet coin.
 class CoinLogo extends StatelessWidget {
   const CoinLogo({super.key, this.size = 30});
   final double size;
 
   @override
   Widget build(BuildContext context) => Image.asset('assets/coinpilot.png',
-      width: size, height: size, filterQuality: FilterQuality.medium, semanticLabel: 'CoinPilot');
+      width: size, height: size, filterQuality: FilterQuality.medium, semanticLabel: 'WillowWallet');
 }
 
 /// A white (or dark) rounded card with a hairline border.

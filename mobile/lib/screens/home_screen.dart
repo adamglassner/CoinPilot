@@ -30,7 +30,7 @@ class HomeScreen extends StatelessWidget {
               const CoinLogo(size: 32),
               const SizedBox(width: 10),
               Expanded(
-                child: Text('CoinPilot',
+                child: Text('WillowWallet',
                     maxLines: 1, overflow: TextOverflow.ellipsis, style: display(22, p.text, weight: FontWeight.w800)),
               ),
               const SizedBox(width: 8),
@@ -107,7 +107,7 @@ class _Welcome extends StatelessWidget {
     final store = StoreScope.read(context);
     return EmptyState(
       icon: Icons.waving_hand_outlined,
-      title: 'Welcome to CoinPilot',
+      title: 'Welcome to WillowWallet',
       text: 'Add what you spend and earn, set a few budgets, and see what\'s left to spend this month. '
           'Everything stays on this phone.',
       actions: [

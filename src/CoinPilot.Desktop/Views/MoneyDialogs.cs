@@ -23,7 +23,7 @@ public sealed class AccountDialog : DialogShell
 
     public AccountDialog(Account? existing, string? name = null)
         : base(existing == null ? "Add account" : "Edit account",
-               existing == null ? "Add a bank account, credit card or cash so CoinPilot can track its balance."
+               existing == null ? "Add a bank account, credit card or cash so WillowWallet can track its balance."
                                 : "Change the details, or delete it. Its transactions are kept.",
                allowDelete: existing != null, saveText: existing == null ? "Add account" : "Save")
     {
@@ -328,7 +328,7 @@ public sealed class GoalDialog : DialogShell
         _amount = AddField("Target amount", AmountBox(existing?.Target), required: true);
         _saved = AddField("Saved so far", AmountBox(existing?.Saved), hint: "Leave empty if you're starting from zero.");
         _date = AddField("Target date", DateBox(_target.TargetDate),
-            hint: "Optional. With a date, CoinPilot works out how much to save each month.");
+            hint: "Optional. With a date, WillowWallet works out how much to save each month.");
         var accounts = DataStore.Accounts.Items.Where(a => !a.IsClosed && !a.IsLiability)
             .OrderBy(a => a.Type == AccountTypes.Savings ? 0 : 1).Select(a => a.Name).ToList();
         _link = AddField("Linked account", Chips(new[] { NotLinked }.Concat(accounts), _target.IsLinked ? _target.LinkedAccount : NotLinked),

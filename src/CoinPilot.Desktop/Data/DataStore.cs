@@ -3,13 +3,12 @@ using System.IO;
 namespace CoinPilot.Data;
 
 /// <summary>
-/// Everything CoinPilot saves, kept on this PC in %AppData%\CoinPilot\data\ (one JSON file per kind of record,
+/// Everything WillowWallet saves, kept on this PC in %AppData%\WillowWallet\data\ (one JSON file per kind of record,
 /// plus receipts\ and taxes\ for attached files). When sync arrives these become the offline copy.
 /// </summary>
 public static class DataStore
 {
-    public static readonly string DefaultFolder = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CoinPilot", "data");
+    public static readonly string DefaultFolder = Path.Combine(CoinPilot.Services.AppPaths.Root, "data");
 
     private static string? _folder;
     private static JsonStore<Transaction>? _transactions;

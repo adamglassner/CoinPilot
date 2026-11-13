@@ -54,7 +54,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
               icon: Icons.pie_chart_outline_rounded,
               title: 'No budgets yet',
               text: 'Pick a category like Groceries and set how much you want to spend on it each month. '
-                  'CoinPilot shows what\'s left as you go.',
+                  'WillowWallet shows what\'s left as you go.',
               actions: [
                 SizedBox(
                   width: double.infinity,

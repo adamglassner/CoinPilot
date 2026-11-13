@@ -1,4 +1,8 @@
-# CoinPilot for Android — changelog
+# WillowWallet for Android — changelog
+
+## 0.1.1 — 2026-11-13
+
+- **CoinPilot is now WillowWallet.** Same app and icon, new name.
 
 ## 0.1.0 — 2026-11-13
 

@@ -158,7 +158,7 @@ public partial class TransactionsView : UserControl, ISearchablePage
             : narrowed
                 ? Ui.EmptyState("", "No matches", $"Nothing in {Money.MonthName(MonthSwitcher.Current)} matches your search or filters.")
                 : Ui.EmptyState("", $"No transactions in {Money.MonthName(MonthSwitcher.Current)}",
-                    "Add what you spend and earn, or import a statement from your bank, and CoinPilot totals it up and tracks it against your budgets.",
+                    "Add what you spend and earn, or import a statement from your bank, and WillowWallet totals it up and tracks it against your budgets.",
                     "Add transaction", Add_Click);
     }
 

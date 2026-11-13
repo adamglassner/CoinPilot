@@ -12,7 +12,7 @@ import 'models.dart';
 import 'money.dart';
 import 'sample.dart';
 
-/// Everything CoinPilot keeps, saved as one JSON file in the app's private folder on the phone.
+/// Everything WillowWallet keeps, saved as one JSON file in the app's private folder on the phone.
 class Store extends ChangeNotifier {
   Store._(this._file);
 

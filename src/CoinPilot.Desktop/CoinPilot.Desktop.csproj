@@ -10,13 +10,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <RootNamespace>CoinPilot</RootNamespace>
-    <AssemblyName>CoinPilot</AssemblyName>
-    <Product>CoinPilot</Product>
+    <AssemblyName>WillowWallet</AssemblyName>
+    <Product>WillowWallet</Product>
     <Company>Bytehawk Studio</Company>
     <Authors>Bytehawk Studio</Authors>
-    <Description>CoinPilot: budgets, transactions, accounts, debts, bills, goals, reports and tax documents.</Description>
+    <Description>WillowWallet: budgets, transactions, accounts, debts, bills, goals, reports and tax documents.</Description>
     <!-- Releasing: change this and push to main. CI builds, tests and publishes GitHub Release v<Version>. -->
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Copyright>© 2026 Bytehawk Studio</Copyright>
     <!-- Lets the project at least restore/compile on non-Windows machines; the app itself is Windows-only. -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>

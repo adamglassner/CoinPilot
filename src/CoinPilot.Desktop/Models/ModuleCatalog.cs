@@ -1,7 +1,7 @@
 namespace CoinPilot.Models;
 
 /// <summary>
-/// Every section of CoinPilot. Sections that work (IsComingSoon = false) have their own page;
+/// Every section of WillowWallet. Sections that work (IsComingSoon = false) have their own page;
 /// everything else uses the generic ComingSoonView built from this data.
 /// Add a module here and it appears in the sidebar automatically.
 /// </summary>
@@ -40,7 +40,7 @@ public static class ModuleCatalog
         {
             Key = "budgets", Title = "Budgets", Glyph = "", IsComingSoon = false,
             Tagline = "Give every dollar a job and see how each category is doing.",
-            Description = "Set a monthly amount for each category and watch progress bars fill as you spend. CoinPilot warns you before a category runs out and shows what's left to spend for the rest of the month.",
+            Description = "Set a monthly amount for each category and watch progress bars fill as you spend. WillowWallet warns you before a category runs out and shows what's left to spend for the rest of the month.",
             PrimaryAction = "New budget",
             Kpis = ["Budgeted", "Spent", "Left to spend", "Over budget"],
             Columns = ["Category", "Budgeted", "Spent", "Left", "Progress"],
@@ -83,7 +83,7 @@ public static class ModuleCatalog
         {
             Key = "bills", Title = "Bills", Glyph = "", IsComingSoon = false,
             Tagline = "Never miss a due date.",
-            Description = "List your bills and subscriptions with their due dates and amounts. CoinPilot reminds you before they're due and shows how much is still coming out this month.",
+            Description = "List your bills and subscriptions with their due dates and amounts. WillowWallet reminds you before they're due and shows how much is still coming out this month.",
             PrimaryAction = "Add bill",
             Kpis = ["Due this week", "Due this month", "Subscriptions", "Monthly total"],
             Columns = ["Bill", "Amount", "Due", "Repeats", "Status"],
@@ -100,7 +100,7 @@ public static class ModuleCatalog
         {
             Key = "goals", Title = "Goals", Glyph = "", IsComingSoon = false,
             Tagline = "Save toward the things that matter.",
-            Description = "Create savings goals like an emergency fund, a trip or a new car. Set a target and a date and CoinPilot works out how much to put away each month.",
+            Description = "Create savings goals like an emergency fund, a trip or a new car. Set a target and a date and WillowWallet works out how much to put away each month.",
             PrimaryAction = "New goal",
             Kpis = ["Active goals", "Saved so far", "Monthly contribution", "On track"],
             Columns = ["Goal", "Target", "Saved", "Target date", "Status"],
@@ -142,13 +142,13 @@ public static class ModuleCatalog
         {
             Key = "sync", Title = "Sync & Devices", Glyph = "",
             Tagline = "Your budget on your PC and your phone, always up to date.",
-            Description = "Sign in on each device and CoinPilot keeps your budgets, transactions and goals in sync between Windows and the CoinPilot mobile app. Add a purchase on your phone at the store and it's on your PC when you get home.",
+            Description = "Sign in on each device and WillowWallet keeps your budgets, transactions and goals in sync between Windows and the WillowWallet mobile app. Add a purchase on your phone at the store and it's on your PC when you get home.",
             PrimaryAction = "Add a device",
             Kpis = ["Devices", "Last sync", "Pending changes", "Sync status"],
             Columns = ["Device", "Platform", "Last seen", "Status"],
             Features =
             [
-                "Sync between Windows and the CoinPilot mobile app",
+                "Sync between Windows and the WillowWallet mobile app",
                 "Mobile app for iPhone and Android",
                 "Works offline and syncs when you reconnect",
                 "Share a budget with a partner or family",

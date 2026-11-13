@@ -1,7 +1,7 @@
 name: coinpilot
-description: CoinPilot for Android — budgets and spending, saved on your phone. A Bytehawk Studio app.
+description: WillowWallet for Android — budgets and spending, saved on your phone. A Bytehawk Studio app.
 publish_to: none
-version: 0.1.0+1
+version: 0.1.1+2
 
 environment:
   sdk: ^3.5.0

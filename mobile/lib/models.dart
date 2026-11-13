@@ -11,7 +11,7 @@ DateTime _date(Object? v, DateTime fallback) => v is String ? (DateTime.tryParse
 int _cents(Object? v) => v is num ? (v * 100).round() : 0;
 
 /// One purchase or paycheck. [cents] is negative for money out and positive for money in.
-/// Saved with the same field names as CoinPilot for Windows, ready for syncing.
+/// Saved with the same field names as WillowWallet for Windows, ready for syncing.
 class Txn {
   Txn({
     String? id,

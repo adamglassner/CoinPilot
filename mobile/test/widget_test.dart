@@ -24,7 +24,7 @@ void main() {
     final store = Store.memory();
     await tester.pumpWidget(CoinPilotApp(store: store));
     await tester.pumpAndSettle();
-    expect(find.text('Welcome to CoinPilot'), findsOneWidget);
+    expect(find.text('Welcome to WillowWallet'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Add transaction'));
     await tester.pumpAndSettle();
@@ -48,7 +48,7 @@ void main() {
     expect(store.transactions.single.cents, -1250);
     expect(store.transactions.single.category, 'Dining out');
     expect(find.text('Corner Cafe'), findsWidgets);
-    expect(find.text('Welcome to CoinPilot'), findsNothing);
+    expect(find.text('Welcome to WillowWallet'), findsNothing);
     await settle(tester);
 
     // The next transaction for the same payee gets the category automatically

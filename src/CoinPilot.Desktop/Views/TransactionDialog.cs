@@ -60,7 +60,7 @@ public sealed class TransactionDialog : DialogShell
         _kind = AddField("Type", Chips([Spending, Income, Transfer], _currentKind));
         _amount = AddField("Amount", AmountBox(existing?.Size), required: true);
         _payee = AddField("Payee", new TextBox { Text = _target.Payee },
-            hint: "Who you paid or who paid you. CoinPilot remembers the category you use for each payee.", required: true);
+            hint: "Who you paid or who paid you. WillowWallet remembers the category you use for each payee.", required: true);
 
         _category = AddField("Category", CategoryChips(CategoriesFor(_currentKind, _target.Category), _target.IsSplit ? null : _target.Category), required: true);
         _splitToggle = new Button { Style = (Style)FindResource("LinkButton"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(-8, -6, 0, 10) };

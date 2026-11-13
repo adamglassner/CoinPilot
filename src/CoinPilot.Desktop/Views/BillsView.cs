@@ -38,7 +38,7 @@ public sealed class BillsView : DataPage
         if (bills.Count == 0)
         {
             Add(PageKit.Card(Ui.EmptyState("\uE787", "No bills yet",
-                "Add rent, utilities, phone, insurance and subscriptions with their due dates. CoinPilot shows what's coming up, reminds you before they're due and spots subscriptions you forgot.",
+                "Add rent, utilities, phone, insurance and subscriptions with their due dates. WillowWallet shows what's coming up, reminds you before they're due and spots subscriptions you forgot.",
                 "Add bill", (_, _) => BillDialog.Edit(null))));
             return;
         }

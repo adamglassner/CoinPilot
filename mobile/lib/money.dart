@@ -1,4 +1,4 @@
-/// A currency CoinPilot can show amounts in.
+/// A currency WillowWallet can show amounts in.
 class Currency {
   const Currency(this.code, this.symbol, this.name, {this.decimals = 2});
   final String code;

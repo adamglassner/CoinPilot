@@ -33,7 +33,7 @@ public sealed class DebtsView : DataPage
         if (debts.Count == 0)
         {
             Add(PageKit.Card(Ui.EmptyState("", "No debts added",
-                "Add credit cards, student loans, car loans and other debts. CoinPilot shows how long they'll take to pay off and the order that saves you the most.",
+                "Add credit cards, student loans, car loans and other debts. WillowWallet shows how long they'll take to pay off and the order that saves you the most.",
                 "Add debt", (_, _) => DebtDialog.Edit(null))));
             return;
         }

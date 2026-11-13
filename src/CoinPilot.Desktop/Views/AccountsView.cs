@@ -46,7 +46,7 @@ public sealed class AccountsView : DataPage
         if (open.Count == 0)
         {
             list.Children.Add(Ui.EmptyState("", "No accounts yet",
-                "Add your checking, savings, credit cards and cash. Enter today's balance and CoinPilot keeps it up to date from your transactions.",
+                "Add your checking, savings, credit cards and cash. Enter today's balance and WillowWallet keeps it up to date from your transactions.",
                 "Add account", (_, _) => AccountDialog.Edit(null)));
         }
         else

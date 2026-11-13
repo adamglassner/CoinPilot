@@ -125,7 +125,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     ? EmptyState(
                         icon: Icons.receipt_long_outlined,
                         title: 'Nothing in ${monthNames[_month.month - 1]}',
-                        text: 'Tap + to add what you spend or earn. CoinPilot fills in the category next time.',
+                        text: 'Tap + to add what you spend or earn. WillowWallet fills in the category next time.',
                       )
                     : EmptyState(
                         icon: Icons.search_off_rounded,

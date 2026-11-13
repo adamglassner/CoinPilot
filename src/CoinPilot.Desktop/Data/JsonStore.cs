@@ -85,7 +85,7 @@ public sealed class JsonStore<T> where T : RecordBase
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            CoinPilot.Services.Toaster.Show($"Couldn't save to disk ({ex.Message}). Your change is kept until you close CoinPilot.");
+            CoinPilot.Services.Toaster.Show($"Couldn't save to disk ({ex.Message}). Your change is kept until you close WillowWallet.");
         }
         Changed?.Invoke(this, EventArgs.Empty);
     }

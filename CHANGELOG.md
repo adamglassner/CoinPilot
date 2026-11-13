@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.2 — 2026-11-13
+
+**CoinPilot is now WillowWallet.** Same app, same icon, new name.
+
+- The program is now `WillowWallet.exe`, with Start Menu and desktop shortcuts under the new name. Updating from
+  CoinPilot (installer or the Bytehawk Studio Launcher) replaces the old program and shortcuts.
+- Your data moves from `%AppData%\CoinPilot` to `%AppData%\WillowWallet` the first time WillowWallet opens. Nothing
+  else changes: budgets, transactions, receipts, tax documents and your PIN/password all carry over. Older
+  "CoinPilot backup" files still restore.
+- "Run in the background" (start with Windows) is updated to the new program automatically.
+
 ## 1.0.1 — 2026-11-13
 
 A more modern look.

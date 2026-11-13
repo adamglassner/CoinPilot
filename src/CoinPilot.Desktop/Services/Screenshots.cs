@@ -9,7 +9,7 @@ using CoinPilot.Views;
 namespace CoinPilot.Services;
 
 /// <summary>
-/// <c>CoinPilot.exe --screenshots &lt;folder&gt;</c>: fills a throwaway data folder with realistic sample data, captures every
+/// <c>WillowWallet.exe --screenshots &lt;folder&gt;</c>: fills a throwaway data folder with realistic sample data, captures every
 /// page (light and dark), a few color themes, some dialogs and the lock screen as PNGs, then exits.
 /// Used by CI to publish screenshots; never touches real data.
 /// </summary>
@@ -93,7 +93,7 @@ public static class Screenshots
             await Show(window, "settings");
             await CaptureDialog(window, new CategoriesDialog(), $"{n++:00}-dialog-categories-{m}");
             await CaptureDialog(window, new SetLockDialog(change: false), $"{n++:00}-dialog-protect-{m}");
-            await CaptureDialog(window, new ConfirmDialog("Restore this backup?", "This replaces everything in CoinPilot with the backup from March 3. Your current data will be lost.", "Restore", danger: true), $"{n++:00}-dialog-confirm-{m}");
+            await CaptureDialog(window, new ConfirmDialog("Restore this backup?", "This replaces everything in WillowWallet with the backup from March 3. Your current data will be lost.", "Restore", danger: true), $"{n++:00}-dialog-confirm-{m}");
         }
         App.ApplyTheme(AppTheme.Light);
 

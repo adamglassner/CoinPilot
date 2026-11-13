@@ -68,7 +68,7 @@ public sealed class ReportsView : DataPage
 
         decimal income = months.Sum(m => m.Income), spent = months.Sum(m => m.Spent);
         string rate = income > 0 ? ((income - spent) / income).ToString("P0", Money.Us) : "—";
-        if (forPrint) list.Add(PrintTitle($"CoinPilot report · {from:MMM d, yyyy} – {to:MMM d, yyyy}"));
+        if (forPrint) list.Add(PrintTitle($"WillowWallet report · {from:MMM d, yyyy} – {to:MMM d, yyyy}"));
         list.Add(PageKit.KpiRow(
             PageKit.Kpi("Average monthly spending", Money.Format(spent / months.Count), $"{Money.Format(spent, cents: false)} total", hero: true),
             PageKit.Kpi("Average monthly income", Money.Format(income / months.Count), $"{Money.Format(income, cents: false)} total"),
@@ -103,7 +103,7 @@ public sealed class ReportsView : DataPage
         if (!years.Contains(ReviewYear)) ReviewYear = years[0];
         var y = YearReview.For(ReviewYear);
 
-        if (forPrint) list.Add(PrintTitle($"CoinPilot · {y.Year} in review"));
+        if (forPrint) list.Add(PrintTitle($"WillowWallet · {y.Year} in review"));
         else
         {
             var yearBar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 16) };
@@ -141,7 +141,7 @@ public sealed class ReportsView : DataPage
         if (priciest != null) Line("", $"Biggest spending month: {priciest.Month:MMMM} ({Money.Format(priciest.Spent, cents: false)}).");
         if (y.TopCategories.Count > 0) Line("", $"Most went to {Categories.Display(y.TopCategories[0].Category)}: {Money.Format(y.TopCategories[0].Spent, cents: false)}.");
         if (y.BiggestPurchase is Transaction big) Line("", $"Largest purchase: {big.Payee}, {Money.Format(big.Size)} on {big.Date:MMM d}.");
-        if (y.BillsPaid > 0) Line("", $"{y.BillsPaid} bill{(y.BillsPaid == 1 ? "" : "s")} marked paid on time in CoinPilot.");
+        if (y.BillsPaid > 0) Line("", $"{y.BillsPaid} bill{(y.BillsPaid == 1 ? "" : "s")} marked paid on time in WillowWallet.");
         list.Add(PageKit.Card(highlights, "Highlights"));
 
         list.Add(PageKit.Card(IncomeVsSpendingChart(y.Months), "Month by month", Legend()));
@@ -349,7 +349,7 @@ public sealed class ReportsView : DataPage
         {
             var size = new Size(dialog.PrintableAreaWidth, dialog.PrintableAreaHeight);
             var doc = BuildDocument(size, Range == YearInReview ? ReviewSections(forPrint: true) : PeriodSections(forPrint: true));
-            dialog.PrintDocument(doc.DocumentPaginator, "CoinPilot report");
+            dialog.PrintDocument(doc.DocumentPaginator, "WillowWallet report");
             Toaster.Show("Report sent to the printer.");
         }
         catch (Exception ex)
@@ -378,7 +378,7 @@ public sealed class ReportsView : DataPage
             FixedPage.SetLeft(body, margin);
             FixedPage.SetTop(body, margin);
             page.Children.Add(body);
-            var footer = new TextBlock { Text = $"CoinPilot · printed {DateTime.Now:MMM d, yyyy}", FontSize = 9, Foreground = Brushes.Gray };
+            var footer = new TextBlock { Text = $"WillowWallet · printed {DateTime.Now:MMM d, yyyy}", FontSize = 9, Foreground = Brushes.Gray };
             FixedPage.SetLeft(footer, margin);
             FixedPage.SetTop(footer, pageSize.Height - margin + 14);
             page.Children.Add(footer);

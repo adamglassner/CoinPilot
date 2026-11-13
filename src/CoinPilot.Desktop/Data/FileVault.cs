@@ -5,11 +5,11 @@ namespace CoinPilot.Data;
 
 /// <summary>
 /// Receipts and tax documents: copies of your files kept in the data folder (encrypted when protection is on).
-/// Opening one writes a temporary copy that's cleaned up when CoinPilot locks or closes.
+/// Opening one writes a temporary copy that's cleaned up when WillowWallet locks or closes.
 /// </summary>
 public static class FileVault
 {
-    private static readonly string OpenFolder = Path.Combine(Path.GetTempPath(), "CoinPilot-open");
+    private static readonly string OpenFolder = Path.Combine(Path.GetTempPath(), "WillowWallet-open");
 
     /// <summary>Copies a receipt into data\receipts and returns its stored file name.</summary>
     public static string StoreReceipt(string sourcePath)

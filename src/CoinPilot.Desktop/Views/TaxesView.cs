@@ -8,7 +8,7 @@ namespace CoinPilot.Views;
 
 /// <summary>
 /// The Taxes page: a safe place for tax documents (W-2s, 1099s, returns, receipts), organized by tax year.
-/// Files are copied into CoinPilot's data folder, encrypted when PIN/password protection is on, and included in backups.
+/// Files are copied into WillowWallet's data folder, encrypted when PIN/password protection is on, and included in backups.
 /// </summary>
 public sealed class TaxesView : DataPage
 {
@@ -39,8 +39,8 @@ public sealed class TaxesView : DataPage
 
         Add(PageKit.Header("", "Taxes", "Keep your tax documents safe, organized by year."));
         Add(PageKit.ActionBar(DataLock.IsEnabled
-                ? "Documents are copied into CoinPilot, encrypted with your PIN/password, and included in backups."
-                : "Documents are copied into CoinPilot and included in backups. Add a PIN or password in Settings to encrypt them.",
+                ? "Documents are copied into WillowWallet, encrypted with your PIN/password, and included in backups."
+                : "Documents are copied into WillowWallet and included in backups. Add a PIN or password in Settings to encrypt them.",
             PageKit.Primary("", "Add document", (_, _) => TaxDocumentDialog.Add(Year, null))));
 
         var yearBar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 18) };
@@ -110,7 +110,7 @@ public sealed class TaxesView : DataPage
 
     private static TextBlock Note() => new()
     {
-        Text = "Tip: drag files from File Explorer onto this page to add them. CoinPilot keeps your documents; it doesn't file taxes.",
+        Text = "Tip: drag files from File Explorer onto this page to add them. WillowWallet keeps your documents; it doesn't file taxes.",
         FontSize = 12,
         Margin = new Thickness(2, 0, 0, 0),
         Style = (Style)Application.Current.FindResource("Muted"),
@@ -167,7 +167,7 @@ public sealed class TaxDocumentDialog : DialogShell
 
     public TaxDocumentDialog(TaxDocument? existing, int year, string? sourceFile = null, string? kind = null)
         : base(existing == null ? "Add tax document" : "Edit tax document",
-               existing == null ? "A copy of the file is kept in CoinPilot, so it's safe even if you delete the original." : "Rename it, change its type or year, or delete it.",
+               existing == null ? "A copy of the file is kept in WillowWallet, so it's safe even if you delete the original." : "Rename it, change its type or year, or delete it.",
                allowDelete: existing != null, saveText: existing == null ? "Add document" : "Save")
     {
         _isNew = existing == null;

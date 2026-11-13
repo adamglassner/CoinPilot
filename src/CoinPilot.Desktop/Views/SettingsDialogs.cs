@@ -6,7 +6,7 @@ using CoinPilot.Services;
 
 namespace CoinPilot.Views;
 
-/// <summary>A yes/no question in CoinPilot's style.</summary>
+/// <summary>A yes/no question in WillowWallet's style.</summary>
 public sealed class ConfirmDialog : DialogShell
 {
     public ConfirmDialog(string title, string message, string confirmText, bool danger = false)
@@ -77,7 +77,7 @@ public sealed class SetLockDialog : DialogShell
     public SetLockDialog(bool change)
         : base(change ? "Change PIN or password" : "Protect your data",
                change ? "Choose a new PIN or password. Your recovery key keeps working."
-                      : "Your data, receipts and tax documents will be encrypted. You'll need the PIN or password to open CoinPilot.",
+                      : "Your data, receipts and tax documents will be encrypted. You'll need the PIN or password to open WillowWallet.",
                allowDelete: false, saveText: change ? "Change" : "Turn on protection", width: 540)
     {
         _change = change;
@@ -127,7 +127,7 @@ public sealed class RecoveryKeyDialog : DialogShell
     public bool ForceClose { get; set; }
 
     public RecoveryKeyDialog(string key)
-        : base("Save your recovery key", "If you ever forget your PIN or password, this key is the only way to open your data. CoinPilot can't recover it for you.",
+        : base("Save your recovery key", "If you ever forget your PIN or password, this key is the only way to open your data. WillowWallet can't recover it for you.",
                allowDelete: false, saveText: "Done", width: 560)
     {
         HideCancel();
@@ -147,9 +147,9 @@ public sealed class RecoveryKeyDialog : DialogShell
         var save = new Button { Content = "Save to a file…", Style = (Style)FindResource("GhostButton"), Margin = new Thickness(0, 0, 8, 0) };
         save.Click += (_, _) =>
         {
-            var dlg = new Microsoft.Win32.SaveFileDialog { FileName = "CoinPilot recovery key.txt", Filter = "Text file (*.txt)|*.txt" };
+            var dlg = new Microsoft.Win32.SaveFileDialog { FileName = "WillowWallet recovery key.txt", Filter = "Text file (*.txt)|*.txt" };
             if (dlg.ShowDialog(this) == true)
-                File.WriteAllText(dlg.FileName, $"CoinPilot recovery key\r\n\r\n{key}\r\n\r\nKeep this somewhere safe and separate from your computer (printed, or in a password manager).\r\n");
+                File.WriteAllText(dlg.FileName, $"WillowWallet recovery key\r\n\r\n{key}\r\n\r\nKeep this somewhere safe and separate from your computer (printed, or in a password manager).\r\n");
         };
         var print = new Button { Content = "Print", Style = (Style)FindResource("GhostButton") };
         print.Click += (_, _) =>
@@ -157,12 +157,12 @@ public sealed class RecoveryKeyDialog : DialogShell
             var pd = new PrintDialog();
             if (pd.ShowDialog() != true) return;
             var panel = new StackPanel { Margin = new Thickness(60) };
-            panel.Children.Add(new TextBlock { Text = "CoinPilot recovery key", FontSize = 22, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 16) });
+            panel.Children.Add(new TextBlock { Text = "WillowWallet recovery key", FontSize = 22, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 16) });
             panel.Children.Add(new TextBlock { Text = key, FontFamily = new System.Windows.Media.FontFamily("Consolas"), FontSize = 24 });
             panel.Children.Add(new TextBlock { Text = $"Created {DateTime.Now:MMMM d, yyyy}. Keep this page somewhere safe.", Margin = new Thickness(0, 16, 0, 0) });
             panel.Measure(new Size(pd.PrintableAreaWidth, pd.PrintableAreaHeight));
             panel.Arrange(new Rect(new Size(pd.PrintableAreaWidth, pd.PrintableAreaHeight)));
-            pd.PrintVisual(panel, "CoinPilot recovery key");
+            pd.PrintVisual(panel, "WillowWallet recovery key");
         };
         buttons.Children.Add(copy);
         buttons.Children.Add(save);
@@ -236,7 +236,7 @@ public sealed class CategoriesDialog : DialogShell
         Body.Children.Add(new TextBlock { Text = "Pick a parent to make it a subcategory (like Dining out › Coffee). Budgets and reports for the parent include it.", Style = (Style)FindResource("Muted"), FontSize = 12, Margin = new Thickness(0, 2, 0, 0) });
 
         Body.Children.Add(Heading("Rules"));
-        Body.Children.Add(new TextBlock { Text = "When a payee contains the text, CoinPilot picks the category for new and imported transactions.", Style = (Style)FindResource("Muted"), Margin = new Thickness(0, 0, 0, 8) });
+        Body.Children.Add(new TextBlock { Text = "When a payee contains the text, WillowWallet picks the category for new and imported transactions.", Style = (Style)FindResource("Muted"), Margin = new Thickness(0, 0, 0, 8) });
         Body.Children.Add(_rules);
         var ruleRow = new Grid { Margin = new Thickness(0, 6, 0, 0) };
         ruleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });

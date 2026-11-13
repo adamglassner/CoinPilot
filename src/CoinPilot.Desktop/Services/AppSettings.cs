@@ -10,14 +10,14 @@ public static class AppTheme
     public const string Dark = "Dark";
 }
 
-/// <summary>Per-user preferences saved to %AppData%\CoinPilot\settings.json.</summary>
+/// <summary>Per-user preferences saved to %AppData%\WillowWallet\settings.json.</summary>
 public sealed class AppSettings
 {
     public string Theme { get; set; } = AppTheme.System;
     /// <summary>Color theme name (see ThemePalettes): Pine, Ocean, Lagoon, Indigo, Plum, Rose, Ember, Graphite.</summary>
     public string ColorTheme { get; set; } = "Pine";
 
-    /// <summary>Keep CoinPilot in the notification area for bill reminders, and start it when you sign in to Windows.</summary>
+    /// <summary>Keep WillowWallet in the notification area for bill reminders, and start it when you sign in to Windows.</summary>
     public bool RunInBackground { get; set; }
 
     // Window position and size, restored on the next start.
@@ -30,9 +30,7 @@ public sealed class AppSettings
     /// <summary>Bill reminders already shown, as "billId|yyyy-MM-dd" (so each due date is announced once a day).</summary>
     public List<string> RemindersShown { get; set; } = [];
 
-    private static string FilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "CoinPilot", "settings.json");
+    private static string FilePath => Path.Combine(AppPaths.Root, "settings.json");
 
     public static AppSettings Load()
     {

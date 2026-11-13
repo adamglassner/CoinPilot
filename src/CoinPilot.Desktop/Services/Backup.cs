@@ -11,7 +11,7 @@ namespace CoinPilot.Services;
 /// </summary>
 public static class Backup
 {
-    public static string SuggestedName => $"CoinPilot backup {DateTime.Now:yyyy-MM-dd}.zip";
+    public static string SuggestedName => $"WillowWallet backup {DateTime.Now:yyyy-MM-dd}.zip";
 
     public static void Create(string zipPath)
     {
@@ -27,7 +27,7 @@ public static class Backup
         }
     }
 
-    /// <summary>Checks that a .zip looks like a CoinPilot backup. Returns an error message, or null when it's fine.</summary>
+    /// <summary>Checks that a .zip looks like a WillowWallet backup. Returns an error message, or null when it's fine.</summary>
     public static string? Check(string zipPath)
     {
         try
@@ -35,7 +35,7 @@ public static class Backup
             using var zip = ZipFile.OpenRead(zipPath);
             string[] known = ["transactions.json", "budgets.json", "accounts.json", "debts.json", "bills.json", "goals.json", "categories.json", "preferences.json", "tax-documents.json"];
             if (!zip.Entries.Any(e => known.Contains(e.FullName, StringComparer.OrdinalIgnoreCase)))
-                return "That file isn't a CoinPilot backup.";
+                return "That file isn't a WillowWallet backup.";
             if (zip.Entries.Any(e => e.FullName.Contains("..") || Path.IsPathRooted(e.FullName)))
                 return "That backup contains unsafe file names.";
             return null;

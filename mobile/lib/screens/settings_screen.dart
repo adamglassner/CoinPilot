@@ -5,7 +5,7 @@ import '../store.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
-const appVersion = '0.1.0';
+const appVersion = '0.1.1';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -22,7 +22,7 @@ class SettingsScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
         children: [
-          const ScreenHeader(title: 'Settings', subtitle: 'Make CoinPilot yours.'),
+          const ScreenHeader(title: 'Settings', subtitle: 'Make WillowWallet yours.'),
           const _Heading('Appearance'),
           PillToggle(
             options: const ['Auto', 'Light', 'Dark'],
@@ -67,7 +67,7 @@ class SettingsScreen extends StatelessWidget {
                 const _Tile(
                   icon: Icons.lock_outline_rounded,
                   title: 'Saved on this phone',
-                  subtitle: 'Private to CoinPilot. Sync with CoinPilot for Windows is coming soon.',
+                  subtitle: 'Private to WillowWallet. Sync with WillowWallet for Windows is coming soon.',
                 ),
                 const Divider(indent: 64),
                 _Tile(
@@ -102,7 +102,7 @@ class SettingsScreen extends StatelessWidget {
             children: [
               const CoinLogo(size: 44),
               const SizedBox(height: 8),
-              Text('CoinPilot for Android', style: display(17, p.text)),
+              Text('WillowWallet for Android', style: display(17, p.text)),
               const SizedBox(height: 2),
               Text('Version $appVersion · Bytehawk Studio', style: TextStyle(fontSize: 13, color: p.muted)),
             ],

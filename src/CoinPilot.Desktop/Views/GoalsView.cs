@@ -33,7 +33,7 @@ public sealed class GoalsView : DataPage
         if (goals.Count == 0)
         {
             Add(PageKit.Card(Ui.EmptyState("", "No goals yet",
-                "Create a goal like an emergency fund, a vacation or a down payment. Add a target date and CoinPilot works out what to save each month.",
+                "Create a goal like an emergency fund, a vacation or a down payment. Add a target date and WillowWallet works out what to save each month.",
                 "New goal", (_, _) => GoalDialog.Edit(null))));
             return;
         }

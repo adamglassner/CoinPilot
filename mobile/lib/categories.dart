@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// The same built-in categories as CoinPilot for Windows.
+/// The same built-in categories as WillowWallet for Windows.
 const spendingCategories = [
   'Groceries', 'Dining out', 'Housing', 'Utilities', 'Transportation', 'Shopping',
   'Entertainment', 'Health', 'Personal care', 'Kids', 'Pets', 'Travel', 'Gifts', 'Subscriptions',

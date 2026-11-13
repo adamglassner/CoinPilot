@@ -11,7 +11,7 @@ namespace CoinPilot.Data;
 /// When turned on, a random 256-bit data key encrypts every data file, receipt and tax document with AES-GCM.
 /// The data key itself is stored in lock.json twice: once encrypted with a key derived from your PIN/password
 /// (PBKDF2-SHA256, 600,000 rounds) and once with a key derived from a recovery key shown when you turn it on.
-/// Without one of those, the files can't be read. CoinPilot never stores the PIN/password itself.
+/// Without one of those, the files can't be read. WillowWallet never stores the PIN/password itself.
 /// </summary>
 public static class DataLock
 {
@@ -31,7 +31,7 @@ public static class DataLock
         public string WrappedKey { get; set; } = "";
         public string RecoverySalt { get; set; } = "";
         public string RecoveryWrappedKey { get; set; } = "";
-        /// <summary>Minutes without activity before CoinPilot locks itself (0 = never).</summary>
+        /// <summary>Minutes without activity before WillowWallet locks itself (0 = never).</summary>
         public int AutoLockMinutes { get; set; } = 15;
     }
 
@@ -60,7 +60,7 @@ public static class DataLock
     {
         var bytes = File.ReadAllBytes(path);
         if (!IsEncrypted(bytes)) return bytes;
-        if (_key == null) throw new InvalidOperationException("CoinPilot is locked.");
+        if (_key == null) throw new InvalidOperationException("WillowWallet is locked.");
         return Decrypt(bytes, _key);
     }
 

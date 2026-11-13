@@ -13,7 +13,7 @@ public sealed class SettingsView : DataPage
 {
     protected override void Build()
     {
-        Add(PageKit.Header("", "Settings", "Make CoinPilot work the way you like."));
+        Add(PageKit.Header("", "Settings", "Make WillowWallet work the way you like."));
 
         var columns = new Grid();
         columns.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -179,11 +179,11 @@ public sealed class SettingsView : DataPage
         days.Children.Add(combo);
         panel.Children.Add(days);
 
-        var background = new CheckBox { Content = "Run in the background so reminders arrive even when CoinPilot is closed", IsChecked = App.Settings.RunInBackground };
+        var background = new CheckBox { Content = "Run in the background so reminders arrive even when WillowWallet is closed", IsChecked = App.Settings.RunInBackground };
         background.Checked += (_, _) => Services.Reminders.SetBackground(true);
         background.Unchecked += (_, _) => Services.Reminders.SetBackground(false);
         panel.Children.Add(background);
-        panel.Children.Add(Muted("CoinPilot starts when you sign in to Windows and waits in the notification area. Closing the window keeps it there; right-click its icon to exit. Bills set to auto-pay don't get reminders.", 6));
+        panel.Children.Add(Muted("WillowWallet starts when you sign in to Windows and waits in the notification area. Closing the window keeps it there; right-click its icon to exit. Bills set to auto-pay don't get reminders.", 6));
         return PageKit.Card(panel, "Bill reminders");
     }
 
@@ -194,7 +194,7 @@ public sealed class SettingsView : DataPage
         var panel = new StackPanel();
         if (!DataLock.IsEnabled)
         {
-            panel.Children.Add(Muted("Protect your data with a PIN or password. Everything CoinPilot saves (transactions, accounts, receipts and tax documents) is encrypted, and you unlock it when you open CoinPilot."));
+            panel.Children.Add(Muted("Protect your data with a PIN or password. Everything WillowWallet saves (transactions, accounts, receipts and tax documents) is encrypted, and you unlock it when you open WillowWallet."));
             panel.Children.Add(Buttons(Primary("Turn on PIN or password…", TurnOn)));
             return PageKit.Card(panel, "Security", PageKit.Pill("Off", "Brush.TextMuted"));
         }
@@ -231,7 +231,7 @@ public sealed class SettingsView : DataPage
 
     private void TurnOff()
     {
-        if (new VerifySecretDialog("Turn off protection", "Your data will be saved without encryption, and CoinPilot won't ask for a PIN or password.", "Turn off").ShowDialog() != true) return;
+        if (new VerifySecretDialog("Turn off protection", "Your data will be saved without encryption, and WillowWallet won't ask for a PIN or password.", "Turn off").ShowDialog() != true) return;
         try
         {
             DataLock.Disable();
@@ -267,7 +267,7 @@ public sealed class SettingsView : DataPage
 
     private static void BackUp()
     {
-        var save = new Microsoft.Win32.SaveFileDialog { FileName = Backup.SuggestedName, Filter = "CoinPilot backup (*.zip)|*.zip", Title = "Back up CoinPilot" };
+        var save = new Microsoft.Win32.SaveFileDialog { FileName = Backup.SuggestedName, Filter = "WillowWallet backup (*.zip)|*.zip", Title = "Back up WillowWallet" };
         if (save.ShowDialog() != true) return;
         try
         {
@@ -282,7 +282,7 @@ public sealed class SettingsView : DataPage
 
     private static void Restore()
     {
-        var open = new Microsoft.Win32.OpenFileDialog { Filter = "CoinPilot backup (*.zip)|*.zip", Title = "Restore a backup" };
+        var open = new Microsoft.Win32.OpenFileDialog { Filter = "WillowWallet backup (*.zip)|*.zip", Title = "Restore a backup" };
         if (open.ShowDialog() != true) return;
         if (Backup.Check(open.FileName) is string problem)
         {
@@ -356,7 +356,7 @@ public sealed class SettingsView : DataPage
     private static Border SyncCard()
     {
         var panel = new StackPanel();
-        panel.Children.Add(Muted("Sign in to keep your budgets, transactions and goals in sync between this PC and the CoinPilot app for iPhone and Android."));
+        panel.Children.Add(Muted("Sign in to keep your budgets, transactions and goals in sync between this PC and the WillowWallet app for iPhone and Android."));
         return PageKit.Card(panel, "Sync & mobile app", PageKit.Pill("Coming soon", "Brush.Accent"));
     }
 
@@ -370,7 +370,7 @@ public sealed class SettingsView : DataPage
             Width = 48, Height = 48, Margin = new Thickness(0, 0, 14, 0),
         }.Also(i => RenderOptions.SetBitmapScalingMode(i, BitmapScalingMode.HighQuality)));
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        text.Children.Add(Ui.Text($"CoinPilot {App.VersionText}", size: 16, weight: FontWeights.SemiBold));
+        text.Children.Add(Ui.Text($"WillowWallet {App.VersionText}", size: 16, weight: FontWeights.SemiBold));
         text.Children.Add(Ui.Text("© 2026 Bytehawk Studio", muted: true));
         row.Children.Add(text);
         panel.Children.Add(row);

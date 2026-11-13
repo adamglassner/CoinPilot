@@ -1,6 +1,6 @@
 name: Android
 
-# CoinPilot for Android (Flutter, in mobile/).
+# WillowWallet for Android (formerly CoinPilot; Flutter, in mobile/).
 # - Every push that touches mobile/ and manual runs: analyze, test, render screenshots, build the APK.
 # - Push to main with a pubspec version that has no android-v<version> release yet: publish that release with the APK.
 #   It is never marked "latest", so the Bytehawk Studio Launcher keeps installing the Windows app.
@@ -44,7 +44,7 @@ jobs:
           release=false
           if [ "$GITHUB_REF" = "refs/heads/main" ] && [ "$GITHUB_EVENT_NAME" = "push" ] && ! git rev-parse -q --verify "refs/tags/android-v$v" >/dev/null; then release=true; fi
           echo "release=$release" >> "$GITHUB_OUTPUT"
-          echo "CoinPilot for Android $v (release: $release)"
+          echo "WillowWallet for Android $v (release: $release)"
           flutter --version
 
       - name: Create the Android project files
@@ -52,7 +52,7 @@ jobs:
           flutter create --platforms=android --org com.bytehawkstudio --project-name coinpilot --no-pub . > /dev/null
           rm -f test/widget_test.dart.orig
           cp -r android-res/. android/app/src/main/res/
-          sed -i 's/android:label="coinpilot"/android:label="CoinPilot"/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="coinpilot"/android:label="WillowWallet"/' android/app/src/main/AndroidManifest.xml
           grep -n 'android:label' android/app/src/main/AndroidManifest.xml
           git status --short .
 
@@ -85,13 +85,13 @@ jobs:
           flutter build apk --release
           ls -la build/app/outputs/flutter-apk/
 
-      - name: Sign with the CoinPilot key
+      - name: Sign with the WillowWallet key
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           apk=build/app/outputs/flutter-apk/app-release.apk
-          out=build/CoinPilot-Android-${{ steps.ver.outputs.version }}.apk
+          out=build/WillowWallet-Android-${{ steps.ver.outputs.version }}.apk
           tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/coinpilot.jks"
@@ -105,8 +105,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: CoinPilot-Android-${{ steps.ver.outputs.version }}
-          path: mobile/build/CoinPilot-Android-*.apk
+          name: WillowWallet-Android-${{ steps.ver.outputs.version }}
+          path: mobile/build/WillowWallet-Android-*.apk
 
       - name: Publish the Android release
         if: steps.ver.outputs.release == 'true'
@@ -114,7 +114,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           v=${{ steps.ver.outputs.version }}
-          gh release create "android-v$v" "build/CoinPilot-Android-$v.apk" \
+          gh release create "android-v$v" "build/WillowWallet-Android-$v.apk" \
             --target "$GITHUB_SHA" --latest=false \
-            --title "CoinPilot for Android $v" \
-            --notes "CoinPilot for Android $v. Download **CoinPilot-Android-$v.apk** on your phone and open it to install (allow installs from your browser or Files app when Android asks). Your data stays on your phone. See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/mobile/CHANGELOG.md)."
+            --title "WillowWallet for Android $v" \
+            --notes "WillowWallet for Android $v. Download **WillowWallet-Android-$v.apk** on your phone and open it to install (allow installs from your browser or Files app when Android asks). Your data stays on your phone. See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/mobile/CHANGELOG.md)."

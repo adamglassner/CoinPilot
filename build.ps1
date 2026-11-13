@@ -1,7 +1,7 @@
-# Builds CoinPilot:
-#   1. publishes the self-contained single-file exe -> dist\CoinPilot.exe
-#   2. zips it as the portable download             -> dist\CoinPilot-<version>-win-x64.zip
-#   3. compiles the Inno Setup installer            -> dist\CoinPilot-<version>-Setup.exe
+# Builds WillowWallet (formerly CoinPilot):
+#   1. publishes the self-contained single-file exe -> dist\WillowWallet.exe
+#   2. zips it as the portable download             -> dist\WillowWallet-<version>-win-x64.zip
+#   3. compiles the Inno Setup installer            -> dist\WillowWallet-<version>-Setup.exe
 # Requirements: .NET 8 SDK, Inno Setup 6 (winget install JRSoftware.InnoSetup)
 #
 #   .\build.ps1                     # version from the .csproj
@@ -41,13 +41,13 @@ if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
     -p:Version=$Version -p:AssemblyVersion="$Version.0" -p:FileVersion="$Version.0" -p:InformationalVersion=$Version `
     -o $publish
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed' }
-Copy-Item (Join-Path $publish 'CoinPilot.exe') (Join-Path $dist 'CoinPilot.exe') -Force
-Write-Host "Built $dist\CoinPilot.exe"
+Copy-Item (Join-Path $publish 'WillowWallet.exe') (Join-Path $dist 'WillowWallet.exe') -Force
+Write-Host "Built $dist\WillowWallet.exe"
 
 Write-Host '== Portable zip ==' -ForegroundColor Cyan
-$zip = Join-Path $dist "CoinPilot-$Version-win-x64.zip"
+$zip = Join-Path $dist "WillowWallet-$Version-win-x64.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
-Compress-Archive -Path (Join-Path $publish 'CoinPilot.exe'), (Join-Path $root 'LICENSE') -DestinationPath $zip
+Compress-Archive -Path (Join-Path $publish 'WillowWallet.exe'), (Join-Path $root 'LICENSE') -DestinationPath $zip
 Write-Host "Built $zip"
 
 if ($SkipInstaller) { return }
@@ -60,6 +60,6 @@ $iscc = @(
 ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $iscc) { throw 'Inno Setup 6 (ISCC.exe) not found. Install it with: winget install JRSoftware.InnoSetup' }
 
-& $iscc "/DPublishDir=$publish" "/DMyAppVersion=$Version" (Join-Path $root 'installer\CoinPilot.iss')
+& $iscc "/DPublishDir=$publish" "/DMyAppVersion=$Version" (Join-Path $root 'installer\WillowWallet.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compile failed' }
-Write-Host "Built $dist\CoinPilot-$Version-Setup.exe" -ForegroundColor Green
+Write-Host "Built $dist\WillowWallet-$Version-Setup.exe" -ForegroundColor Green
