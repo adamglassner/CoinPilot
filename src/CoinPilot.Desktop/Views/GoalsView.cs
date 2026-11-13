@@ -6,18 +6,21 @@ using CoinPilot.Services;
 
 namespace CoinPilot.Views;
 
-/// <summary>The Goals page: savings goals with progress, and how much to save each month to hit the date.</summary>
+/// <summary>The Goals page: savings goals with progress rings, milestones, linked accounts and the monthly amount to stay on track.</summary>
 public sealed class GoalsView : DataPage
 {
+    private static readonly int[] Milestones = [25, 50, 75, 100];
+
     protected override void Build()
     {
+        GoalMath.RefreshLinked();
         var today = DateTime.Today;
         var goals = DataStore.Goals.Items;
         var active = goals.Where(g => !g.IsReached).ToList();
         decimal monthly = active.Sum(g => GoalMath.MonthlyNeeded(g, today) ?? 0);
 
         Add(PageKit.Header("", "Goals", "Save toward the things that matter."));
-        Add(PageKit.ActionBar("Click a goal to edit it. Use Add money as you save.",
+        Add(PageKit.ActionBar("Click a goal to edit it. Use Add money as you save, or link a goal to a savings account.",
             PageKit.Primary("", "New goal", (_, _) => GoalDialog.Edit(null))));
 
         Add(PageKit.KpiRow(
@@ -45,26 +48,52 @@ public sealed class GoalsView : DataPage
 
     private Button BuildCard(Goal g, DateTime today)
     {
-        var panel = new StackPanel();
+        var layout = new Grid();
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var top = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
+        var ring = Charts.Ring(g.Fraction, 84, 9, g.IsReached ? "Brush.Positive" : "Brush.Accent");
+        ring.Margin = new Thickness(0, 0, 18, 0);
+        ring.VerticalAlignment = VerticalAlignment.Top;
+        layout.Children.Add(ring);
+
+        var panel = new StackPanel().At(1);
+        var top = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
         if (g.IsReached)
         {
             var pill = PageKit.Pill("Reached", "Brush.Positive");
             DockPanel.SetDock(pill, Dock.Right);
             top.Children.Add(pill);
         }
+        else if (g.IsLinked)
+        {
+            var pill = PageKit.Pill("Linked: " + g.LinkedAccount, "Brush.Accent");
+            DockPanel.SetDock(pill, Dock.Right);
+            top.Children.Add(pill);
+        }
         top.Children.Add(new TextBlock { Text = g.Name, Style = Res("CardTitle"), TextTrimming = TextTrimming.CharacterEllipsis });
         panel.Children.Add(top);
 
-        var amounts = new TextBlock { Margin = new Thickness(0, 0, 0, 10) };
-        amounts.Inlines.Add(new System.Windows.Documents.Run(Money.Format(g.Saved)) { FontSize = 24, FontWeight = FontWeights.Bold });
+        var amounts = new TextBlock { Margin = new Thickness(0, 0, 0, 8) };
+        amounts.Inlines.Add(new System.Windows.Documents.Run(Money.Format(g.Saved)) { FontSize = 22, FontWeight = FontWeights.Bold });
         var of = new System.Windows.Documents.Run($"  of {Money.Format(g.Target, cents: false)}");
         of.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "Brush.TextMuted");
         amounts.Inlines.Add(of);
         panel.Children.Add(amounts);
 
-        panel.Children.Add(Ui.ProgressBar(g.Fraction, g.IsReached ? "Brush.Positive" : "Brush.Accent"));
+        // Milestones: 25 / 50 / 75 / 100%
+        var stones = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+        foreach (int m in Milestones)
+        {
+            bool done = g.Fraction * 100 >= m - 0.0001;
+            var dot = new Border { CornerRadius = new CornerRadius(9), Padding = new Thickness(8, 2, 8, 3), Margin = new Thickness(0, 0, 6, 0) };
+            dot.SetResourceReference(Border.BackgroundProperty, done ? "Brush.AccentSoft" : "Brush.SurfaceAlt");
+            dot.Child = Ui.Text((done ? "✓ " : "") + m + "%", size: 11.5, weight: done ? FontWeights.SemiBold : FontWeights.Normal,
+                brushKey: done ? "Brush.Accent" : "Brush.TextMuted");
+            dot.ToolTip = done ? $"{m}% milestone reached" : $"{m}% milestone: {Money.Format(g.Target * m / 100, cents: false)}";
+            stones.Children.Add(dot);
+        }
+        panel.Children.Add(stones);
 
         string pace;
         string paceBrush = "Brush.TextMuted";
@@ -77,17 +106,21 @@ public sealed class GoalsView : DataPage
         }
         else pace = $"By {date:MMM yyyy} · save {Money.Format(GoalMath.MonthlyNeeded(g, today) ?? 0)}/month";
 
-        var bottom = new DockPanel { Margin = new Thickness(0, 10, 0, 0) };
-        var add = PageKit.Link(g.IsReached ? "Add or take out" : "Add money", () => GoalMoneyDialog.Open(g));
-        DockPanel.SetDock(add, Dock.Right);
-        bottom.Children.Add(add);
-        var paceText = Ui.Text($"{g.Fraction:P0} · {pace}", size: 12.5, brushKey: paceBrush);
+        var bottom = new DockPanel();
+        if (!g.IsLinked)
+        {
+            var add = PageKit.Link(g.IsReached ? "Add or take out" : "Add money", () => GoalMoneyDialog.Open(g));
+            DockPanel.SetDock(add, Dock.Right);
+            bottom.Children.Add(add);
+        }
+        var paceText = Ui.Text(pace, size: 12.5, brushKey: paceBrush);
         paceText.TextWrapping = TextWrapping.Wrap;
         paceText.TextTrimming = TextTrimming.None;
         bottom.Children.Add(paceText);
         panel.Children.Add(bottom);
+        layout.Children.Add(panel);
 
-        var card = new Border { Style = Res("Card"), Child = panel };
+        var card = new Border { Style = Res("Card"), Child = layout };
         var button = new Button { Content = card, Style = Res("CardButton"), Margin = new Thickness(0, 0, 16, 16), ToolTip = "Edit or delete" };
         System.Windows.Automation.AutomationProperties.SetName(button, $"{g.Name}: {Money.Format(g.Saved)} of {Money.Format(g.Target)}");
         button.Click += (_, _) => GoalDialog.Edit(g);

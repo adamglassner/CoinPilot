@@ -140,7 +140,7 @@ jobs:
           make_latest: true
           name: CoinPilot ${{ steps.ver.outputs.version }}
           body: |
-            CoinPilot ${{ steps.ver.outputs.version }} for Windows 10/11 (x64). Transactions, Budgets, Accounts, Debts, Bills, Goals and Reports all work (saved on this PC); sync with the mobile app is coming soon. See CHANGELOG.md for what changed.
+            CoinPilot ${{ steps.ver.outputs.version }} for Windows 10/11 (x64). Budgets, transactions (with bank statement import), accounts, debts, bills, goals, reports and tax documents, saved on this PC with optional PIN/password encryption. Sync with the mobile app is coming soon. See CHANGELOG.md for what changed.
 
             - **CoinPilot-${{ steps.ver.outputs.version }}-Setup.exe**: installer (Start Menu + optional desktop shortcut, uninstaller). Installs for just you by default, no administrator needed.
             - **CoinPilot-${{ steps.ver.outputs.version }}-win-x64.zip**: portable. Unzip and run `CoinPilot.exe`. No install or .NET needed.

@@ -72,6 +72,13 @@ public static class Ui
         return element;
     }
 
+    /// <summary>Runs a tweak on an element and returns it (for building UI in one expression).</summary>
+    public static T Also<T>(this T element, Action<T> tweak)
+    {
+        tweak(element);
+        return element;
+    }
+
     /// <summary>Centered "nothing here" message with an optional button.</summary>
     public static StackPanel EmptyState(string glyph, string title, string message, string? buttonText = null, RoutedEventHandler? onClick = null)
     {

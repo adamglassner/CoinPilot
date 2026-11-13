@@ -80,6 +80,277 @@ public static class SelfTest
         });
     }
 
+    // ======================================================================
+    // 1.0: transfers, splits, categories, rules, rollover, months, currency, import, subscriptions,
+    // net worth, templates, receipts, taxes, backup, themes
+    // ======================================================================
+
+    private static async Task NewFeatures(MainWindow window, DateTime month, DateTime lastMonth)
+    {
+        var today = DateTime.Today;
+        var checking = DataStore.Accounts.Items.Single(a => a.Name == "Checking");
+        var visa = DataStore.Accounts.Items.Single(a => a.Name == "Visa");
+
+        // ----- Transfers -----
+        decimal checkingBefore = AccountMath.Balance(checking), visaBefore = AccountMath.Balance(visa);
+        var spentBefore = Budgeting.Summarize(month).Spent;
+        await Step("Add a transfer", () => DataStore.Transactions.Add(new Transaction
+        {
+            Payee = "Card payment", Category = "Transfer", Account = "Checking", TransferAccount = "Visa", Amount = -200m, Date = today,
+        }));
+        Check("Transfer moves money between accounts", AccountMath.Balance(checking) == checkingBefore - 200m && AccountMath.Balance(visa) == visaBefore + 200m,
+            $"{AccountMath.Balance(checking)} / {AccountMath.Balance(visa)}");
+        Check("Transfer isn't spending or income", Budgeting.Summarize(month).Spent == spentBefore);
+
+        // ----- Splits -----
+        await Step("Add a split transaction", () => DataStore.Transactions.Add(new Transaction
+        {
+            Payee = "Costco", Category = "Split", Account = "Visa", Amount = -150m, Date = today,
+            Splits = [new Split { Category = "Groceries", Amount = 100m }, new Split { Category = "Shopping", Amount = 50m }],
+        }));
+        var sum = Budgeting.Summarize(month);
+        Check("Split counts per category", sum.SpentByCategory.GetValueOrDefault("Shopping") == 50m
+            && sum.SpentByCategory.GetValueOrDefault("Groceries") >= 100m && sum.Spent == spentBefore + 150m);
+
+        // ----- Subcategories, rename, rules -----
+        await Step("Add a subcategory", () => Categories.Add("Coffee", CategoryKinds.Spending, "Dining out"));
+        Check("Subcategory has its parent", Categories.Root("Coffee") == "Dining out" && Categories.Display("Coffee") == "Dining out › Coffee"
+            && Categories.Spending.Contains("Coffee"));
+        await Step("Coffee purchase and Dining out budget", () =>
+        {
+            DataStore.Transactions.Add(new Transaction { Payee = "Starbucks #123", Category = "Coffee", Account = "Visa", Amount = -10m, Date = today });
+            DataStore.Budgets.Add(new Budget { Category = "Dining out", MonthlyLimit = 300m, StartMonth = month });
+        });
+        var dining = Budgeting.Summarize(month).Budgets.Single(b => b.Budget.Category == "Dining out");
+        Check("Parent budget includes its subcategory", dining.Spent >= 285m, dining.Spent.ToString());
+        Check("Reports roll subcategories into the parent", !Reports.ByCategory(month, today, DataStore.Transactions.Items).Any(c => c.Category == "Coffee"));
+        await Step("Rename a category", () => Categories.Rename("Coffee", "Cafe"));
+        Check("Rename updates transactions", DataStore.Transactions.Items.Any(t => t.Category == "Cafe") && !DataStore.Transactions.Items.Any(t => t.Category == "Coffee")
+            && Categories.Root("Cafe") == "Dining out");
+        await Step("Add a rule", () => DataStore.Rules.Add(new CategoryRule { Contains = "STARBUCKS", Category = "Cafe" }));
+        Check("Rule picks the category", Categories.Suggest("Starbucks Reserve #88", income: false) == "Cafe");
+        Check("History picks the category", Categories.Suggest("Fresh Thyme Market", income: false) == "Groceries");
+        Check("No suggestion for an unknown payee", Categories.Suggest("Zebra Unknown", income: false) == null);
+
+        // ----- Rollover and single-month amounts -----
+        Budget? fun = null;
+        await Step("Rollover budget", () =>
+        {
+            fun = new Budget { Category = "Entertainment", MonthlyLimit = 100m, Rollover = true, StartMonth = lastMonth };
+            DataStore.Budgets.Add(fun);
+            DataStore.Transactions.Add(new Transaction { Payee = "Cinema", Category = "Entertainment", Account = "Visa", Amount = -40m, Date = lastMonth.AddDays(3) });
+        });
+        var funStatus = Budgeting.Summarize(month).Budgets.Single(b => b.Budget.Category == "Entertainment");
+        Check("Leftover rolls into this month", funStatus.Carry == 60m && funStatus.Available == 160m, $"{funStatus.Carry} / {funStatus.Available}");
+        await Step("One-month amount", () => { fun!.Overrides[Budgeting.Key(month)] = 150m; DataStore.Budgets.Update(fun); });
+        Check("One-month amount used", Budgeting.LimitFor(fun!, month) == 150m && Budgeting.LimitFor(fun!, lastMonth) == 100m);
+        int copied = 0;
+        await Step("Copy last month", () => copied = BudgetsView.CopyLastMonth(month));
+        Check("Copy last month restores the usual amount", copied >= 1 && Budgeting.LimitFor(fun!, month) == 100m, copied.ToString());
+
+        // ----- Budget month start day -----
+        var prefs = DataStore.Prefs;
+        prefs.MonthStartDay = 15;
+        Check("Mid-month start: the 20th is in the month starting the 15th", Budgeting.MonthStart(new DateTime(2026, 11, 20)) == new DateTime(2026, 11, 15));
+        Check("Mid-month start: the 3rd belongs to last month's period", Budgeting.MonthStart(new DateTime(2026, 11, 3)) == new DateTime(2026, 10, 15));
+        Check("Mid-month start: Dec 14 is still in Nov 15's month", Budgeting.InMonth(new DateTime(2026, 12, 14), new DateTime(2026, 11, 15))
+            && !Budgeting.InMonth(new DateTime(2026, 12, 15), new DateTime(2026, 11, 15)));
+        Check("Mid-month names", Money.MonthName(new DateTime(2026, 11, 20)) == "Nov 15 – Dec 14, 2026", Money.MonthName(new DateTime(2026, 11, 20)));
+        await Step("Pages with mid-month budget months", () => { MonthSwitcher.Current = Budgeting.MonthStart(today); window.GoTo("dashboard"); window.GoTo("budgets"); window.GoTo("reports"); });
+        prefs.MonthStartDay = 1;
+        MonthSwitcher.Current = month;
+
+        // ----- Currency -----
+        prefs.Currency = "en-GB";
+        Check("Pounds", Money.Format(1284.5m) == "£1,284.50", Money.Format(1284.5m));
+        prefs.Currency = "en-IE";
+        Check("Euros", Money.Format(1284.5m) == "€1,284.50" && Money.TryParse("€12.50", out var eur) && eur == 12.5m, Money.Format(1284.5m));
+        await Step("Pages in euros", () => { window.GoTo("dashboard"); window.GoTo("accounts"); });
+        prefs.Currency = "en-US";
+
+        // ----- Statement import -----
+        Check("Amounts: (12.34)", Importer.ParseAmount("(12.34)") == -12.34m);
+        Check("Amounts: 1.234,56", Importer.ParseAmount("1.234,56") == 1234.56m);
+        Check("Amounts: 12.34 DR", Importer.ParseAmount("12.34 DR") == -12.34m);
+        Check("Amounts: $-5.00 and -$5.00", Importer.ParseAmount("$-5.00") == -5m && Importer.ParseAmount("-$5.00") == -5m);
+        Check("Dates", Importer.TryParseDate("11/05/2026", out var d1) && d1 == new DateTime(2026, 11, 5)
+            && Importer.TryParseDate("2026-11-05", out var d2) && d2 == d1 && Importer.TryParseDate("25/11/2026", out var d3) && d3 == new DateTime(2026, 11, 25));
+
+        string csv = $"Bank Export\nDate,Description,Amount,Category\n{today.ToString("MM/dd/yyyy", Money.Us)},\"STARBUCKS, STORE 9\",-4.50,\n{today.AddDays(-1).ToString("MM/dd/yyyy", Money.Us)},Paycheck ACME,2050.00,Paycheck\n{today.AddDays(-2).ToString("MM/dd/yyyy", Money.Us)},Shell Oil,-38.20,\nnot a date,Bad row,1,\n";
+        var st = Importer.ReadCsv(csv);
+        var map = Importer.GuessMapping(st.Headers);
+        Check("CSV columns guessed", map.Date == 0 && map.Payee == 1 && map.Amount == 2 && map.Category == 3, $"{map.Date},{map.Payee},{map.Amount},{map.Category}");
+        var rows = Importer.Apply(st, map, out int skipped);
+        Check("CSV rows read (quoted comma kept)", rows.Count == 3 && skipped == 1 && rows[0].Payee == "STARBUCKS, STORE 9" && rows[0].Amount == -4.5m);
+        Importer.MarkDuplicates(rows, "Checking");
+        int added = 0;
+        await Step("Import CSV", () => added = Importer.Commit(rows, "Checking"));
+        Check("CSV imported with categories", added == 3 && DataStore.Transactions.Items.Any(t => t.Payee == "STARBUCKS, STORE 9" && t.Category == "Cafe")
+            && DataStore.Transactions.Items.Any(t => t.Payee == "Paycheck ACME" && t.Category == "Paycheck"));
+        var again = Importer.Apply(Importer.ReadCsv(csv), map, out _);
+        Importer.MarkDuplicates(again, "Checking");
+        Check("Re-importing finds duplicates", again.All(r => r.IsDuplicate) && Importer.Commit(again, "Checking") == 0);
+
+        var debitCredit = Importer.ReadCsv("Posted Date;Payee;Debit;Credit\n2026-10-01;Rent;1500,00;\n2026-10-02;Refund;;25,50\n");
+        var dcMap = Importer.GuessMapping(debitCredit.Headers);
+        var dcRows = Importer.Apply(debitCredit, dcMap, out _);
+        Check("Debit/credit columns and semicolons", dcRows.Count == 2 && dcRows[0].Amount == -1500m && dcRows[1].Amount == 25.5m,
+            string.Join(", ", dcRows.Select(r => r.Amount)));
+
+        string ofx = "OFXHEADER:100\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>"
+            + "<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20261101120000[-5:EST]<TRNAMT>-12.99<FITID>A1<NAME>NETFLIX.COM<MEMO>Streaming</STMTTRN>"
+            + "<STMTTRN><TRNTYPE>CREDIT<DTPOSTED>20261102<TRNAMT>100.00<FITID>A2<NAME>Transfer in</STMTTRN>"
+            + "</BANKTRANLIST><LEDGERBAL><BALAMT>1234.56<DTASOF>20261103</LEDGERBAL></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>";
+        var ofxSt = Importer.ReadOfx(ofx);
+        Check("OFX rows and balance", ofxSt.Rows.Count == 2 && ofxSt.Rows[0].Amount == -12.99m && ofxSt.Rows[0].ImportId == "A1"
+            && ofxSt.Rows[0].Note == "Streaming" && ofxSt.LedgerBalance == 1234.56m && ofxSt.LedgerDate == new DateTime(2026, 11, 3));
+
+        // ----- Subscriptions you might have forgotten -----
+        await Step("Monthly charges", () =>
+        {
+            foreach (int daysAgo in new[] { 62, 31, 1 })
+                DataStore.Transactions.Add(new Transaction { Payee = "Spotify P1234", Category = "Subscriptions", Account = "Visa", Amount = -10.99m, Date = today.AddDays(-daysAgo) });
+        });
+        var guesses = SubscriptionFinder.Find(today);
+        Check("Finds the subscription", guesses.Any(g => g.Payee.StartsWith("Spotify") && g.Repeats == BillSchedule.Monthly && g.Amount == 10.99m),
+            string.Join(", ", guesses.Select(g => $"{g.Payee}/{g.Repeats}")));
+        Check("Bills already listed aren't suggested", !guesses.Any(g => g.Payee.Contains("Streaming", StringComparison.OrdinalIgnoreCase)));
+        prefs.DismissedSubscriptions.Add("Spotify P1234");
+        Check("Dismissed subscriptions stay hidden", !SubscriptionFinder.Find(today).Any(g => g.Payee.StartsWith("Spotify")));
+
+        // ----- Net worth history, year in review, templates -----
+        var history = AccountMath.NetWorthHistory(6);
+        Check("Net worth history ends at today's net worth", history.Count == 6 && history[^1].Value == AccountMath.NetWorth(), $"{history[^1].Value} vs {AccountMath.NetWorth()}");
+        var review = YearReview.For(today.Year);
+        Check("Year in review totals", review.Spent == DataStore.Transactions.Items.Where(t => t.Date.Year == today.Year && t.IsSpending).Sum(t => -t.Amount)
+            && review.TopCategories.Count > 0 && review.Months.Count == 12);
+        var plan503020 = BudgetTemplateDialog.Plan(BudgetTemplateDialog.FiftyThirtyTwenty, 4000m, new Dictionary<string, decimal>());
+        Check("50/30/20 template", plan503020["Savings"] == 800m && Math.Abs(plan503020.Values.Sum() - 4000m) <= 60m, plan503020.Values.Sum().ToString());
+        var zero = BudgetTemplateDialog.Plan(BudgetTemplateDialog.ZeroBased, 1000m, new Dictionary<string, decimal> { ["Groceries"] = 412.3m });
+        Check("Zero-based template", zero["Groceries"] == 415m && zero["Savings"] == 585m, string.Join(", ", zero.Select(kv => kv.Key + "=" + kv.Value)));
+
+        // ----- Receipts and tax documents -----
+        string tempFile = Path.Combine(TempDataFolder, "..", "coinpilot-selftest-w2.pdf");
+        File.WriteAllBytes(tempFile, "%PDF-1.4 test W-2"u8.ToArray());
+        string receipt = "";
+        await Step("Store a receipt", () => receipt = FileVault.StoreReceipt(tempFile));
+        Check("Receipt stored", File.Exists(FileVault.ReceiptPath(receipt)) && DataLock.ReadBytes(FileVault.ReceiptPath(receipt)).SequenceEqual(File.ReadAllBytes(tempFile)));
+        TaxDocument? w2 = null;
+        await Step("Add a tax document", () =>
+        {
+            w2 = new TaxDocument { Year = today.Year - 1, Title = "W-2 Acme", Kind = "W-2", OriginalName = "w2.pdf", Size = 17 };
+            w2.FileName = FileVault.StoreTaxDocument(w2.Year, tempFile);
+            DataStore.TaxDocuments.Add(w2);
+        });
+        Check("Tax document stored by year", w2 != null && File.Exists(FileVault.TaxDocumentPath(w2)) && FileVault.TaxDocumentPath(w2).Contains((today.Year - 1).ToString()));
+        await Step("Move a tax document to another year", () => { FileVault.MoveTaxDocument(w2!, today.Year - 2); DataStore.TaxDocuments.Update(w2!); });
+        Check("Moved with its file", File.Exists(FileVault.TaxDocumentPath(w2!)) && w2!.Year == today.Year - 2);
+        TaxesView.Year = today.Year - 2;
+
+        // ----- Every page, every color theme -----
+        BillsView.ShowCalendar = true;
+        await AllPages(window, "1.0");
+        BillsView.ShowCalendar = false;
+        foreach (var theme in ThemePalettes.All)
+        {
+            foreach (var mode in new[] { AppTheme.Light, AppTheme.Dark })
+            {
+                await Step($"Color theme {theme.Name} ({mode})", () =>
+                {
+                    App.Settings.ColorTheme = theme.Name;
+                    App.ApplyTheme(mode);
+                    window.GoTo("dashboard");
+                });
+            }
+        }
+        App.Settings.ColorTheme = ThemePalettes.Default;
+        App.ApplyTheme(AppTheme.Light);
+        Check("Theme layers in place", Application.Current.Resources.MergedDictionaries.Count == 3);
+        Check("Color themes have readable accent", ThemePalettes.All.All(t => ThemePalettes.Swatch(t).R + ThemePalettes.Swatch(t).G + ThemePalettes.Swatch(t).B < 500));
+
+        // ----- New dialogs -----
+        foreach (var theme in new[] { AppTheme.Light, AppTheme.Dark })
+        {
+            App.ApplyTheme(theme);
+            await Dialog($"[{theme}] Transfer dialog", () => new TransactionDialog(DataStore.Transactions.Items.First(t => t.IsTransfer)));
+            await Dialog($"[{theme}] Split dialog", () => new TransactionDialog(DataStore.Transactions.Items.First(t => t.IsSplit)));
+            await Dialog($"[{theme}] Import dialog (CSV)", () => new ImportDialog("statement.csv", Importer.ReadCsv(csv)));
+            await Dialog($"[{theme}] Import dialog (OFX)", () => new ImportDialog("statement.ofx", Importer.ReadOfx(ofx)));
+            await Dialog($"[{theme}] Budget template dialog", () => new BudgetTemplateDialog());
+            await Dialog($"[{theme}] Rollover budget dialog", () => new BudgetDialog(fun, month: month));
+            await Dialog($"[{theme}] Categories dialog", () => new CategoriesDialog());
+            await Dialog($"[{theme}] Tax document dialog", () => new TaxDocumentDialog(null, today.Year, tempFile, "W-2"));
+            await Dialog($"[{theme}] Lock setup dialog", () => new SetLockDialog(change: false));
+            await Dialog($"[{theme}] Recovery key dialog", () => new RecoveryKeyDialog("ABCDE-FGHJK-LMNPQ-RSTUV-WXYZ2") { ForceClose = true });
+            await Dialog($"[{theme}] Confirm dialog", () => new ConfirmDialog("Restore?", "Replace your data?", "Restore", danger: true));
+            await Dialog($"[{theme}] Linked goal dialog", () => new GoalDialog(DataStore.Goals.Items[0]));
+        }
+        App.ApplyTheme(AppTheme.Light);
+
+        // ----- Linked goal -----
+        await Step("Link a goal to an account", () =>
+        {
+            var g = DataStore.Goals.Items.Single(x => x.Name == "Emergency fund");
+            g.LinkedAccount = "Checking";
+            DataStore.Goals.Update(g);
+            GoalMath.RefreshLinked();
+        });
+        Check("Linked goal shows the account balance", DataStore.Goals.Items.Single(x => x.Name == "Emergency fund").Saved == Math.Max(0, AccountMath.Balance(checking)));
+        Check("Milestones", GoalMath.MilestoneCrossed(200m, 600m, 1000m) == 50 && GoalMath.MilestoneCrossed(600m, 700m, 1000m) == null && GoalMath.MilestoneCrossed(900m, 1000m, 1000m) == 100);
+
+        // ----- Backup and restore -----
+        string zip = Path.Combine(Path.GetTempPath(), $"coinpilot-selftest-{Guid.NewGuid():N}.zip");
+        int countAtBackup = DataStore.Transactions.Items.Count;
+        await Step("Back up", () => Backup.Create(zip));
+        Check("Backup looks valid", File.Exists(zip) && Backup.Check(zip) == null);
+        await Step("Change something after the backup", () => DataStore.Transactions.Add(new Transaction { Payee = "After backup", Category = "Other", Account = "Checking", Amount = -1m, Date = today }));
+        string kept = "";
+        await Step("Restore", () => { kept = Backup.Restore(zip); window.GoTo("dashboard"); });
+        Check("Restore brings back the backed-up data", DataStore.Transactions.Items.Count == countAtBackup && !DataStore.Transactions.Items.Any(t => t.Payee == "After backup")
+            && DataStore.TaxDocuments.Items.Count == 1 && File.Exists(FileVault.ReceiptPath(receipt)));
+        try { File.Delete(zip); File.Delete(tempFile); Directory.Delete(kept, recursive: true); } catch { /* ignore */ }
+    }
+
+    // ======================================================================
+    // PIN / password protection
+    // ======================================================================
+
+    private static async Task Security(MainWindow window)
+    {
+        int count = DataStore.Transactions.Items.Count;
+        string recovery = "";
+        await Step("Turn on protection", () => recovery = DataLock.Enable("hunter22", "Password", 15));
+        string txFile = Path.Combine(DataStore.Folder, "transactions.json");
+        Check("Data files are encrypted", DataLock.IsEnabled && DataLock.IsEncrypted(File.ReadAllBytes(txFile)) && recovery.Length == 29);
+        var taxDoc = DataStore.TaxDocuments.Items.FirstOrDefault();
+        Check("Tax documents are encrypted", taxDoc != null && DataLock.IsEncrypted(File.ReadAllBytes(FileVault.TaxDocumentPath(taxDoc))));
+        Check("No plain backup copies left", !Directory.EnumerateFiles(DataStore.Folder, "*.bak", SearchOption.AllDirectories).Any());
+        await Step("Save while protected", () => DataStore.Transactions.Add(new Transaction { Payee = "While locked on", Category = "Other", Account = "Checking", Amount = -2m, Date = DateTime.Today }));
+        Check("New saves are encrypted", DataLock.IsEncrypted(File.ReadAllBytes(txFile)));
+
+        await Step("Lock from the window", () => window.LockNow());
+        Check("Lock screen shown and data closed", window.IsLockScreenShown && !DataLock.IsOpen && DataStore.Transactions.Items.Count == 0);
+        await Step("Navigation does nothing while locked", () => window.GoTo("transactions"));
+        Check("Wrong password rejected", !DataLock.Unlock("wrong-password"));
+        Check("Right password accepted", DataLock.Unlock("hunter22"));
+        await Step("Finish unlocking", window.CompleteUnlock);
+        Check("Data back after unlocking", DataStore.Transactions.Items.Count == count + 1 && !window.IsLockScreenShown);
+
+        DataLock.Lock();
+        Check("Recovery key works", DataLock.UnlockWithRecoveryKey(recovery.ToLowerInvariant().Replace("-", " ")));
+        DataStore.Reload();
+        await Step("Change password to a PIN", () => DataLock.ChangeSecret("4815", "PIN"));
+        DataLock.Lock();
+        Check("Old password no longer works", !DataLock.Unlock("hunter22"));
+        Check("New PIN works", DataLock.Unlock("4815") && DataLock.Info?.Kind == "PIN");
+        DataStore.Reload();
+        Check("PIN rules", DataLock.Validate("12", "PIN") != null && DataLock.Validate("12ab", "PIN") != null && DataLock.Validate("1234", "PIN") == null
+            && DataLock.Validate("short", "Password") != null);
+        await Step("Pages while protected", () => { window.GoTo("taxes"); window.ShowSettings(); window.GoTo("dashboard"); });
+        await Step("Turn off protection", DataLock.Disable);
+        Check("Files are plain again", !DataLock.IsEnabled && !DataLock.IsEncrypted(File.ReadAllBytes(txFile)) && DataStore.Transactions.Items.Count == count + 1);
+    }
+
     public static async Task<int> RunAsync(MainWindow window)
     {
         Report.AppendLine($"CoinPilot {App.VersionText} self-test {DateTime.Now:u}");
@@ -308,8 +579,10 @@ public static class SelfTest
         });
         Check("Paying the full balance marks the debt paid off", DataStore.Debts.Items.Single(d => d.Name == "Car loan").IsPaidOff);
 
+        await NewFeatures(window, month, lastMonth);
+
         // ----- Catalog / navigation -----
-        string[] working = ["dashboard", "transactions", "budgets", "accounts", "debts", "bills", "goals", "reports"];
+        string[] working = ["dashboard", "transactions", "budgets", "accounts", "debts", "bills", "goals", "reports", "taxes"];
         Check("Every section works except Sync & Devices (coming soon)",
             ModuleCatalog.Sidebar.All(m => m.IsComingSoon == !working.Contains(m.Key)));
         Check("Every coming-soon section lists planned features",
@@ -320,6 +593,8 @@ public static class SelfTest
         await Step("Toast", () => window.ShowToast("Self-test toast"));
         await Step("Unknown page falls back to the Dashboard", () => window.GoTo("no-such-page"));
         Check("Dashboard selected after unknown page", ModuleCatalog.Dashboard.IsSelected);
+
+        await Security(window);
 
         Report.AppendLine(_failed == 0 ? "ALL PASSED" : $"{_failed} FAILED");
         try { File.WriteAllText(OutputFile!, Report.ToString()); } catch { /* ignore */ }

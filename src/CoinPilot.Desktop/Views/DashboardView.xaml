@@ -5,10 +5,17 @@
     <StackPanel>
         <!-- Header -->
         <DockPanel Margin="0,0,0,20">
-            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Click="Add_Click" VerticalAlignment="Center">
+            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Click="Add_Click" VerticalAlignment="Center" ToolTip="Add transaction (Ctrl+N)">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE710;" Style="{StaticResource Icon}" Margin="0,0,7,0" />
                     <TextBlock Text="Add transaction" />
+                </StackPanel>
+            </Button>
+            <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Click="Import_Click" VerticalAlignment="Center" Margin="0,0,8,0"
+                    ToolTip="Import a CSV, OFX or QFX statement from your bank or card.">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE8B5;" Style="{StaticResource Icon}" Margin="0,0,7,0" />
+                    <TextBlock Text="Import" />
                 </StackPanel>
             </Button>
             <StackPanel>
@@ -16,6 +23,9 @@
                 <TextBlock x:Name="GreetingText" Style="{StaticResource PageTitle}" Margin="0,2,0,0" />
             </StackPanel>
         </DockPanel>
+
+        <!-- Getting started (until dismissed or done) -->
+        <ContentControl x:Name="WelcomeHost" Focusable="False" />
 
         <!-- Summary -->
         <UniformGrid Rows="1" Margin="0,0,-14,18">

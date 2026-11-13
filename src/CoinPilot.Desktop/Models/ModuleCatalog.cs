@@ -132,6 +132,14 @@ public static class ModuleCatalog
         },
         new()
         {
+            Key = "taxes", Title = "Taxes", Glyph = "\uE8A5", IsComingSoon = false,
+            Tagline = "Keep your tax documents safe, organized by year.",
+            Description = "Store PDFs and photos of W-2s, 1099s, returns and receipts by tax year.",
+            PrimaryAction = "Add document",
+            Features = ["Documents by tax year", "Checklist of common forms", "Encrypted with your PIN or password", "Included in backups"],
+        },
+        new()
+        {
             Key = "sync", Title = "Sync & Devices", Glyph = "",
             Tagline = "Your budget on your PC and your phone, always up to date.",
             Description = "Sign in on each device and CoinPilot keeps your budgets, transactions and goals in sync between Windows and the CoinPilot mobile app. Add a purchase on your phone at the store and it's on your PC when you get home.",

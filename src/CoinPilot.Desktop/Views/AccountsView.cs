@@ -17,8 +17,9 @@ public sealed class AccountsView : DataPage
         var balances = accounts.ToDictionary(a => a, AccountMath.Balance);
 
         Add(PageKit.Header("", "Accounts", "Checking, savings, credit cards and cash, together."));
-        Add(PageKit.ActionBar("Balances update automatically from your transactions.",
-            PageKit.Primary("", "Add account", (_, _) => AccountDialog.Edit(null))));
+        Add(PageKit.ActionBar("Balances update automatically from your transactions and transfers.",
+            PageKit.Ghost("\uE8AB", "Transfer money", (_, _) => TransferDialogOpen()),
+            PageKit.Primary("\uE710", "Add account", (_, _) => AccountDialog.Edit(null))));
 
         decimal assets = open.Where(a => !a.IsLiability).Sum(a => balances[a]);
         decimal cards = open.Where(a => a.IsLiability).Sum(a => -balances[a]);
@@ -28,6 +29,17 @@ public sealed class AccountsView : DataPage
             PageKit.Kpi("Cash & savings", Money.Format(assets), $"{open.Count(a => !a.IsLiability)} accounts"),
             PageKit.Kpi("Credit cards owed", Money.Format(cards), $"{open.Count(a => a.IsLiability)} cards"),
             PageKit.Kpi("Debts", Money.Format(debts), "From the Debts page")));
+
+        // ----- Net worth over time -----
+        if (accounts.Count > 0)
+        {
+            var history = AccountMath.NetWorthHistory(12);
+            var change = history[^1].Value - history[0].Value;
+            var changeText = Ui.Text((change >= 0 ? "Up " : "Down ") + Money.Format(Math.Abs(change), cents: false) + " in 12 months",
+                weight: FontWeights.SemiBold, brushKey: change >= 0 ? "Brush.Positive" : "Brush.Danger");
+            Add(PageKit.Card(Charts.LineChart(history.Select(p => (p.Date.ToString("MMM", Money.Us), p.Value)).ToList(), 190),
+                "Net worth over time", changeText));
+        }
 
         // ----- Open accounts, grouped by type -----
         var list = new StackPanel();
@@ -91,6 +103,17 @@ public sealed class AccountsView : DataPage
                 first = false;
             }
             Add(PageKit.Card(panel, "Closed accounts", padding: new Thickness(14, 14, 14, 8)));
+        }
+    }
+
+    private static void TransferDialogOpen()
+    {
+        var dialog = new TransactionDialog(null, DateTime.Today);
+        dialog.PresetTransfer();
+        if (dialog.ShowDialog() == true)
+        {
+            DataStore.Transactions.Add(dialog.Result);
+            Toaster.Show($"Moved {Money.Format(dialog.Result.Size)} from {dialog.Result.Account} to {dialog.Result.TransferAccount}.");
         }
     }
 

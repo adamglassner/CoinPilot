@@ -17,23 +17,29 @@
         </DockPanel>
 
         <!-- Search + actions -->
-        <DockPanel Margin="0,0,0,18">
+        <DockPanel Margin="0,0,0,12">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="FilterButton" Style="{StaticResource GhostButton}" Click="Filters_Click" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE71C;" Style="{StaticResource Icon}" Margin="0,0,7,0" />
+                        <TextBlock x:Name="FilterLabel" Text="Filters" />
+                    </StackPanel>
+                </Button>
                 <Button Style="{StaticResource GhostButton}" Click="Import_Click" Margin="0,0,8,0"
-                        ToolTip="Importing bank statements is coming soon.">
+                        ToolTip="Import a CSV, OFX or QFX statement from your bank or card.">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#xE8B5;" Style="{StaticResource Icon}" Margin="0,0,7,0" />
                         <TextBlock Text="Import" />
                     </StackPanel>
                 </Button>
                 <Button x:Name="ExportButton" Style="{StaticResource GhostButton}" Click="Export_Click" Margin="0,0,8,0"
-                        ToolTip="Save this month's transactions as a CSV file (opens in Excel).">
+                        ToolTip="Save what's shown as a CSV file (opens in Excel).">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#xE896;" Style="{StaticResource Icon}" Margin="0,0,7,0" />
                         <TextBlock Text="Export" />
                     </StackPanel>
                 </Button>
-                <Button Style="{StaticResource PrimaryButton}" Click="Add_Click">
+                <Button Style="{StaticResource PrimaryButton}" Click="Add_Click" ToolTip="Add transaction (Ctrl+N)">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#xE710;" Style="{StaticResource Icon}" Margin="0,0,7,0" />
                         <TextBlock Text="Add transaction" />
@@ -42,20 +48,46 @@
             </StackPanel>
             <Grid HorizontalAlignment="Left" Width="340">
                 <TextBox x:Name="SearchBox" Padding="32,7,8,7" TextChanged="Search_Changed"
-                         AutomationProperties.Name="Search transactions" />
-                <TextBlock Text="&#xE721;" Style="{StaticResource Icon}" Margin="11,0,0,0" HorizontalAlignment="Left"
+                         AutomationProperties.Name="Search transactions" ToolTip="Search (Ctrl+F)" />
+                <TextBlock Text="&#xE721;" Style="{StaticResource Icon}" Margin="12,0,0,0" HorizontalAlignment="Left"
                            Foreground="{DynamicResource Brush.TextMuted}" IsHitTestVisible="False" />
-                <TextBlock x:Name="SearchHint" Text="Search payee, category, account or note" Margin="34,0,0,0"
+                <TextBlock x:Name="SearchHint" Text="Search payee, category, tag, note or amount" Margin="34,0,0,0"
                            VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}" IsHitTestVisible="False" />
             </Grid>
         </DockPanel>
 
+        <!-- Filters -->
+        <Border x:Name="FilterBar" Style="{StaticResource Card}" Padding="16,12" Margin="0,0,0,12" Visibility="Collapsed">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Clear filters" Style="{StaticResource LinkButton}" Click="ClearFilters_Click"
+                        VerticalAlignment="Bottom" Margin="0,0,0,4" />
+                <UniformGrid Rows="1" Margin="0,0,12,0">
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="Type" Style="{StaticResource SectionLabel}" Margin="0,0,0,5" />
+                        <ComboBox x:Name="TypeFilter" SelectionChanged="Filter_Changed" AutomationProperties.Name="Type" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="Category" Style="{StaticResource SectionLabel}" Margin="0,0,0,5" />
+                        <ComboBox x:Name="CategoryFilter" SelectionChanged="Filter_Changed" AutomationProperties.Name="Category" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="Account" Style="{StaticResource SectionLabel}" Margin="0,0,0,5" />
+                        <ComboBox x:Name="AccountFilter" SelectionChanged="Filter_Changed" AutomationProperties.Name="Account" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="Tag" Style="{StaticResource SectionLabel}" Margin="0,0,0,5" />
+                        <ComboBox x:Name="TagFilter" SelectionChanged="Filter_Changed" AutomationProperties.Name="Tag" />
+                    </StackPanel>
+                </UniformGrid>
+            </DockPanel>
+        </Border>
+
         <!-- Month totals -->
-        <UniformGrid Rows="1" Margin="0,0,-14,18">
-            <Border Style="{StaticResource Card}" Margin="0,0,14,0">
+        <UniformGrid Rows="1" Margin="0,6,-14,18">
+            <Border Background="{DynamicResource Brush.Hero}" CornerRadius="14" Padding="20" Margin="0,0,14,0">
                 <StackPanel>
-                    <TextBlock Text="Spent" Style="{StaticResource Muted}" />
-                    <TextBlock x:Name="SpentText" Style="{StaticResource BigNumber}" />
+                    <TextBlock Text="Spent" Foreground="{DynamicResource Brush.HeroMuted}" />
+                    <TextBlock x:Name="SpentText" Style="{StaticResource BigNumber}" Foreground="{DynamicResource Brush.HeroText}" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,14,0">
@@ -72,7 +104,7 @@
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,14,0">
                 <StackPanel>
-                    <TextBlock Text="Transactions" Style="{StaticResource Muted}" />
+                    <TextBlock x:Name="CountLabel" Text="Transactions" Style="{StaticResource Muted}" />
                     <TextBlock x:Name="CountText" Style="{StaticResource BigNumber}" />
                 </StackPanel>
             </Border>
@@ -87,6 +119,6 @@
             </StackPanel>
         </Border>
         <TextBlock Style="{StaticResource Muted}" FontSize="12" Margin="2,10,0,0"
-                   Text="Click a transaction to edit or delete it. Saved on this PC." />
+                   Text="Click a transaction to edit or delete it. Ctrl+N adds one from anywhere." />
     </StackPanel>
 </UserControl>

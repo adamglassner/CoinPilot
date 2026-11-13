@@ -18,14 +18,28 @@
 
         <!-- Actions -->
         <DockPanel Margin="0,0,0,18">
-            <Button x:Name="NewButton" DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Click="New_Click">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE710;" Style="{StaticResource Icon}" Margin="0,0,7,0" />
-                    <TextBlock Text="New budget" />
-                </StackPanel>
-            </Button>
-            <TextBlock Style="{StaticResource Muted}" VerticalAlignment="Center"
-                       Text="Budgets repeat every month. Spending in a category counts against its budget." />
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="CopyButton" Style="{StaticResource GhostButton}" Click="Copy_Click" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE8C8;" Style="{StaticResource Icon}" Margin="0,0,7,0" />
+                        <TextBlock Text="Copy last month" />
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource GhostButton}" Click="Template_Click" Margin="0,0,8,0"
+                        ToolTip="Create budgets with 50/30/20, zero-based or starter amounts.">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE8A9;" Style="{StaticResource Icon}" Margin="0,0,7,0" />
+                        <TextBlock Text="Use a template" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="NewButton" Style="{StaticResource PrimaryButton}" Click="New_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE710;" Style="{StaticResource Icon}" Margin="0,0,7,0" />
+                        <TextBlock Text="New budget" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+            <TextBlock x:Name="AssignText" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,16,0" />
         </DockPanel>
 
         <!-- Month totals -->
@@ -41,6 +55,7 @@
                 <StackPanel>
                     <TextBlock Text="Budgeted" Style="{StaticResource Muted}" />
                     <TextBlock x:Name="BudgetedText" Style="{StaticResource BigNumber}" />
+                    <TextBlock x:Name="CarryText" Style="{StaticResource Muted}" FontSize="12.5" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,14,0">

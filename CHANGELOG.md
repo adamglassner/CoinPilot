@@ -1,5 +1,48 @@
 # Changelog
 
+## 1.0.0 — 2026-11-13
+
+CoinPilot 1.0: everything is finished except syncing with the mobile app (and the sign-in that goes with it).
+
+**New**
+- **Taxes:** a safe place for tax documents (W-2s, 1099s, your filed return, receipts), organized by tax year, with a
+  checklist of the common forms. Add files with a button or by dragging them onto the page; open or save a copy any time.
+  CoinPilot keeps its own copy, so the documents are safe even if you delete the originals.
+- **PIN or password protection:** encrypts everything CoinPilot saves (transactions, accounts, receipts and tax documents)
+  with AES-256. You unlock CoinPilot when you open it, it can lock itself after a few minutes away, and a one-time
+  **recovery key** gets you in if you forget the PIN/password. Change or turn it off in Settings → Security.
+- **Color themes:** Pine (the original green), Ocean, Lagoon, Indigo, Plum, Rose, Ember and Graphite, each in light and dark.
+
+**Transactions**
+- **Import bank and card statements** (CSV from any bank, OFX and QFX). CoinPilot guesses the columns, previews the
+  transactions, skips ones you already have, categorizes them, and can update the account's balance from the statement.
+- **Automatic categories:** CoinPilot remembers the category you use for each payee, and you can add rules
+  ("payee contains STARBUCKS → Coffee"). Tick "Always use this category" when adding a transaction to make a rule.
+- **Split** a transaction across several categories.
+- **Transfers** between accounts (like paying off a credit card) that don't count as spending or income.
+- **Tags**, **filters** (type, category, account, tag) and **receipts** (attach a photo or PDF).
+- Ctrl+N adds a transaction from anywhere; Ctrl+F searches.
+
+**Budgets**
+- **Rollover:** leftover money (or overspending) carries into next month.
+- **Templates:** 50/30/20, zero-based (from what you've spent) or starter amounts.
+- **One-month amounts** and **Copy last month**, plus "left to assign" (income minus budgeted).
+
+**Accounts, bills, goals, reports**
+- Accounts: **net worth over time** chart and **Transfer money**.
+- Bills: **reminders** (Windows notifications; CoinPilot can run in the background and start with Windows),
+  a **calendar** view, and **possible subscriptions** found in your transactions that aren't on your bills list.
+- Goals: **progress rings**, **milestones** (25/50/75/100%) and **linking a goal to a savings account**.
+- Reports: **net worth**, a **Year in review**, and **Print / PDF**.
+
+**Settings and polish**
+- **Currency** (dollar, pound, euro, rupee, yen and more) and **budget month start day** (budget from payday to payday).
+- **Your own categories and subcategories** (rename, hide, add) and rules, in Settings → Categories.
+- **Back up and restore** everything (including receipts and tax documents) as one .zip, and export all transactions.
+- A welcome checklist for new users, redesigned controls (inputs, dropdowns, check boxes, scrollbars, menus), smooth page
+  transitions, hover effects, keyboard shortcuts, CoinPilot remembers its window size and position, and opening it
+  again brings the running window to the front.
+
 ## 0.3.0 — 2026-11-13
 
 Every section now works except sync with the mobile app.

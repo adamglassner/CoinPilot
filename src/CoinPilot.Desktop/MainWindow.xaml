@@ -3,11 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="CoinPilot"
         Icon="pack://application:,,,/Assets/coinpilot.ico"
-        Width="1360" Height="880" MinWidth="1000" MinHeight="640"
+        Width="1360" Height="880" MinWidth="1040" MinHeight="660"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Brush.Bg}"
         Foreground="{DynamicResource Brush.Text}"
         FontFamily="Segoe UI" FontSize="13.5"
+        TextOptions.TextFormattingMode="Display"
         UseLayoutRounding="True">
     <Grid>
         <Grid.ColumnDefinitions>
@@ -16,7 +17,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- ===== Sidebar ===== -->
-        <Border Grid.Column="0" Background="{DynamicResource Brush.Sidebar}" Padding="16,22,16,16">
+        <Border Grid.Column="0" Background="{DynamicResource Brush.Sidebar}" Padding="16,22,16,14">
             <DockPanel>
                 <!-- Logo -->
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,20">
@@ -26,19 +27,25 @@
                                Foreground="{DynamicResource Brush.SidebarText}" VerticalAlignment="Center" />
                 </StackPanel>
 
-                <!-- Bottom: sync status, theme, settings -->
+                <!-- Bottom: data status, lock, theme, settings -->
                 <StackPanel DockPanel.Dock="Bottom">
-                    <Border Background="{DynamicResource Brush.SidebarCard}" CornerRadius="14" Padding="14,12" Margin="0,0,0,10"
-                            ToolTip="Syncing between your PC and the CoinPilot mobile app is coming soon.">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="8" Height="8" Fill="{DynamicResource Brush.SidebarMuted}" Margin="0,0,8,0" VerticalAlignment="Center" />
-                                <TextBlock Text="Sync coming soon" FontWeight="SemiBold" Foreground="{DynamicResource Brush.SidebarText}" />
+                    <Border Background="{DynamicResource Brush.SidebarCard}" CornerRadius="14" Padding="14,12" Margin="0,0,0,8">
+                        <DockPanel>
+                            <Button x:Name="LockButton" DockPanel.Dock="Right" Style="{StaticResource BaseButton}" Padding="6"
+                                    MinHeight="30" Foreground="{DynamicResource Brush.SidebarMuted}" Click="LockNow_Click"
+                                    ToolTip="Lock now (Ctrl+L)" AutomationProperties.Name="Lock now" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE72E;" Style="{StaticResource Icon}" FontSize="14" />
+                            </Button>
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock x:Name="DataGlyph" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0"
+                                               Foreground="{DynamicResource Brush.Mint}" />
+                                    <TextBlock x:Name="DataTitle" FontWeight="SemiBold" Foreground="{DynamicResource Brush.SidebarText}" />
+                                </StackPanel>
+                                <TextBlock x:Name="DataDetail" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap" LineHeight="17"
+                                           Foreground="{DynamicResource Brush.SidebarMuted}" />
                             </StackPanel>
-                            <TextBlock Text="For now everything stays on this PC. The mobile app and sync are on the way."
-                                       FontSize="12" Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="17"
-                                       Foreground="{DynamicResource Brush.SidebarMuted}" />
-                        </StackPanel>
+                        </DockPanel>
                     </Border>
                     <Button x:Name="ThemeButton" Style="{StaticResource SidebarButton}" Click="Theme_Click">
                         <StackPanel Orientation="Horizontal">
@@ -46,7 +53,7 @@
                             <TextBlock x:Name="ThemeLabel" FontSize="14" />
                         </StackPanel>
                     </Button>
-                    <Button x:Name="SettingsButton" Style="{StaticResource SidebarButton}" Click="Settings_Click">
+                    <Button x:Name="SettingsButton" Style="{StaticResource SidebarButton}" Click="Settings_Click" ToolTip="Settings (Ctrl+,)">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE713;" Style="{StaticResource Icon}" FontSize="16" Width="30" />
                             <TextBlock Text="Settings" FontSize="14" />
@@ -56,17 +63,17 @@
 
                 <!-- Navigation (scrolls if the window is short) -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Margin="0,0,0,8">
-                <ItemsControl x:Name="NavList" Focusable="False">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <RadioButton Style="{StaticResource NavRadio}" GroupName="MainNav"
-                                         IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                         ToolTip="{Binding Tagline}"
-                                         AutomationProperties.Name="{Binding Title}"
-                                         Checked="Nav_Checked" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    <ItemsControl x:Name="NavList" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <RadioButton Style="{StaticResource NavRadio}" GroupName="MainNav"
+                                             IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                             ToolTip="{Binding Tagline}"
+                                             AutomationProperties.Name="{Binding Title}"
+                                             Checked="Nav_Checked" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </ScrollViewer>
             </DockPanel>
         </Border>
@@ -79,31 +86,64 @@
             </Grid.RowDefinitions>
 
             <ScrollViewer x:Name="PageScroller" VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled" Padding="36,30,36,30">
-                <ContentControl x:Name="PageHost" MaxWidth="1240" Focusable="False" />
+                          HorizontalScrollBarVisibility="Disabled" Padding="40,32,40,36" Focusable="False">
+                <ContentControl x:Name="PageHost" MaxWidth="1240" Focusable="False">
+                    <ContentControl.RenderTransform>
+                        <TranslateTransform x:Name="PageShift" />
+                    </ContentControl.RenderTransform>
+                </ContentControl>
             </ScrollViewer>
 
             <!-- Status bar -->
             <Border Grid.Row="1" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}"
                     BorderThickness="0,1,0,0" Padding="18,6">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource Muted}" FontSize="11.5"
-                               Text="Mobile app and sync: coming soon" />
+                    <TextBlock x:Name="StatusRight" DockPanel.Dock="Right" Style="{StaticResource Muted}" FontSize="11.5" />
                     <TextBlock x:Name="StatusText" Style="{StaticResource Muted}" FontSize="11.5" />
                 </DockPanel>
             </Border>
 
             <!-- Toast -->
-            <Border x:Name="Toast" Grid.RowSpan="2" Visibility="Collapsed"
+            <Border x:Name="Toast" Grid.RowSpan="2" Visibility="Collapsed" Opacity="0"
                     HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,30,48"
-                    Background="{DynamicResource Brush.ToastBg}" CornerRadius="12" Padding="16,12" MaxWidth="440">
+                    Background="{DynamicResource Brush.ToastBg}" CornerRadius="12" Padding="16,12" MaxWidth="460">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="ToastShift" />
+                </Border.RenderTransform>
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.25" />
                 </Border.Effect>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE823;" Style="{StaticResource Icon}" FontSize="15" Margin="0,0,10,0"
+                    <TextBlock Text="&#xE73E;" Style="{StaticResource Icon}" FontSize="14" Margin="0,0,10,0"
                                Foreground="{DynamicResource Brush.Mint}" />
                     <TextBlock x:Name="ToastText" Foreground="{DynamicResource Brush.ToastText}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ===== Lock screen (covers everything while the data is locked) ===== -->
+        <Grid x:Name="LockOverlay" Grid.ColumnSpan="2" Visibility="Collapsed" Background="{DynamicResource Brush.Sidebar}">
+            <Border Width="420" VerticalAlignment="Center" HorizontalAlignment="Center" Background="{DynamicResource Brush.Surface}"
+                    CornerRadius="20" Padding="36,34,36,30">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="40" ShadowDepth="6" Opacity="0.35" />
+                </Border.Effect>
+                <StackPanel>
+                    <Image Source="pack://application:,,,/Assets/coinpilot.png" Width="72" Height="72"
+                           RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center" />
+                    <TextBlock Text="CoinPilot is locked" FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="Bold"
+                               HorizontalAlignment="Center" Margin="0,16,0,4" />
+                    <TextBlock x:Name="LockPrompt" Style="{StaticResource Muted}" HorizontalAlignment="Center" TextAlignment="Center"
+                               Margin="0,0,0,20" />
+                    <PasswordBox x:Name="LockPassword" AutomationProperties.Name="PIN or password" KeyDown="LockPassword_KeyDown" />
+                    <TextBox x:Name="RecoveryBox" Visibility="Collapsed" FontFamily="Consolas" FontSize="15" Padding="10,8"
+                             AutomationProperties.Name="Recovery key" KeyDown="LockPassword_KeyDown" CharacterCasing="Upper" />
+                    <TextBlock x:Name="LockError" Foreground="{DynamicResource Brush.Danger}" TextWrapping="Wrap" Margin="0,10,0,0"
+                               Visibility="Collapsed" />
+                    <Button x:Name="UnlockButton" Content="Unlock" Style="{StaticResource PrimaryButton}" Margin="0,16,0,0"
+                            HorizontalAlignment="Stretch" MinHeight="42" Click="Unlock_Click" />
+                    <Button x:Name="RecoveryToggle" Content="Forgot it? Use your recovery key" Style="{StaticResource LinkButton}"
+                            HorizontalAlignment="Center" Margin="0,12,0,0" Click="RecoveryToggle_Click" />
                 </StackPanel>
             </Border>
         </Grid>

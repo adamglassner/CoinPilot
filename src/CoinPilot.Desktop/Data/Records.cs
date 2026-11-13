@@ -10,7 +10,11 @@ public abstract class RecordBase
     public DateTime UpdatedAt { get; set; }
 }
 
-/// <summary>One purchase, bill payment, paycheck… Amount is negative for money out, positive for money in.</summary>
+/// <summary>
+/// One purchase, bill payment, paycheck or transfer. Amount is negative for money out of <see cref="Account"/>,
+/// positive for money in. A transfer moves money from <see cref="Account"/> to <see cref="TransferAccount"/> and
+/// doesn't count as spending or income.
+/// </summary>
 public sealed class Transaction : RecordBase
 {
     public string Payee { get; set; } = "";
@@ -19,17 +23,62 @@ public sealed class Transaction : RecordBase
     public DateTime Date { get; set; } = DateTime.Today;
     public decimal Amount { get; set; }
     public string Note { get; set; } = "";
+    /// <summary>When set, the amount is divided across these categories (each Amount positive; they add up to the total).</summary>
+    public List<Split> Splits { get; set; } = [];
+    public List<string> Tags { get; set; } = [];
+    /// <summary>File name of an attached receipt in the data\receipts folder.</summary>
+    public string Receipt { get; set; } = "";
+    /// <summary>Destination account for a transfer; empty for ordinary transactions.</summary>
+    public string TransferAccount { get; set; } = "";
+    /// <summary>Bank's id for an imported transaction (OFX FITID), used to skip duplicates.</summary>
+    public string ImportId { get; set; } = "";
 
-    [JsonIgnore] public bool IsIncome => Amount > 0;
+    [JsonIgnore] public bool IsTransfer => TransferAccount.Length > 0;
+    [JsonIgnore] public bool IsIncome => Amount > 0 && !IsTransfer;
+    [JsonIgnore] public bool IsSpending => Amount < 0 && !IsTransfer;
+    [JsonIgnore] public bool IsSplit => Splits.Count > 0;
     /// <summary>Always positive.</summary>
     [JsonIgnore] public decimal Size => Math.Abs(Amount);
+
+    /// <summary>
+    /// The category pieces of this transaction with signed amounts: one piece normally, one per split when split,
+    /// none for transfers (they're neither spending nor income).
+    /// </summary>
+    public IEnumerable<(string Category, decimal Amount)> Parts()
+    {
+        if (IsTransfer) yield break;
+        if (Splits.Count == 0)
+        {
+            yield return (Category, Amount);
+            yield break;
+        }
+        int sign = Amount < 0 ? -1 : 1;
+        foreach (var s in Splits) yield return (s.Category, sign * Math.Abs(s.Amount));
+    }
+
+    /// <summary>"Groceries", "Split (3)" or "Transfer".</summary>
+    [JsonIgnore] public string CategoryLabel => IsTransfer ? "Transfer" : IsSplit ? $"Split ({Splits.Count})" : Category;
 }
 
-/// <summary>A monthly spending limit for one category. Applies to every month.</summary>
+public sealed class Split
+{
+    public string Category { get; set; } = "";
+    public decimal Amount { get; set; }
+}
+
+/// <summary>
+/// A monthly spending limit for one category. Applies to every month unless a month has its own amount in
+/// <see cref="Overrides"/>. With <see cref="Rollover"/>, leftover money (or overspending) carries into the next month.
+/// </summary>
 public sealed class Budget : RecordBase
 {
     public string Category { get; set; } = "";
     public decimal MonthlyLimit { get; set; }
+    public bool Rollover { get; set; }
+    /// <summary>Amounts for single months, keyed by the month's start date ("yyyy-MM-dd").</summary>
+    public Dictionary<string, decimal> Overrides { get; set; } = [];
+    /// <summary>First budget month that counts for rollover. Defaults to the month the budget was created.</summary>
+    public DateTime? StartMonth { get; set; }
 }
 
 /// <summary>
@@ -110,7 +159,7 @@ public sealed class Bill : RecordBase
     [JsonIgnore] public bool IsDone => Repeats == BillSchedule.Once && LastPaid != null;
 }
 
-/// <summary>Something to save toward.</summary>
+/// <summary>Something to save toward. When linked to an account, the account's balance is what's saved.</summary>
 public sealed class Goal : RecordBase
 {
     public string Name { get; set; } = "";
@@ -118,9 +167,35 @@ public sealed class Goal : RecordBase
     public decimal Saved { get; set; }
     public DateTime? TargetDate { get; set; }
     public string Note { get; set; } = "";
+    public string LinkedAccount { get; set; } = "";
     public List<MoneyEntry> History { get; set; } = [];
 
+    [JsonIgnore] public bool IsLinked => LinkedAccount.Length > 0;
     [JsonIgnore] public bool IsReached => Target > 0 && Saved >= Target;
     [JsonIgnore] public decimal Remaining => Math.Max(0, Target - Saved);
     [JsonIgnore] public double Fraction => Target <= 0 ? 0 : Math.Min(1.0, (double)(Saved / Target));
+}
+
+/// <summary>A category you can pick for transactions. A subcategory has a <see cref="Parent"/>.</summary>
+public sealed class CategoryDef : RecordBase
+{
+    public string Name { get; set; } = "";
+    /// <summary>"Spending" or "Income".</summary>
+    public string Kind { get; set; } = CategoryKinds.Spending;
+    public string Parent { get; set; } = "";
+    public bool IsHidden { get; set; }
+    public int Order { get; set; }
+}
+
+public static class CategoryKinds
+{
+    public const string Spending = "Spending";
+    public const string Income = "Income";
+}
+
+/// <summary>"When the payee contains X, use category Y."</summary>
+public sealed class CategoryRule : RecordBase
+{
+    public string Contains { get; set; } = "";
+    public string Category { get; set; } = "";
 }

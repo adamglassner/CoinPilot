@@ -2,29 +2,42 @@
 
 <img src="assets/coinpilot-256.png" width="96" align="right" alt="CoinPilot icon" />
 
-**A budgeting app that keeps your budgets, spending and goals in sync between your PC and your phone.**
+**Budgets, spending, accounts, debts, bills, goals and tax documents in one private app for Windows.**
 Made by Bytehawk Studio.
 
-> **Status: v0.3.0, Windows only.** Every section works and is saved on your PC, except syncing with the CoinPilot
-> mobile app, which is coming soon.
+> **Version 1.0.0, Windows 10/11.** Everything works and is saved on your PC, with optional PIN/password encryption.
+> Syncing with the CoinPilot mobile app is coming soon.
 
-## What works
+## Features
 
 | Section | What it does |
 | --- | --- |
-| **Dashboard** | This month's left to spend, spent, income and net; budgets; spending by week; bills coming up; goals; recent transactions. |
-| **Transactions** | Add, edit and delete spending and income; month by month; search; totals; export to CSV. (Importing statements is coming soon.) |
-| **Budgets** | A monthly amount per spending category with progress bars, left to spend, over-budget warnings and "spending without a budget". |
-| **Accounts** | Balances for checking, savings, credit cards, cash and investments, kept up to date from transactions; net worth. |
-| **Debts** | Credit cards and loans with APR and minimum payments; record payments; avalanche or snowball payoff plan with a debt-free date. |
-| **Bills** | Bills and subscriptions with schedules; overdue / due soon; mark paid (adds the transaction and moves to the next due date). |
-| **Goals** | Savings goals with progress, add or take out money, and the monthly amount needed to reach the target date. |
-| **Reports** | Income vs. spending by month, spending by category, month-by-month table with savings rate; 3/6/12 months or this year; CSV export. |
+| **Dashboard** | This month's left to spend, spent, income and net; budgets; spending by week; bills coming up; goals; recent transactions; a welcome checklist for new users. |
+| **Transactions** | Spending, income and transfers between accounts; split across categories; tags; receipts; search and filters; month by month; **import bank statements (CSV, OFX, QFX)** with duplicate detection; automatic categories from your rules and history; CSV export. |
+| **Budgets** | A monthly amount per category (subcategories roll up), progress bars and warnings, **rollover**, one-month amounts, **copy last month**, **templates** (50/30/20, zero-based, starter) and "left to assign". |
+| **Accounts** | Checking, savings, credit cards, cash and investments with balances kept up to date from transactions; **net worth over time**; transfers; statement imports can set the balance. |
+| **Debts** | Credit cards and loans with APR and minimum payments; record payments; **avalanche or snowball payoff plan** with a debt-free date and the interest you'll pay. |
+| **Bills** | Bills and subscriptions on any schedule; overdue / due soon; mark paid; **reminders** (Windows notifications, optionally running in the background); **calendar view**; **finds subscriptions** you haven't added. |
+| **Goals** | Savings goals with **progress rings**, **milestones**, add or take out money, **link a goal to a savings account**, and the monthly amount to stay on track. |
+| **Reports** | Income vs. spending, spending by category, **net worth**, month-by-month table with savings rate, **Year in review**; export to CSV or **print / PDF**. |
+| **Taxes** | A safe place for **tax documents** (W-2s, 1099s, returns, receipts) by tax year, with a checklist and drag-and-drop. |
 | Sync & Devices | Coming soon: sync with the CoinPilot mobile app. |
-| Appearance | Light / dark mode from the sidebar, or Settings → Appearance → "Match Windows". |
 
-The coming-soon page lists its planned features. They are defined in
-[`Models/ModuleCatalog.cs`](src/CoinPilot.Desktop/Models/ModuleCatalog.cs).
+**Settings:** light/dark/match Windows, **8 color themes** (Pine, Ocean, Lagoon, Indigo, Plum, Rose, Ember, Graphite),
+**currency**, **budget month start day** (budget payday to payday), **your own categories and subcategories**, rules,
+bill reminders, **PIN/password protection**, **backup and restore**, and keyboard shortcuts.
+
+### Privacy and protection
+
+Everything stays on your PC in `%AppData%\CoinPilot\data\`. Turn on a **PIN or password** in Settings → Security and
+CoinPilot encrypts all of it (transactions, accounts, receipts and tax documents) with AES-256-GCM. The key is derived
+from your PIN/password with PBKDF2-SHA256 (600,000 rounds); CoinPilot never stores the PIN/password itself. A one-time
+**recovery key** opens your data if you forget it. Without either, the data can't be recovered, so keep the recovery key safe.
+
+### Keyboard shortcuts
+
+Ctrl+N add a transaction · Ctrl+F search · Ctrl+1…9 go to a section · Ctrl+, settings · Ctrl+L lock ·
+Ctrl+Enter save in an add/edit window · Esc close a window.
 
 ## Download
 
@@ -36,25 +49,25 @@ which downloads the newest release, installs it and keeps it up to date. Or get 
   uninstaller. Installs just for you by default (no administrator prompt).
 - **`CoinPilot-<version>-win-x64.zip`**: portable. Unzip anywhere and run `CoinPilot.exe`.
 
-Neither needs .NET installed. Your data (transactions, budgets, accounts, debts, bills and goals) is saved in `%AppData%\CoinPilot\data\`
-(Settings → Your data → Open data folder) and settings in `%AppData%\CoinPilot\settings.json`. Uninstalling keeps them.
+Neither needs .NET installed. Your data is saved in `%AppData%\CoinPilot\data\` (Settings → Your data) and app settings
+(theme, window size) in `%AppData%\CoinPilot\settings.json`. Uninstalling keeps them.
 
 ## Releasing a new version
 
-Change `<Version>` in `src/CoinPilot.Desktop/CoinPilot.Desktop.csproj` (for example to `0.1.1`), add a
-[CHANGELOG](CHANGELOG.md) entry and push to `main`. GitHub Actions ([build-release.yml](.github/workflows/build-release.yml))
-then, on a Windows machine:
+Change `<Version>` in `src/CoinPilot.Desktop/CoinPilot.Desktop.csproj`, add a [CHANGELOG](CHANGELOG.md) entry and push
+to `main`. GitHub Actions ([build-release.yml](.github/workflows/build-release.yml)) then, on a Windows machine:
 
 1. builds the single-file exe, the portable zip and the installer,
-2. runs the self-test (`CoinPilot.exe --self-test result.txt`) on a throwaway data folder: money parsing, budget math,
-   account balances, payoff plans, bill schedules, goals, reports, saving and reloading, every page in light and dark
-   (empty and with data), the add/edit dialogs and navigation,
+2. runs the self-test (`CoinPilot.exe --self-test result.txt`) on a throwaway data folder: 400+ checks covering money
+   and currencies, budget math (rollover, subcategories, mid-month budget months), transfers and splits, statement import,
+   rules, account balances and net worth, payoff plans, bills and subscriptions, goals, reports, receipts and tax
+   documents, backup/restore, PIN/password encryption, and every page and dialog in every color theme, light and dark,
 3. silently installs the Setup .exe to a custom folder (the way the launcher does), starts it, and uninstalls it,
 4. takes light/dark screenshots (attached to the run as artifacts),
 5. publishes GitHub Release `v<version>` with the Setup .exe and the zip.
 
 Installed copies pick up the new version through the Bytehawk Studio Launcher. Pushes that don't change the
-version, and pull requests, run steps 1 to 4 only.
+version, pull requests and manual runs on other branches run steps 1 to 4 only.
 
 ## Building it yourself
 
@@ -67,47 +80,39 @@ Requirements: Windows 10/11, the [.NET 8 SDK](https://dotnet.microsoft.com/downl
   `dist\CoinPilot-<version>-Setup.exe`. Use `-SkipInstaller` to skip Inno Setup.
 
 Command-line options: `--page <section>` opens a page at startup (for example `--page budgets` or `--page settings`),
-and `--self-test <file>` runs the checks above and exits with the number of failures.
+`--background` starts in the notification area (used when "run in the background" is on), and `--self-test <file>`
+runs the checks above and exits with the number of failures.
 
 ## Project layout
 
 ```
 src/CoinPilot.Desktop/
-  App.xaml(.cs)          app startup + light/dark theme switching
-  MainWindow.xaml(.cs)   sidebar, page host, status bar, toast
+  App.xaml(.cs)          startup, single instance, light/dark + color theme layers
+  MainWindow.xaml(.cs)   sidebar, page host and transitions, lock screen, shortcuts, toast, window placement
   Assets/                app icon (.ico + .png)
-  Themes/                Light.xaml, Dark.xaml (colors), Controls.xaml (styles)
-  Data/                  Records (Transaction, Budget, Account, Debt, Bill, Goal), JsonStore (safe JSON files),
-                         DataStore, Categories, Budgeting (month totals, budget progress, weekly spending),
-                         Finance (account balances, debt payoff planner, bill schedule, goal pace, reports)
-  Models/                ModuleCatalog.cs — every section, its planned features and columns
-  Views/                 DashboardView, TransactionsView, BudgetsView (XAML); AccountsView, DebtsView, BillsView,
-                         GoalsView, ReportsView (code, on DataPage + PageKit); ComingSoonView, SettingsView;
-                         dialogs on DialogShell (TransactionDialog, BudgetDialog, MoneyDialogs.cs); Ui helpers
-  Services/              money formatting, CSV export, settings, Windows theme detection, toast, self-test
+  Themes/                Light.xaml, Dark.xaml (colors), Controls.xaml (all control styles)
+  Data/                  Records, JsonStore (safe JSON files), DataStore, Preferences, Categories (+ rules),
+                         Budgeting (months, rollover), Finance (balances, net worth, payoff planner, bills, goals,
+                         reports, year in review, subscription finder), Importer (CSV/OFX/QFX),
+                         DataLock (encryption), FileVault (receipts and tax documents)
+  Models/                ModuleCatalog.cs — the sections in the sidebar
+  Views/                 Dashboard, Transactions, Budgets (XAML); Accounts, Debts, Bills, Goals, Reports, Taxes,
+                         Settings (code, on DataPage + PageKit); dialogs on DialogShell; Charts; Ui helpers
+  Services/              money and currencies, color themes, reminders + tray icon, backup, CSV export,
+                         settings, Windows theme detection, toast, self-test
 installer/CoinPilot.iss  Inno Setup script (+ wizard images)
 build.ps1                exe + portable zip + installer
 .github/workflows/       CI: build, self-test, installer test, screenshots, release
 design/mockup/           the desktop + mobile mockup this is built from
-tools/make_icon.py       regenerates the icon (Python + Pillow)
-tools/make_wizard_images.py  regenerates the installer wizard images
+tools/                   icon and installer image generators (Python + Pillow)
 ```
-
-To add a coming-soon section, add an entry to `Models/ModuleCatalog.cs`.
-To build a section for real, give it its own view in `Views/`, set `IsComingSoon = false` in the catalog and add it
-to `MainWindow.Show`.
-
-## Design
-
-The look comes from the desktop and mobile mockup in [`design/mockup/`](design/mockup/)
-(live mockup: [CoinPilot Mockup](https://claude.ai/artifact/4aCta5yZKNWszBcDLTvuvg), private until shared).
 
 ## Roadmap
 
-1. ~~Transactions and Budgets, saved on this PC, which make the Dashboard real~~ (0.2.0)
+1. ~~Transactions and Budgets~~ (0.2.0)
 2. ~~Accounts, Debts, Bills, Goals and Reports~~ (0.3.0)
-3. Importing bank statements; your own categories; transfers between accounts; bill reminders
-4. CoinPilot mobile app (iPhone and Android) and sync between devices
+3. ~~Everything else on the desktop: import, rules, splits, transfers, rollover, templates, reminders, taxes, protection, themes~~ (1.0.0)
+4. CoinPilot mobile app (iPhone and Android), sign-in and sync between devices
 
 ## License
 

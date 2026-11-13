@@ -4,19 +4,22 @@ using System.Text.Json;
 namespace CoinPilot.Data;
 
 /// <summary>
-/// A list of records kept in one JSON file. Writes go to a temp file first and are then
-/// swapped in (keeping a .bak), so a crash mid-save never corrupts the existing data.
+/// A list of records kept in one JSON file (encrypted when PIN/password protection is on). Writes go to a temp file
+/// first and are then swapped in (keeping a .bak), so a crash mid-save never corrupts the existing data.
 /// </summary>
 public sealed class JsonStore<T> where T : RecordBase
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
     private readonly string _path;
     private readonly List<T> _items;
+    /// <summary>Set when the file couldn't be read because the data is locked: never write over it.</summary>
+    private readonly bool _readOnly;
 
     public JsonStore(string folder, string name)
     {
         _path = Path.Combine(folder, name + ".json");
-        _items = Load(_path);
+        _readOnly = !DataLock.IsOpen;
+        _items = _readOnly ? [] : Load(_path);
     }
 
     public IReadOnlyList<T> Items => _items;
@@ -29,6 +32,27 @@ public sealed class JsonStore<T> where T : RecordBase
         if (string.IsNullOrEmpty(item.Id)) item.Id = Guid.NewGuid().ToString("N");
         item.CreatedAt = item.UpdatedAt = DateTime.Now;
         _items.Add(item);
+        Save();
+    }
+
+    /// <summary>Adds many records with one save (imports).</summary>
+    public void AddRange(IEnumerable<T> items)
+    {
+        var now = DateTime.Now;
+        foreach (var item in items)
+        {
+            if (string.IsNullOrEmpty(item.Id)) item.Id = Guid.NewGuid().ToString("N");
+            item.CreatedAt = item.UpdatedAt = now;
+            _items.Add(item);
+        }
+        Save();
+    }
+
+    /// <summary>Saves changes made to several records at once.</summary>
+    public void UpdateMany(IEnumerable<T> items)
+    {
+        var now = DateTime.Now;
+        foreach (var item in items) item.UpdatedAt = now;
         Save();
     }
 
@@ -46,11 +70,16 @@ public sealed class JsonStore<T> where T : RecordBase
 
     private void Save()
     {
+        if (_readOnly || !DataLock.IsOpen)
+        {
+            Changed?.Invoke(this, EventArgs.Empty);
+            return;
+        }
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
             string temp = _path + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(_items, Options));
+            DataLock.WriteText(temp, JsonSerializer.Serialize(_items, Options));
             if (File.Exists(_path)) File.Replace(temp, _path, _path + ".bak");
             else File.Move(temp, _path);
         }
@@ -68,7 +97,7 @@ public sealed class JsonStore<T> where T : RecordBase
             try
             {
                 if (File.Exists(candidate))
-                    return JsonSerializer.Deserialize<List<T>>(File.ReadAllText(candidate), Options) ?? [];
+                    return JsonSerializer.Deserialize<List<T>>(DataLock.ReadText(candidate), Options) ?? [];
             }
             catch (Exception ex) when (ex is JsonException or IOException)
             {

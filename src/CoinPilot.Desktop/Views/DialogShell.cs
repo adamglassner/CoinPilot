@@ -15,14 +15,16 @@ public abstract class DialogShell : Window
     private readonly TextBlock _error = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10), Visibility = Visibility.Collapsed };
     protected readonly StackPanel Body = new() { Margin = new Thickness(24, 6, 24, 10) };
 
+    private Button? _cancel;
+
     /// <summary>True when the dialog closed because the person confirmed Delete.</summary>
     public bool DeleteRequested { get; private set; }
 
-    protected DialogShell(string title, string subtitle, bool allowDelete, string saveText)
+    protected DialogShell(string title, string subtitle, bool allowDelete, string saveText, double width = 560)
     {
         Title = title;
         Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/Assets/coinpilot.ico"));
-        Width = 560;
+        Width = width;
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
@@ -68,6 +70,7 @@ public abstract class DialogShell : Window
         }
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         var cancel = new Button { Content = "Cancel", IsCancel = true, Style = (Style)FindResource("GhostButton"), Margin = new Thickness(0, 0, 8, 0) };
+        _cancel = cancel;
         var save = new Button { Content = saveText, IsDefault = true, Style = (Style)FindResource("PrimaryButton") };
         save.Click += (_, _) => Save();
         buttons.Children.Add(cancel);
@@ -143,24 +146,55 @@ public abstract class DialogShell : Window
         return wrap;
     }
 
-    protected void SetChips(WrapPanel wrap, IEnumerable<string> options, string? selected)
+    protected void SetChips(WrapPanel wrap, IEnumerable<string> options, string? selected) =>
+        SetChips(wrap, options.Select(o => (o, o)), selected);
+
+    /// <summary>Chips whose label differs from the value they stand for (e.g. "Dining out › Coffee" for "Coffee").</summary>
+    protected void SetChips(WrapPanel wrap, IEnumerable<(string Value, string Label)> options, string? selected)
     {
         wrap.Children.Clear();
         string group = Guid.NewGuid().ToString("N");
-        foreach (var option in options)
+        foreach (var (value, label) in options)
         {
             wrap.Children.Add(new RadioButton
             {
-                Content = option,
+                Content = label,
+                Tag = value,
                 GroupName = group,
-                IsChecked = string.Equals(option, selected, StringComparison.OrdinalIgnoreCase),
+                IsChecked = string.Equals(value, selected, StringComparison.OrdinalIgnoreCase),
                 Style = (Style)FindResource("ChipRadio"),
             });
         }
     }
 
+    /// <summary>The picked chip's value (its Tag), or null.</summary>
     protected static string? Selected(WrapPanel wrap) =>
-        wrap.Children.OfType<RadioButton>().FirstOrDefault(r => r.IsChecked == true)?.Content as string;
+        wrap.Children.OfType<RadioButton>().FirstOrDefault(r => r.IsChecked == true) is { } r ? (r.Tag as string ?? r.Content as string) : null;
+
+    /// <summary>Category chips: subcategories show as "Parent › Sub".</summary>
+    protected WrapPanel CategoryChips(IEnumerable<string> categories, string? selected)
+    {
+        var wrap = new WrapPanel();
+        SetCategoryChips(wrap, categories, selected);
+        return wrap;
+    }
+
+    protected void SetCategoryChips(WrapPanel wrap, IEnumerable<string> categories, string? selected) =>
+        SetChips(wrap, categories.Select(c => (c, CoinPilot.Data.Categories.Display(c))), selected);
+
+    /// <summary>Hides the Cancel button (for dialogs where changes apply immediately).</summary>
+    protected void HideCancel()
+    {
+        if (_cancel != null) _cancel.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>Hides a field added with <see cref="AddField{T}"/> (and its label).</summary>
+    protected static void ShowField(UIElement input, bool visible)
+    {
+        if (VisualTreeHelperParent(input) is UIElement panel) panel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private static DependencyObject? VisualTreeHelperParent(UIElement e) => LogicalTreeHelper.GetParent(e);
 
     protected static CheckBox Check(string text, bool value) => new() { Content = text, IsChecked = value };
 
@@ -177,7 +211,7 @@ public abstract class DialogShell : Window
 
     protected static TextBox AmountBox(decimal? value) => new()
     {
-        Text = value is decimal v && v != 0 ? v.ToString("0.00", Money.Us) : "",
+        Text = value is decimal v && v != 0 ? Money.Plain(v) : "",
         Width = 200,
         HorizontalAlignment = HorizontalAlignment.Left,
         FontSize = 16,

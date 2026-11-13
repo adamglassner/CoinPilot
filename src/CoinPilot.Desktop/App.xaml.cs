@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Windows;
+using CoinPilot.Data;
 using CoinPilot.Services;
 using Microsoft.Win32;
 
@@ -9,16 +10,22 @@ public partial class App : Application
 {
     public static AppSettings Settings { get; private set; } = new();
 
+    private static Mutex? _single;
+    private static EventWaitHandle? _showSignal;
+
     /// <summary>True when the dark palette is currently applied.</summary>
     public static bool IsDark { get; private set; }
 
-    /// <summary>Raised after the light/dark palette has been swapped.</summary>
+    /// <summary>Raised after the light/dark palette or color theme has been swapped.</summary>
     public static event EventHandler? ThemeChanged;
 
     /// <summary>Optional first page from the command line: <c>CoinPilot.exe --page budgets</c>.</summary>
     public static string? StartPage { get; private set; }
 
-    /// <summary>"0.1.0", from the &lt;Version&gt; in the .csproj (set by build.ps1 / CI).</summary>
+    /// <summary>Started by Windows at sign-in (<c>--background</c>): stay in the notification area until opened.</summary>
+    public static bool StartInBackground { get; private set; }
+
+    /// <summary>"1.0.0", from the &lt;Version&gt; in the .csproj (set by build.ps1 / CI).</summary>
     public static string VersionText { get; } = GetVersion();
 
     private static string GetVersion()
@@ -31,14 +38,39 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        for (int i = 0; i < e.Args.Length - 1; i++)
+        for (int i = 0; i < e.Args.Length; i++)
         {
+            if (e.Args[i] == "--background") StartInBackground = true;
+            if (i + 1 >= e.Args.Length) continue;
             if (e.Args[i] == "--self-test") SelfTest.OutputFile = e.Args[i + 1];
             if (e.Args[i] == "--page") StartPage = e.Args[i + 1].ToLowerInvariant();
         }
 
-        // The self-test works on a throwaway data folder so it never touches real budgets.
-        if (SelfTest.IsRunning) Data.DataStore.UseFolder(SelfTest.TempDataFolder);
+        // The self-test works on a throwaway data folder so it never touches real data.
+        if (SelfTest.IsRunning)
+        {
+            DataStore.UseFolder(SelfTest.TempDataFolder);
+            StartInBackground = false;
+        }
+
+        // One CoinPilot at a time: a second launch just brings the running one to the front.
+        if (!SelfTest.IsRunning)
+        {
+            _single = new Mutex(true, @"Local\CoinPilot.SingleInstance", out bool first);
+            _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\CoinPilot.Show");
+            if (!first)
+            {
+                if (!StartInBackground) _showSignal.Set();
+                Shutdown();
+                return;
+            }
+            var listener = new Thread(() =>
+            {
+                while (_showSignal.WaitOne())
+                    Current.Dispatcher.BeginInvoke(() => Reminders.ShowWindow());
+            }) { IsBackground = true, Name = "CoinPilot show listener" };
+            listener.Start();
+        }
 
         Settings = AppSettings.Load();
         ApplyTheme(Settings.Theme);
@@ -48,7 +80,7 @@ public partial class App : Application
         {
             args.Handled = true;
             if (SelfTest.IsRunning) { SelfTest.RecordUnhandled(args.Exception); return; }
-            MessageBox.Show("Something went wrong.\n\n" + args.Exception.Message,
+            MessageBox.Show("Something went wrong, but your data is safe.\n\n" + args.Exception.Message,
                 "CoinPilot", MessageBoxButton.OK, MessageBoxImage.Warning);
         };
 
@@ -60,9 +92,24 @@ public partial class App : Application
         };
 
         base.OnStartup(e);
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+        var window = new MainWindow();
+        MainWindow = window;
+        if (!StartInBackground || !Settings.RunInBackground) window.Show();
+        Reminders.Start();
+        if (StartInBackground && DataLock.IsOpen) Reminders.Check();
     }
 
-    /// <summary>Apply "System", "Light" or "Dark".</summary>
+    protected override void OnExit(ExitEventArgs e)
+    {
+        Reminders.Stop();
+        FileVault.CleanUpOpenedFiles();
+        try { _single?.ReleaseMutex(); } catch (ApplicationException) { /* not owned */ }
+        base.OnExit(e);
+    }
+
+    /// <summary>Apply "System", "Light" or "Dark" (with the chosen color theme on top).</summary>
     public static void ApplyTheme(string mode)
     {
         bool dark = mode switch
@@ -79,10 +126,12 @@ public partial class App : Application
                 ? "pack://application:,,,/Themes/Dark.xaml"
                 : "pack://application:,,,/Themes/Light.xaml", UriKind.Absolute)
         };
+        var accents = ThemePalettes.Build(Settings.ColorTheme, dark);
 
+        // [0] = light/dark palette, [1] = color theme layer, [2] = Controls.xaml (see App.xaml)
         var dictionaries = Current.Resources.MergedDictionaries;
-        if (dictionaries.Count > 0) dictionaries[0] = palette;
-        else dictionaries.Insert(0, palette);
+        dictionaries[0] = palette;
+        dictionaries[1] = accents;
 
         ThemeChanged?.Invoke(null, EventArgs.Empty);
     }
@@ -92,5 +141,12 @@ public partial class App : Application
         Settings.Theme = mode;
         Settings.Save();
         ApplyTheme(mode);
+    }
+
+    public static void SetColorTheme(string name)
+    {
+        Settings.ColorTheme = ThemePalettes.Find(name).Name;
+        Settings.Save();
+        ApplyTheme(Settings.Theme);
     }
 }

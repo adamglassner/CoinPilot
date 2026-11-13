@@ -252,7 +252,7 @@ public sealed class BillDialog : DialogShell
         _repeats = AddField("Repeats", Chips(BillSchedule.All, _target.Repeats));
         var categories = Categories.Spending.ToList();
         if (!categories.Contains(_target.Category, StringComparer.OrdinalIgnoreCase)) categories.Add(_target.Category);
-        _category = AddField("Category", Chips(categories, _target.Category));
+        _category = AddField("Category", CategoryChips(categories, _target.Category));
         _account = AddField("Paid from", Chips(DataStore.AccountChoices(_target.Account), _target.Account));
         _autoPay = AddField("Auto-pay", Check("This bill pays itself automatically", _target.AutoPay));
         _note = AddField("Note", new TextBox { Text = _target.Note });
@@ -313,6 +313,8 @@ public sealed class GoalDialog : DialogShell
     private readonly TextBox _saved;
     private readonly DatePicker _date;
     private readonly TextBox _note;
+    private readonly WrapPanel _link;
+    private const string NotLinked = "Not linked";
 
     public Goal Result => _target;
 
@@ -327,6 +329,15 @@ public sealed class GoalDialog : DialogShell
         _saved = AddField("Saved so far", AmountBox(existing?.Saved), hint: "Leave empty if you're starting from zero.");
         _date = AddField("Target date", DateBox(_target.TargetDate),
             hint: "Optional. With a date, CoinPilot works out how much to save each month.");
+        var accounts = DataStore.Accounts.Items.Where(a => !a.IsClosed && !a.IsLiability)
+            .OrderBy(a => a.Type == AccountTypes.Savings ? 0 : 1).Select(a => a.Name).ToList();
+        _link = AddField("Linked account", Chips(new[] { NotLinked }.Concat(accounts), _target.IsLinked ? _target.LinkedAccount : NotLinked),
+            hint: accounts.Count == 0
+                ? "Add a savings account on the Accounts page to link it here."
+                : "Linked: the goal's saved amount is that account's balance, so it updates by itself.");
+        foreach (var chip in _link.Children.OfType<RadioButton>())
+            chip.Checked += (_, _) => ShowField(_saved, Selected(_link) == NotLinked);
+        ShowField(_saved, !_target.IsLinked);
         _note = AddField("Note", new TextBox { Text = _target.Note });
         Loaded += (_, _) => _name.Focus();
     }
@@ -336,10 +347,14 @@ public sealed class GoalDialog : DialogShell
         string name = _name.Text.Trim();
         if (name.Length == 0) return "Enter a name for the goal.";
         if (!ReadAmount(_amount, allowZero: false, out var target)) return "Enter the target amount, like 5000.";
-        if (!ReadAmount(_saved, allowZero: true, out var saved)) return "Enter what you've saved so far as a number (or leave it empty).";
+        string link = Selected(_link) ?? NotLinked;
+        bool linked = link != NotLinked;
+        decimal saved = _target.Saved;
+        if (!linked && !ReadAmount(_saved, allowZero: true, out saved)) return "Enter what you've saved so far as a number (or leave it empty).";
 
-        if (saved != _target.Saved && _target.Id.Length > 0)
+        if (!linked && saved != _target.Saved && _target.Id.Length > 0)
             _target.History.Add(new MoneyEntry { Date = DateTime.Today, Amount = saved - _target.Saved });
+        _target.LinkedAccount = linked ? link : "";
         _target.Name = name;
         _target.Target = target;
         _target.Saved = saved;
@@ -355,6 +370,7 @@ public sealed class GoalDialog : DialogShell
         if (existing == null)
         {
             DataStore.Goals.Add(dialog.Result);
+            GoalMath.RefreshLinked();
             Toaster.Show($"Goal created: {dialog.Result.Name}.");
         }
         else if (dialog.DeleteRequested)
@@ -403,8 +419,11 @@ public sealed class GoalMoneyDialog : DialogShell
         var dialog = new GoalMoneyDialog(goal);
         if (dialog.ShowDialog() != true) return false;
         bool wasReached = goal.IsReached;
+        decimal before = goal.Saved;
         GoalMath.AddMoney(goal, dialog.Change, dialog.Date);
-        Toaster.Show(!wasReached && goal.IsReached ? $"You reached {goal.Name}!"
+        int? milestone = GoalMath.MilestoneCrossed(before, goal.Saved, goal.Target);
+        Toaster.Show(!wasReached && goal.IsReached ? $"You reached {goal.Name}. Congratulations!"
+            : milestone is int m ? $"Milestone: {goal.Name} is {m}% of the way there."
             : dialog.Change > 0 ? $"Added {Money.Format(dialog.Change)} to {goal.Name}."
             : $"Took {Money.Format(-dialog.Change)} out of {goal.Name}.");
         return true;

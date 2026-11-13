@@ -28,7 +28,7 @@ public partial class DashboardView : UserControl
         var summary = Budgeting.Summarize(month);
 
         MonthText.Text = Money.MonthName(month);
-        ChartMonthText.Text = month.ToString("MMMM", Money.Us);
+        ChartMonthText.Text = Budgeting.StartDay == 1 ? month.ToString("MMMM", Money.Us) : Money.MonthName(month);
         GreetingText.Text = now.Hour switch
         {
             < 12 => "Good morning",
@@ -36,6 +36,7 @@ public partial class DashboardView : UserControl
             _ => "Good evening",
         };
 
+        BuildWelcome();
         BuildSummary(summary, now);
         BuildBudgets(summary);
         BuildWeekChart(summary, now);
@@ -44,11 +45,64 @@ public partial class DashboardView : UserControl
         BuildRecent();
     }
 
+    // ----- Getting started -----
+
+    private void BuildWelcome()
+    {
+        var prefs = DataStore.Prefs;
+        (string Title, string Detail, bool Done, Action Go)[] steps =
+        [
+            ("Add your accounts", "Checking, savings and cards, with today's balances.", DataStore.Accounts.Items.Count > 0, () => MainWindow.Instance?.GoTo("accounts")),
+            ("Add or import transactions", "Type them in, or import a statement from your bank.", DataStore.Transactions.Items.Count > 0, () => MainWindow.Instance?.GoTo("transactions")),
+            ("Set up your budgets", "Start from a template like 50/30/20.", DataStore.Budgets.Items.Count > 0, () => MainWindow.Instance?.GoTo("budgets")),
+            ("Add your bills", "Get reminders before they're due.", DataStore.Bills.Items.Count > 0, () => MainWindow.Instance?.GoTo("bills")),
+            ("Protect your data", "Add a PIN or password (optional).", DataLock.IsEnabled, () => MainWindow.Instance?.ShowSettings()),
+        ];
+        int done = steps.Count(s => s.Done);
+        if (prefs.WelcomeDismissed || done == steps.Length)
+        {
+            WelcomeHost.Content = null;
+            return;
+        }
+
+        var panel = new StackPanel();
+        var head = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
+        var dismiss = PageKit.Link("Hide", () => { prefs.WelcomeDismissed = true; prefs.Save(); });
+        DockPanel.SetDock(dismiss, Dock.Right);
+        head.Children.Add(dismiss);
+        var titles = new StackPanel();
+        titles.Children.Add(new TextBlock { Text = "Welcome to CoinPilot", Style = (Style)FindResource("CardTitle"), FontSize = 19 });
+        titles.Children.Add(Ui.Text($"{done} of {steps.Length} done · a few minutes to get set up", muted: true));
+        head.Children.Add(titles);
+        panel.Children.Add(head);
+        panel.Children.Add(Ui.ProgressBar(done / (double)steps.Length, "Brush.Accent", height: 6).Also(b => b.Margin = new Thickness(0, 0, 0, 12)));
+
+        var grid = new System.Windows.Controls.Primitives.UniformGrid { Columns = steps.Length, Margin = new Thickness(0, 0, -10, 0) };
+        foreach (var step in steps)
+        {
+            var tile = new StackPanel();
+            var icon = new TextBlock { Text = step.Done ? "\uE73E" : "\uE710", Style = (Style)FindResource("Icon"), FontSize = 15, Margin = new Thickness(0, 0, 0, 8) };
+            icon.SetResourceReference(TextBlock.ForegroundProperty, step.Done ? "Brush.Positive" : "Brush.Accent");
+            tile.Children.Add(icon);
+            tile.Children.Add(Ui.Text(step.Title, weight: FontWeights.SemiBold).Also(t => { t.TextWrapping = TextWrapping.Wrap; t.TextTrimming = TextTrimming.None; }));
+            tile.Children.Add(Ui.Text(step.Detail, muted: true, size: 12).Also(t => { t.TextWrapping = TextWrapping.Wrap; t.TextTrimming = TextTrimming.None; t.Margin = new Thickness(0, 3, 0, 0); }));
+            var card = new Border { Child = tile, CornerRadius = new CornerRadius(12), Padding = new Thickness(14, 12, 14, 14), Opacity = step.Done ? 0.6 : 1 };
+            card.SetResourceReference(Border.BackgroundProperty, step.Done ? "Brush.SurfaceAlt" : "Brush.AccentSoft");
+            var go = step.Go;
+            var button = new Button { Content = card, Style = (Style)FindResource("CardButton"), Margin = new Thickness(0, 0, 10, 0), IsEnabled = !step.Done };
+            System.Windows.Automation.AutomationProperties.SetName(button, step.Title);
+            button.Click += (_, _) => go();
+            grid.Children.Add(button);
+        }
+        panel.Children.Add(grid);
+        WelcomeHost.Content = PageKit.Card(panel);
+    }
+
     // ----- Summary cards -----
 
     private void BuildSummary(MonthSummary s, DateTime now)
     {
-        int daysLeft = DateTime.DaysInMonth(now.Year, now.Month) - now.Day;
+        int daysLeft = (Budgeting.MonthEnd(Budgeting.MonthStart(now)) - now.Date).Days;
         string days = daysLeft == 0 ? "last day of the month" : daysLeft == 1 ? "1 day left" : $"{daysLeft} days left";
 
         if (s.Budgets.Count == 0)
@@ -65,13 +119,13 @@ public partial class DashboardView : UserControl
         }
 
         SpentText.Text = Money.Format(s.Spent);
-        int spendCount = s.Transactions.Count(t => t.Amount < 0);
+        int spendCount = s.Transactions.Count(t => t.IsSpending);
         SpentCaption.Text = s.Budgets.Count > 0
             ? $"of {Money.Format(s.Budgeted, cents: false)} budgeted"
             : spendCount == 1 ? "1 purchase" : $"{spendCount} purchases";
 
         IncomeText.Text = Money.Format(s.Income);
-        int incomeCount = s.Transactions.Count(t => t.Amount > 0);
+        int incomeCount = s.Transactions.Count(t => t.IsIncome);
         IncomeCaption.Text = incomeCount == 1 ? "1 deposit" : $"{incomeCount} deposits";
 
         NetText.Text = Money.Format(s.Net);
@@ -99,7 +153,7 @@ public partial class DashboardView : UserControl
             var amounts = Ui.Text($"{Money.Format(b.Spent, cents: false)} / {Money.Format(b.Limit, cents: false)}", muted: true);
             DockPanel.SetDock(amounts, Dock.Right);
             top.Children.Add(amounts);
-            top.Children.Add(Ui.Text(b.Budget.Category, weight: FontWeights.SemiBold));
+            top.Children.Add(Ui.Text(Categories.Display(b.Budget.Category), weight: FontWeights.SemiBold));
             row.Children.Add(top);
             row.Children.Add(Ui.ProgressBar(b.Fraction, b.BrushKey));
             if (b.IsOver)
@@ -128,7 +182,7 @@ public partial class DashboardView : UserControl
 
         var weeks = Budgeting.WeeklySpending(s);
         decimal max = Math.Max(weeks.Max(), 1);
-        int currentWeek = (now.Day - 1) / 7;
+        int currentWeek = (now.Date - s.Month).Days / 7;
         const double maxBar = 140;
 
         for (int i = 0; i < weeks.Length; i++)
@@ -147,7 +201,7 @@ public partial class DashboardView : UserControl
                 MaxWidth = 56,
                 CornerRadius = new CornerRadius(9, 9, 3, 3),
                 Margin = new Thickness(0, 7, 0, 8),
-                ToolTip = $"Days {i * 7 + 1}–{Math.Min(i * 7 + 7, DateTime.DaysInMonth(now.Year, now.Month))}: {Money.Format(weeks[i])}"
+                ToolTip = $"{s.Month.AddDays(i * 7):MMM d}–{(s.Month.AddDays(Math.Min(i * 7 + 6, (s.Month.AddMonths(1) - s.Month).Days - 1))):MMM d}: {Money.Format(weeks[i])}"
                           + (i == currentWeek ? " so far" : ""),
             };
             bar.SetResourceReference(Border.BackgroundProperty, i == currentWeek || future ? "Brush.BarMuted" : "Brush.Accent");
@@ -212,6 +266,7 @@ public partial class DashboardView : UserControl
     private void BuildGoals(DateTime today)
     {
         GoalList.Children.Clear();
+        GoalMath.RefreshLinked();
         var goals = DataStore.Goals.Items;
         if (goals.Count == 0)
         {
@@ -269,10 +324,11 @@ public partial class DashboardView : UserControl
             var g = Ui.Columns(2.2, 1.6, 1.3, 1.1, 1.1);
             var cell = new Thickness(8, 12, 8, 12);
             g.Children.Add(Ui.Text(t.Payee, weight: FontWeights.SemiBold).At(0, cell));
-            g.Children.Add(Ui.Chip(t.Category).At(1, cell));
+            g.Children.Add(Ui.Chip(t.IsSplit ? t.CategoryLabel : t.IsTransfer ? "Transfer" : Categories.Display(t.Category)).At(1, cell));
             g.Children.Add(Ui.Text(t.Account, muted: true).At(2, cell));
             g.Children.Add(Ui.Text(t.Date.ToString("MMM d", Money.Us), muted: true).At(3, cell));
-            var amount = Ui.Text(Money.Signed(t.Amount), weight: FontWeights.SemiBold, brushKey: t.IsIncome ? "Brush.Positive" : "Brush.Text").At(4, cell);
+            var amount = Ui.Text(t.IsTransfer ? Money.Format(t.Size) : Money.Signed(t.Amount), weight: FontWeights.SemiBold,
+                brushKey: t.IsIncome ? "Brush.Positive" : t.IsTransfer ? "Brush.TextMuted" : "Brush.Text").At(4, cell);
             amount.HorizontalAlignment = HorizontalAlignment.Right;
             g.Children.Add(amount);
 
@@ -286,6 +342,8 @@ public partial class DashboardView : UserControl
     // ----- Actions -----
 
     private void Add_Click(object sender, RoutedEventArgs e) => TransactionDialog.Edit(null, DateTime.Today);
+
+    private void Import_Click(object sender, RoutedEventArgs e) => ImportDialog.Run();
 
     private void GoTransactions_Click(object sender, RoutedEventArgs e)
     {
