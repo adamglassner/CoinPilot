@@ -15,7 +15,7 @@ public sealed class ModuleInfo : INotifyPropertyChanged
     public string[] Features { get; init; } = [];
     public string[] Kpis { get; init; } = [];
     public string[] Columns { get; init; } = [];
-    /// <summary>False only for pages that have their own view (the Dashboard preview).</summary>
+    /// <summary>False for sections that work and have their own page (see MainWindow.Show).</summary>
     public bool IsComingSoon { get; init; } = true;
 
     private bool _isSelected;

@@ -1,8 +1,8 @@
 namespace CoinPilot.Models;
 
 /// <summary>
-/// Every section of CoinPilot. The Dashboard has its own preview page (sample data); everything
-/// else uses the generic ComingSoonView built from this data.
+/// Every section of CoinPilot. Sections that work (IsComingSoon = false) have their own page;
+/// everything else uses the generic ComingSoonView built from this data.
 /// Add a module here and it appears in the sidebar automatically.
 /// </summary>
 public static class ModuleCatalog
@@ -18,7 +18,7 @@ public static class ModuleCatalog
         Dashboard,
         new()
         {
-            Key = "transactions", Title = "Transactions", Glyph = "",
+            Key = "transactions", Title = "Transactions", Glyph = "", IsComingSoon = false,
             Tagline = "Every dollar in and out, in one list.",
             Description = "Add spending and income by hand or import it from your bank, then sort it into categories. Search, filter and split transactions, and attach receipts.",
             PrimaryAction = "Add transaction",
@@ -38,7 +38,7 @@ public static class ModuleCatalog
         },
         new()
         {
-            Key = "budgets", Title = "Budgets", Glyph = "",
+            Key = "budgets", Title = "Budgets", Glyph = "", IsComingSoon = false,
             Tagline = "Give every dollar a job and see how each category is doing.",
             Description = "Set a monthly amount for each category and watch progress bars fill as you spend. CoinPilot warns you before a category runs out and shows what's left to spend for the rest of the month.",
             PrimaryAction = "New budget",

@@ -18,7 +18,7 @@ public partial class MainWindow : Window
         Instance = this;
 
         NavList.ItemsSource = ModuleCatalog.Sidebar;
-        StatusText.Text = $"CoinPilot {App.VersionText} (preview) · Bytehawk Studio";
+        StatusText.Text = $"CoinPilot {App.VersionText} (preview) · Bytehawk Studio · Saved on this PC";
 
         _toastTimer.Tick += (_, _) =>
         {
@@ -65,8 +65,13 @@ public partial class MainWindow : Window
         else module.IsSelected = true; // fires Nav_Checked → Show
     }
 
-    private void Show(ModuleInfo module) =>
-        SetPage(module.IsComingSoon ? new ComingSoonView(module) : new DashboardView());
+    private void Show(ModuleInfo module) => SetPage(module.Key switch
+    {
+        "dashboard" => new DashboardView(),
+        "transactions" => new TransactionsView(),
+        "budgets" => new BudgetsView(),
+        _ => new ComingSoonView(module),
+    });
 
     private void SetPage(object page)
     {

@@ -5,17 +5,16 @@
 **A budgeting app that keeps your budgets, spending and goals in sync between your PC and your phone.**
 Made by Bytehawk Studio.
 
-> **Status: early preview (v0.1.1), Windows only.** This is the app's shell: the window, navigation,
-> light and dark mode and settings work, the Dashboard shows the planned layout with sample data, and every
-> other section is a "coming soon" page describing what it will do. Nothing is tracked or saved yet.
+> **Status: early preview (v0.2.0), Windows only.** Transactions and Budgets work and are saved on your PC, and the
+> Dashboard shows your real numbers. The other sections are "coming soon" pages describing what they will do.
 
-## What's in the preview
+## What works
 
 | Section | Status |
 | --- | --- |
-| **Dashboard** | Preview with sample data: left to spend, spent, income, savings, budget progress, spending by week and recent transactions. |
-| Transactions | Coming soon |
-| Budgets | Coming soon |
+| **Dashboard** | Works: this month's left to spend, spent, income and net, your budgets, spending by week and recent transactions. |
+| **Transactions** | Works: add, edit and delete spending and income; month by month; search; totals; export to CSV. Import is coming soon. |
+| **Budgets** | Works: a monthly amount per spending category with progress bars, left to spend, over-budget warnings and "spending without a budget". |
 | Goals | Coming soon |
 | Accounts | Coming soon |
 | Bills | Coming soon |
@@ -36,7 +35,8 @@ which downloads the newest release, installs it and keeps it up to date. Or get 
   uninstaller. Installs just for you by default (no administrator prompt).
 - **`CoinPilot-<version>-win-x64.zip`**: portable. Unzip anywhere and run `CoinPilot.exe`.
 
-Neither needs .NET installed. Settings are saved in `%AppData%\CoinPilot\`.
+Neither needs .NET installed. Your transactions and budgets are saved in `%AppData%\CoinPilot\data\`
+(Settings → Your data → Open data folder) and settings in `%AppData%\CoinPilot\settings.json`. Uninstalling keeps them.
 
 ## Releasing a new version
 
@@ -45,7 +45,8 @@ Change `<Version>` in `src/CoinPilot.Desktop/CoinPilot.Desktop.csproj` (for exam
 then, on a Windows machine:
 
 1. builds the single-file exe, the portable zip and the installer,
-2. runs the self-test (`CoinPilot.exe --self-test result.txt`): every page in light and dark, plus navigation checks,
+2. runs the self-test (`CoinPilot.exe --self-test result.txt`) on a throwaway data folder: money parsing, budget math,
+   saving and reloading, every page in light and dark (empty and with data), the add/edit dialogs and navigation,
 3. silently installs the Setup .exe to a custom folder (the way the launcher does), starts it, and uninstalls it,
 4. takes light/dark screenshots (attached to the run as artifacts),
 5. publishes GitHub Release `v<version>` with the Setup .exe and the zip.
@@ -74,9 +75,12 @@ src/CoinPilot.Desktop/
   MainWindow.xaml(.cs)   sidebar, page host, status bar, toast
   Assets/                app icon (.ico + .png)
   Themes/                Light.xaml, Dark.xaml (colors), Controls.xaml (styles)
+  Data/                  Records (Transaction, Budget), JsonStore (safe JSON files), DataStore,
+                         Categories, Budgeting (month totals, budget progress, weekly spending)
   Models/                ModuleCatalog.cs — every section, its planned features and columns
-  Views/                 DashboardView (sample-data preview), ComingSoonView, SettingsView
-  Services/              settings, Windows theme detection, toast helper, self-test
+  Views/                 DashboardView, TransactionsView, BudgetsView, ComingSoonView, SettingsView,
+                         TransactionDialog / BudgetDialog (on DialogShell), MonthSwitcher, Ui helpers
+  Services/              money formatting, CSV export, settings, Windows theme detection, toast, self-test
 installer/CoinPilot.iss  Inno Setup script (+ wizard images)
 build.ps1                exe + portable zip + installer
 .github/workflows/       CI: build, self-test, installer test, screenshots, release
@@ -86,8 +90,8 @@ tools/make_wizard_images.py  regenerates the installer wizard images
 ```
 
 To add a coming-soon section, add an entry to `Models/ModuleCatalog.cs`.
-To build a section for real, give it its own view in `Views/`, set `IsComingSoon = false` and show that view
-from `MainWindow.Show`.
+To build a section for real, give it its own view in `Views/`, set `IsComingSoon = false` in the catalog and add it
+to `MainWindow.Show`.
 
 ## Design
 
@@ -96,8 +100,8 @@ The look comes from the desktop and mobile mockup in [`design/mockup/`](design/m
 
 ## Roadmap
 
-1. Transactions and Budgets, saved on this PC, which make the Dashboard real
-2. Accounts, Goals and Bills
+1. ~~Transactions and Budgets, saved on this PC, which make the Dashboard real~~ (0.2.0)
+2. Accounts, Goals and Bills; importing bank statements; your own categories
 3. Reports
 4. CoinPilot mobile app (iPhone and Android) and sync between devices
 

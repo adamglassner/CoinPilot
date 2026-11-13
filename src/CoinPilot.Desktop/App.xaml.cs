@@ -37,6 +37,9 @@ public partial class App : Application
             if (e.Args[i] == "--page") StartPage = e.Args[i + 1].ToLowerInvariant();
         }
 
+        // The self-test works on a throwaway data folder so it never touches real budgets.
+        if (SelfTest.IsRunning) Data.DataStore.UseFolder(SelfTest.TempDataFolder);
+
         Settings = AppSettings.Load();
         ApplyTheme(Settings.Theme);
 

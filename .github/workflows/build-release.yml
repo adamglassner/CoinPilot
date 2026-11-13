@@ -140,7 +140,7 @@ jobs:
           make_latest: true
           name: CoinPilot ${{ steps.ver.outputs.version }}
           body: |
-            CoinPilot ${{ steps.ver.outputs.version }} for Windows 10/11 (x64). Early preview: every section is in place and marked coming soon.
+            CoinPilot ${{ steps.ver.outputs.version }} for Windows 10/11 (x64). Early preview: Transactions and Budgets work (saved on this PC); the other sections are coming soon. See CHANGELOG.md for what changed.
 
             - **CoinPilot-${{ steps.ver.outputs.version }}-Setup.exe**: installer (Start Menu + optional desktop shortcut, uninstaller). Installs for just you by default, no administrator needed.
             - **CoinPilot-${{ steps.ver.outputs.version }}-win-x64.zip**: portable. Unzip and run `CoinPilot.exe`. No install or .NET needed.

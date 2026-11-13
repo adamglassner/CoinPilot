@@ -1,5 +1,8 @@
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using CoinPilot.Data;
 using CoinPilot.Services;
 
 namespace CoinPilot.Views;
@@ -20,6 +23,7 @@ public partial class SettingsView : UserControl
         }).IsChecked = true;
 
         VersionText.Text = $"CoinPilot {App.VersionText} (preview)";
+        DataFolderText.Text = DataStore.Folder;
         _ready = true;
     }
 
@@ -30,4 +34,17 @@ public partial class SettingsView : UserControl
     }
 
     private void Soon_Click(object sender, RoutedEventArgs e) => Toaster.Soon(sender);
+
+    private void OpenData_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Directory.CreateDirectory(DataStore.Folder);
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{DataStore.Folder}\"") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Toaster.Show($"Couldn't open the folder: {ex.Message}");
+        }
+    }
 }

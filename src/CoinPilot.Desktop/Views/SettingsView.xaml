@@ -40,7 +40,7 @@
                     <TextBlock Text="BUDGET PREFERENCES" Style="{StaticResource SectionLabel}" />
                 </DockPanel>
                 <TextBlock Style="{StaticResource Muted}" Margin="0,0,0,12"
-                           Text="Currency, the day your budget month starts, categories and reminders." />
+                           Text="Currency, the day your budget month starts, your own categories and reminders." />
                 <WrapPanel>
                     <Button Content="Currency" Style="{StaticResource GhostButton}" Margin="0,0,8,8" Click="Soon_Click" Tag="Currency settings" />
                     <Button Content="Budget month" Style="{StaticResource GhostButton}" Margin="0,0,8,8" Click="Soon_Click" Tag="Choosing when your budget month starts" />
@@ -52,19 +52,17 @@
 
         <Border Style="{StaticResource Card}" Margin="0,0,0,14">
             <StackPanel>
-                <DockPanel>
-                    <Border DockPanel.Dock="Right" Style="{StaticResource SoonPill}">
-                        <TextBlock Text="COMING SOON" Style="{StaticResource PillText}" />
-                    </Border>
-                    <TextBlock Text="YOUR DATA" Style="{StaticResource SectionLabel}" />
-                </DockPanel>
-                <TextBlock Style="{StaticResource Muted}" Margin="0,0,0,12"
-                           Text="Import bank statements, export everything to CSV, and back up or restore your budget." />
+                <TextBlock Text="YOUR DATA" Style="{StaticResource SectionLabel}" />
+                <TextBlock Style="{StaticResource Muted}" Margin="0,0,0,4"
+                           Text="Your transactions and budgets are saved on this PC, in this folder:" />
+                <TextBlock x:Name="DataFolderText" FontFamily="Consolas" FontSize="12.5" Margin="0,0,0,12" TextWrapping="Wrap" />
                 <WrapPanel>
-                    <Button Content="Import" Style="{StaticResource GhostButton}" Margin="0,0,8,8" Click="Soon_Click" Tag="Importing statements" />
-                    <Button Content="Export" Style="{StaticResource GhostButton}" Margin="0,0,8,8" Click="Soon_Click" Tag="Exporting your data" />
-                    <Button Content="Back up" Style="{StaticResource GhostButton}" Margin="0,0,8,8" Click="Soon_Click" Tag="Backups" />
+                    <Button Content="Open data folder" Style="{StaticResource GhostButton}" Margin="0,0,8,8" Click="OpenData_Click" />
+                    <Button Content="Import statements (soon)" Style="{StaticResource GhostButton}" Margin="0,0,8,8" Click="Soon_Click" Tag="Importing bank statements" />
+                    <Button Content="Back up (soon)" Style="{StaticResource GhostButton}" Margin="0,0,8,8" Click="Soon_Click" Tag="Backups" />
                 </WrapPanel>
+                <TextBlock Style="{StaticResource Muted}" FontSize="12" Margin="0,2,0,0"
+                           Text="To export transactions, use Export on the Transactions page." />
             </StackPanel>
         </Border>
 
@@ -80,7 +78,7 @@
                     </StackPanel>
                 </StackPanel>
                 <TextBlock Style="{StaticResource Muted}" Margin="0,10,0,0"
-                           Text="This is an early preview: the app's layout is in place and each section shows what's coming. Updates arrive through the Bytehawk Studio Launcher." />
+                           Text="This is an early preview: Transactions and Budgets work, and the other sections show what's coming. Updates arrive through the Bytehawk Studio Launcher." />
             </StackPanel>
         </Border>
     </StackPanel>
