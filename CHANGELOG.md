@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.1 — 2026-11-13
+
+A more modern look.
+
+- **New dialogs:** every add/edit window is now a floating card with rounded corners, a soft shadow, an icon, its own
+  close button and a quick fade-in, and CoinPilot dims behind it. Mistakes show as a clear banner, Delete has an icon,
+  and warnings (like restoring a backup) get a red badge. Tall dialogs fit small laptop screens.
+- **Big numbers fit:** amounts on the summary tiles shrink to fit instead of being cut off with "…".
+- **Goals:** names get their own line, and the milestone chips wrap instead of running off the card.
+- **Transactions:** the search box no longer runs under the Filters button, and dates show in full.
+- Screenshots of every page and dialog are published to the `screenshots` branch with each build.
+
 ## 1.0.0 — 2026-11-13
 
 CoinPilot 1.0: everything is finished except syncing with the mobile app (and the sign-in that goes with it).

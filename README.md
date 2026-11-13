@@ -2,10 +2,12 @@
 
 <img src="assets/coinpilot-256.png" width="96" align="right" alt="CoinPilot icon" />
 
+![CoinPilot dashboard](https://raw.githubusercontent.com/adamglassner/CoinPilot/screenshots/01-dashboard-light.png)
+
 **Budgets, spending, accounts, debts, bills, goals and tax documents in one private app for Windows.**
 Made by Bytehawk Studio.
 
-> **Version 1.0.0, Windows 10/11.** Everything works and is saved on your PC, with optional PIN/password encryption.
+> **Version 1.0.1, Windows 10/11.** Everything works and is saved on your PC, with optional PIN/password encryption.
 > Syncing with the CoinPilot mobile app is coming soon.
 
 ## Features
@@ -63,7 +65,8 @@ to `main`. GitHub Actions ([build-release.yml](.github/workflows/build-release.y
    rules, account balances and net worth, payoff plans, bills and subscriptions, goals, reports, receipts and tax
    documents, backup/restore, PIN/password encryption, and every page and dialog in every color theme, light and dark,
 3. silently installs the Setup .exe to a custom folder (the way the launcher does), starts it, and uninstalls it,
-4. takes light/dark screenshots (attached to the run as artifacts),
+4. takes screenshots of every page, color theme and dialog with sample data (`CoinPilot.exe --screenshots <folder>`)
+   and publishes them to the [`screenshots`](../../tree/screenshots) branch,
 5. publishes GitHub Release `v<version>` with the Setup .exe and the zip.
 
 Installed copies pick up the new version through the Bytehawk Studio Launcher. Pushes that don't change the
@@ -80,8 +83,9 @@ Requirements: Windows 10/11, the [.NET 8 SDK](https://dotnet.microsoft.com/downl
   `dist\CoinPilot-<version>-Setup.exe`. Use `-SkipInstaller` to skip Inno Setup.
 
 Command-line options: `--page <section>` opens a page at startup (for example `--page budgets` or `--page settings`),
-`--background` starts in the notification area (used when "run in the background" is on), and `--self-test <file>`
-runs the checks above and exits with the number of failures.
+`--background` starts in the notification area (used when "run in the background" is on), `--self-test <file>`
+runs the checks above and exits with the number of failures, and `--screenshots <folder>` saves screenshots using
+sample data (never your own).
 
 ## Project layout
 
