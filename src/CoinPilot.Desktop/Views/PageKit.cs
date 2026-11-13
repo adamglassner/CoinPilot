@@ -104,11 +104,17 @@ public static class PageKit
     }
 
     /// <summary>Shrinks a big number to fit its tile instead of cutting it off with "…".</summary>
-    public static Viewbox FitWidth(FrameworkElement value) => new()
+    public static Viewbox FitWidth(FrameworkElement value)
     {
-        Child = value, Stretch = System.Windows.Media.Stretch.Uniform, StretchDirection = StretchDirection.DownOnly,
-        HorizontalAlignment = HorizontalAlignment.Left, Margin = value.Margin,
-    }.Also(_ => value.Margin = new Thickness(0));
+        var box = new Viewbox
+        {
+            Stretch = System.Windows.Media.Stretch.Uniform, StretchDirection = StretchDirection.DownOnly,
+            HorizontalAlignment = HorizontalAlignment.Left, Margin = value.Margin,
+        };
+        value.Margin = new Thickness(0);
+        box.Child = value;
+        return box;
+    }
 
     /// <summary>One summary tile. <paramref name="hero"/> uses the dark highlight style.</summary>
     public static Border Kpi(string label, string value, string? caption = null, bool hero = false, string? valueBrush = null)
