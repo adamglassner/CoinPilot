@@ -1,0 +1,120 @@
+name: Android
+
+# CoinPilot for Android (Flutter, in mobile/).
+# - Every push that touches mobile/ and manual runs: analyze, test, render screenshots, build the APK.
+# - Push to main with a pubspec version that has no android-v<version> release yet: publish that release with the APK.
+#   It is never marked "latest", so the Bytehawk Studio Launcher keeps installing the Windows app.
+on:
+  push:
+    branches: [main, transactions-budgets]
+    paths: ['mobile/**', '.github/workflows/android.yml']
+  pull_request:
+    paths: ['mobile/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Version
+        id: ver
+        run: |
+          v=$(grep -m1 '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          release=false
+          if [ "$GITHUB_REF" = "refs/heads/main" ] && [ "$GITHUB_EVENT_NAME" = "push" ] && ! git rev-parse -q --verify "refs/tags/android-v$v" >/dev/null; then release=true; fi
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "CoinPilot for Android $v (release: $release)"
+          flutter --version
+
+      - name: Create the Android project files
+        run: |
+          flutter create --platforms=android --org com.bytehawkstudio --project-name coinpilot --no-pub . > /dev/null
+          rm -f test/widget_test.dart.orig
+          cp -r android-res/. android/app/src/main/res/
+          sed -i 's/android:label="coinpilot"/android:label="CoinPilot"/' android/app/src/main/AndroidManifest.xml
+          grep -n 'android:label' android/app/src/main/AndroidManifest.xml
+          git status --short .
+
+      - run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Tests
+        run: flutter test test/logic_test.dart test/widget_test.dart
+
+      - name: Screenshots
+        run: |
+          flutter test --update-goldens test/screenshots_test.dart
+          ls -la test/screenshots
+
+      - name: Publish screenshots to the "screenshots-android" branch
+        if: github.event_name != 'pull_request'
+        working-directory: mobile/test/screenshots
+        run: |
+          git init -q -b screenshots-android
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Android screenshots of ${{ github.sha }}"
+          git push -q --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:screenshots-android
+
+      - name: Build APK
+        run: |
+          flutter build apk --release
+          ls -la build/app/outputs/flutter-apk/
+
+      - name: Sign with the CoinPilot key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          apk=build/app/outputs/flutter-apk/app-release.apk
+          out=build/CoinPilot-Android-${{ steps.ver.outputs.version }}.apk
+          tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/coinpilot.jks"
+            "$tools/apksigner" sign --ks "$RUNNER_TEMP/coinpilot.jks" --ks-pass env:KEYSTORE_PASSWORD --ks-key-alias coinpilot --out "$out" "$apk"
+          else
+            echo "::warning::No signing key secret; the APK keeps the build machine's debug signature"
+            cp "$apk" "$out"
+          fi
+          "$tools/apksigner" verify --print-certs "$out" | head -3
+          ls -la "$out"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CoinPilot-Android-${{ steps.ver.outputs.version }}
+          path: mobile/build/CoinPilot-Android-*.apk
+
+      - name: Publish the Android release
+        if: steps.ver.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v=${{ steps.ver.outputs.version }}
+          gh release create "android-v$v" "build/CoinPilot-Android-$v.apk" \
+            --target "$GITHUB_SHA" --latest=false \
+            --title "CoinPilot for Android $v" \
+            --notes "CoinPilot for Android $v. Download **CoinPilot-Android-$v.apk** on your phone and open it to install (allow installs from your browser or Files app when Android asks). Your data stays on your phone. See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/mobile/CHANGELOG.md)."
