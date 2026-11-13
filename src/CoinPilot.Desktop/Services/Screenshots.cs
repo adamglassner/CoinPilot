@@ -149,28 +149,19 @@ public static class Screenshots
             var root = (FrameworkElement)window.Content;
             double Width = root.ActualWidth, Height = root.ActualHeight;
 
-            var card = dialog.Card;
-            var effect = card.Effect;
-            card.Effect = null; // the shadow widens the card's bounds; draw our own instead
-            card.UpdateLayout();
-            double w = card.ActualWidth, h = card.ActualHeight;
+            // The dialog window as it is drawn (card, rounded corners and its own shadow), placed over the dimmed main window
+            var content = (FrameworkElement)dialog.Content;
+            double w = dialog.ActualWidth, h = dialog.ActualHeight;
+            var shot = new RenderTargetBitmap((int)(w * Scale), (int)(h * Scale), 96 * Scale, 96 * Scale, PixelFormats.Pbgra32);
+            shot.Render(content);
             var visual = new DrawingVisual();
             using (var dc = visual.RenderOpen())
             {
                 dc.DrawRectangle((Brush)Application.Current.FindResource("Brush.Bg"), null, new Rect(0, 0, Width, Height));
                 dc.DrawRectangle(new VisualBrush(root) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top }, null, new Rect(0, 0, Width, Height));
-                double scale = Math.Min(1, (Height - 40) / h);
-                var at = new Rect((Width - w * scale) / 2, (Height - h * scale) / 2, w * scale, h * scale);
-                for (int i = 1; i <= 6; i++)
-                {
-                    dc.PushOpacity(0.05);
-                    var spread = new Rect(at.X - i * 2, at.Y - i * 2 + 10, at.Width + i * 4, at.Height + i * 4);
-                    dc.DrawRoundedRectangle(Brushes.Black, null, spread, 18 + i * 2, 18 + i * 2);
-                    dc.Pop();
-                }
-                dc.DrawRectangle(new VisualBrush(card) { Stretch = Stretch.Fill, ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(0, 0, w, h) }, null, at);
+                double scale = Math.Min(1, Height / h);
+                dc.DrawImage(shot, new Rect((Width - w * scale) / 2, (Height - h * scale) / 2, w * scale, h * scale));
             }
-            card.Effect = effect;
             var bitmap = new RenderTargetBitmap((int)(Width * Scale), (int)(Height * Scale), 96 * Scale, 96 * Scale, PixelFormats.Pbgra32);
             bitmap.Render(visual);
             var encoder = new PngBitmapEncoder();

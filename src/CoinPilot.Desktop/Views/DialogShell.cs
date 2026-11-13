@@ -153,7 +153,9 @@ public abstract class DialogShell : Window
         errorTint.Children.Add(errorRow);
         _errorBar.Child = errorTint;
         Body.Children.Add(_errorBar);
-        root.Children.Add(new ScrollViewer { Content = Body, MaxHeight = 600, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false });
+        // Fits small laptop screens too: header + footer + shadow take about 250px
+        double room = Math.Max(240, SystemParameters.WorkArea.Height - 250);
+        root.Children.Add(new ScrollViewer { Content = Body, MaxHeight = Math.Min(600, room), VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false });
 
         _card.Child = root;
         Content = _card;
