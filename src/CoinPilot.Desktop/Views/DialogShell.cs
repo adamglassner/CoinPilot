@@ -1,65 +1,122 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
+using System.Windows.Media.Imaging;
 using CoinPilot.Services;
 
 namespace CoinPilot.Views;
 
 /// <summary>
-/// A themed add/edit dialog: title, a body of fields, and Delete / Cancel / Save buttons.
+/// A themed add/edit dialog: a floating rounded card (no Windows frame) with an icon badge, title, subtitle and close
+/// button, a body of fields, and Delete / Cancel / Save buttons. The main window dims behind it.
 /// Subclasses add fields with the helpers below and decide in <see cref="TrySave"/> whether the input is valid.
 /// </summary>
 public abstract class DialogShell : Window
 {
-    private readonly TextBlock _error = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10), Visibility = Visibility.Collapsed };
-    protected readonly StackPanel Body = new() { Margin = new Thickness(24, 6, 24, 10) };
+    private const double ShadowRoom = 28, Radius = 18;
 
+    private readonly TextBlock _error = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+    private readonly Border _errorBar = new() { CornerRadius = new CornerRadius(10), Padding = new Thickness(12, 9, 12, 9), Margin = new Thickness(0, 0, 0, 14), Visibility = Visibility.Collapsed };
+    protected readonly StackPanel Body = new() { Margin = new Thickness(28, 4, 28, 12) };
+
+    private readonly TextBlock _glyph = new() { FontSize = 18, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+    private readonly Border _badgeTint = new() { CornerRadius = new CornerRadius(12) };
+    private readonly Border _card = new() { CornerRadius = new CornerRadius(Radius), BorderThickness = new Thickness(1) };
     private Button? _cancel;
 
     /// <summary>True when the dialog closed because the person confirmed Delete.</summary>
     public bool DeleteRequested { get; private set; }
 
+    /// <summary>The Segoe MDL2/Fluent glyph in the header badge (picked from the title unless a dialog sets it).</summary>
+    protected string HeaderGlyph { get => _glyph.Text; set => _glyph.Text = value; }
+
     protected DialogShell(string title, string subtitle, bool allowDelete, string saveText, double width = 560)
     {
         Title = title;
-        Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/Assets/coinpilot.ico"));
-        Width = width;
+        Icon = new BitmapImage(new Uri("pack://application:,,,/Assets/coinpilot.ico"));
+        Width = width + ShadowRoom * 2;
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
+        WindowStyle = WindowStyle.None;
+        AllowsTransparency = true;
+        Background = Brushes.Transparent;
         ShowInTaskbar = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         if (Application.Current.MainWindow is { IsLoaded: true } owner && owner != this) Owner = owner;
-        FontFamily = new System.Windows.Media.FontFamily("Segoe UI");
+        FontFamily = new FontFamily("Segoe UI");
         FontSize = 13.5;
         UseLayoutRounding = true;
-        SetResourceReference(BackgroundProperty, "Brush.Bg");
+        TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
         SetResourceReference(ForegroundProperty, "Brush.Text");
-        SourceInitialized += (_, _) => SystemTheme.ApplyTitleBar(this, App.IsDark);
 
+        // ----- Card -----
+        _card.SetResourceReference(Border.BackgroundProperty, "Brush.Surface");
+        _card.SetResourceReference(Border.BorderBrushProperty, "Brush.Border");
+        _card.Margin = new Thickness(ShadowRoom);
+        _card.Effect = new DropShadowEffect { BlurRadius = 36, ShadowDepth = 8, Direction = 270, Opacity = 0.28, Color = Colors.Black };
+        _card.RenderTransformOrigin = new Point(0.5, 0.5);
+        _card.RenderTransform = new ScaleTransform(1, 1);
         var root = new DockPanel();
 
-        var header = new StackPanel { Margin = new Thickness(24, 20, 24, 10) };
-        header.Children.Add(new TextBlock { Text = title, FontSize = 20, FontWeight = FontWeights.Bold, FontFamily = (System.Windows.Media.FontFamily)FindResource("DisplayFont") });
-        var sub = new TextBlock { Text = subtitle, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) };
-        sub.SetResourceReference(TextBlock.ForegroundProperty, "Brush.TextMuted");
-        header.Children.Add(sub);
+        // ----- Header: badge, title + subtitle, close -----
+        var header = new DockPanel { Margin = new Thickness(28, 24, 18, 14), Background = Brushes.Transparent };
+        header.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) try { DragMove(); } catch (InvalidOperationException) { } };
+
+        var badge = new Grid { Width = 44, Height = 44, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 1, 16, 0) };
+        _badgeTint.SetResourceReference(Border.BackgroundProperty, "Brush.AccentSoft");
+        _glyph.Style = (Style)FindResource("Icon");
+        _glyph.SetResourceReference(TextBlock.ForegroundProperty, "Brush.Accent");
+        _glyph.Text = GlyphFor(title);
+        badge.Children.Add(_badgeTint);
+        badge.Children.Add(_glyph);
+        DockPanel.SetDock(badge, Dock.Left);
+        header.Children.Add(badge);
+
+        var close = new Button { Style = (Style)FindResource("BaseButton"), Padding = new Thickness(8), MinHeight = 32, MinWidth = 32, VerticalAlignment = VerticalAlignment.Top, ToolTip = "Close (Esc)", Focusable = false };
+        AutomationProperties.SetName(close, "Close");
+        close.SetResourceReference(ForegroundProperty, "Brush.TextMuted");
+        var x = new TextBlock { Text = "\uE711", FontSize = 12, Style = (Style)FindResource("Icon") };
+        close.Content = x;
+        close.Click += (_, _) => Close();
+        DockPanel.SetDock(close, Dock.Right);
+        header.Children.Add(close);
+
+        var titles = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+        titles.Children.Add(new TextBlock { Text = title, FontSize = 20, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis, FontFamily = (FontFamily)FindResource("DisplayFont") });
+        if (!string.IsNullOrWhiteSpace(subtitle))
+        {
+            var sub = new TextBlock { Text = subtitle, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0), LineHeight = 19 };
+            sub.SetResourceReference(TextBlock.ForegroundProperty, "Brush.TextMuted");
+            titles.Children.Add(sub);
+        }
+        header.Children.Add(titles);
         DockPanel.SetDock(header, Dock.Top);
         root.Children.Add(header);
 
-        var footer = new Border { Padding = new Thickness(24, 12, 24, 12), BorderThickness = new Thickness(0, 1, 0, 0) };
-        footer.SetResourceReference(Border.BackgroundProperty, "Brush.Surface");
+        // ----- Footer -----
+        var footer = new Border { Padding = new Thickness(24, 14, 24, 14), BorderThickness = new Thickness(0, 1, 0, 0), CornerRadius = new CornerRadius(0, 0, Radius - 1, Radius - 1) };
+        footer.SetResourceReference(Border.BackgroundProperty, "Brush.SurfaceAlt");
         footer.SetResourceReference(Border.BorderBrushProperty, "Brush.Border");
         var footerDock = new DockPanel();
         if (allowDelete)
         {
-            var delete = new Button { Content = "Delete", Style = (Style)FindResource("GhostButton") };
+            var delete = new Button { Style = (Style)FindResource("GhostButton") };
+            var deleteLabel = new StackPanel { Orientation = Orientation.Horizontal };
+            deleteLabel.Children.Add(new TextBlock { Text = "\uE74D", Style = (Style)FindResource("Icon"), FontSize = 13, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
+            var deleteText = new TextBlock { Text = "Delete", VerticalAlignment = VerticalAlignment.Center };
+            deleteLabel.Children.Add(deleteText);
+            delete.Content = deleteLabel;
             delete.SetResourceReference(ForegroundProperty, "Brush.Danger");
             delete.Click += (_, _) =>
             {
-                if (delete.Content as string == "Delete")
+                if (deleteText.Text == "Delete")
                 {
-                    delete.Content = "Click again to delete";
+                    deleteText.Text = "Click again to delete";
                     return;
                 }
                 DeleteRequested = true;
@@ -69,9 +126,9 @@ public abstract class DialogShell : Window
             footerDock.Children.Add(delete);
         }
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        var cancel = new Button { Content = "Cancel", IsCancel = true, Style = (Style)FindResource("GhostButton"), Margin = new Thickness(0, 0, 8, 0) };
+        var cancel = new Button { Content = "Cancel", IsCancel = true, Style = (Style)FindResource("GhostButton"), Margin = new Thickness(0, 0, 10, 0), MinWidth = 96 };
         _cancel = cancel;
-        var save = new Button { Content = saveText, IsDefault = true, Style = (Style)FindResource("PrimaryButton") };
+        var save = new Button { Content = saveText, IsDefault = true, Style = (Style)FindResource("PrimaryButton"), MinWidth = 110 };
         save.Click += (_, _) => Save();
         buttons.Children.Add(cancel);
         buttons.Children.Add(save);
@@ -80,11 +137,72 @@ public abstract class DialogShell : Window
         DockPanel.SetDock(footer, Dock.Bottom);
         root.Children.Add(footer);
 
+        // ----- Body (error banner first) -----
+        _errorBar.SetResourceReference(Border.BorderBrushProperty, "Brush.Danger");
+        _errorBar.BorderThickness = new Thickness(1);
+        var errorTint = new Grid();
+        var tint = new Border { CornerRadius = new CornerRadius(10), Opacity = 0.10, Margin = new Thickness(-12, -9, -12, -9) };
+        tint.SetResourceReference(Border.BackgroundProperty, "Brush.Danger");
+        var errorRow = new StackPanel { Orientation = Orientation.Horizontal };
+        var errorIcon = new TextBlock { Text = "\uE783", Style = (Style)FindResource("Icon"), FontSize = 14, Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
+        errorIcon.SetResourceReference(TextBlock.ForegroundProperty, "Brush.Danger");
         _error.SetResourceReference(TextBlock.ForegroundProperty, "Brush.Danger");
-        Body.Children.Add(_error);
-        root.Children.Add(new ScrollViewer { Content = Body, MaxHeight = 620, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
-        Content = root;
+        errorRow.Children.Add(errorIcon);
+        errorRow.Children.Add(_error);
+        errorTint.Children.Add(tint);
+        errorTint.Children.Add(errorRow);
+        _errorBar.Child = errorTint;
+        Body.Children.Add(_errorBar);
+        root.Children.Add(new ScrollViewer { Content = Body, MaxHeight = 600, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false });
+
+        _card.Child = root;
+        Content = _card;
+
+        Loaded += (_, _) => { DimOwner(true); Animate(); };
+        Closed += (_, _) => DimOwner(false);
     }
+
+    /// <summary>Danger dialogs (delete, restore, turn off protection) get a red badge.</summary>
+    protected void UseDangerTone(string glyph = "\uE7BA")
+    {
+        _glyph.Text = glyph;
+        _glyph.SetResourceReference(TextBlock.ForegroundProperty, "Brush.Danger");
+        _badgeTint.SetResourceReference(Border.BackgroundProperty, "Brush.Danger");
+        _badgeTint.Opacity = 0.14;
+    }
+
+    private static string GlyphFor(string title)
+    {
+        string t = title.ToLowerInvariant();
+        (string Word, string Glyph)[] map =
+        [
+            ("import", "\uE8B5"), ("transaction", "\uE8C7"), ("template", "\uE8A9"), ("budget", "\uE9D2"), ("account", "\uE825"),
+            ("pay ", "\uE8C7"), ("debt", "\uE8EF"), ("bill", "\uE787"), ("goal", "\uE734"), ("tax", "\uE8A5"), ("recovery", "\uE8D7"),
+            ("pin", "\uE72E"), ("protect", "\uE72E"), ("password", "\uE72E"), ("categor", "\uE8EC"), ("rename", "\uE8AC"),
+            ("restore", "\uE777"), ("backup", "\uE777"),
+        ];
+        foreach (var (word, glyph) in map) if (t.Contains(word)) return glyph;
+        return title.StartsWith("Edit", StringComparison.OrdinalIgnoreCase) ? "\uE70F" : "\uE734";
+    }
+
+    private void DimOwner(bool on)
+    {
+        if (Owner is MainWindow main) main.SetDimmed(on);
+    }
+
+    private void Animate()
+    {
+        if (SelfTest.IsRunning) return;
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var time = TimeSpan.FromMilliseconds(190);
+        _card.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, time) { EasingFunction = ease });
+        var scale = (ScaleTransform)_card.RenderTransform;
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.96, 1, time) { EasingFunction = ease });
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.96, 1, time) { EasingFunction = ease });
+    }
+
+    /// <summary>The dialog's card (without the transparent shadow margin), for screenshots.</summary>
+    public FrameworkElement Card => _card;
 
     /// <summary>Check the input and copy it out. Return an error message, or null when it's OK to close.</summary>
     protected abstract string? TrySave();
@@ -95,7 +213,7 @@ public abstract class DialogShell : Window
         if (error != null)
         {
             _error.Text = error;
-            _error.Visibility = Visibility.Visible;
+            _errorBar.Visibility = Visibility.Visible;
             return;
         }
         DialogResult = true;
@@ -107,6 +225,12 @@ public abstract class DialogShell : Window
         {
             e.Handled = true;
             Save();
+            return;
+        }
+        if (e.Key == Key.Escape && _cancel?.Visibility != Visibility.Visible)
+        {
+            e.Handled = true;
+            Close();
             return;
         }
         base.OnPreviewKeyDown(e);

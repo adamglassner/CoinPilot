@@ -325,6 +325,24 @@ public partial class MainWindow : Window
 
     // ----- Toast -----
 
+    private System.Windows.Shapes.Rectangle? _dim;
+    private int _dimCount;
+
+    /// <summary>Darkens the window behind an open dialog (nested dialogs keep it dark until the last one closes).</summary>
+    public void SetDimmed(bool on)
+    {
+        _dimCount = Math.Max(0, _dimCount + (on ? 1 : -1));
+        if (_dim == null)
+        {
+            _dim = new System.Windows.Shapes.Rectangle { Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 8, 14, 12)), Opacity = 0, IsHitTestVisible = false };
+            Grid.SetColumnSpan(_dim, 2);
+            ((Grid)Content).Children.Add(_dim);
+        }
+        double target = _dimCount > 0 ? (App.IsDark ? 0.55 : 0.38) : 0;
+        if (SelfTest.IsRunning) { _dim.BeginAnimation(OpacityProperty, null); _dim.Opacity = target; return; }
+        _dim.BeginAnimation(OpacityProperty, new DoubleAnimation(target, TimeSpan.FromMilliseconds(170)));
+    }
+
     public void ShowToast(string message)
     {
         ToastText.Text = message;

@@ -12,6 +12,8 @@ public sealed class ConfirmDialog : DialogShell
     public ConfirmDialog(string title, string message, string confirmText, bool danger = false)
         : base(title, message, allowDelete: false, saveText: confirmText, width: 480)
     {
+        if (danger) UseDangerTone();
+        else HeaderGlyph = "\uE9CE";
         if (danger)
             Loaded += (_, _) =>
             {

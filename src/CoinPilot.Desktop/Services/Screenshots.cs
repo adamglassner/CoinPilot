@@ -67,14 +67,30 @@ public static class Screenshots
         App.Settings.ColorTheme = ThemePalettes.Default;
         App.ApplyTheme(AppTheme.Light);
 
-        // Dialogs
-        await Show(window, "transactions");
-        await CaptureDialog(new TransactionDialog(DataStore.Transactions.Items.First(t => t.IsSplit)), $"{n++:00}-dialog-split-transaction");
-        await CaptureDialog(new BudgetTemplateDialog(), $"{n++:00}-dialog-budget-template");
+        // Dialogs (light, then dark)
         string csv = "Date,Description,Amount\n" + string.Join("\n", Enumerable.Range(1, 8).Select(i =>
             $"{DateTime.Today.AddDays(-i):MM/dd/yyyy},{new[] { "STARBUCKS #1182", "KROGER 0457", "SHELL OIL 5512", "CHIPOTLE 2210", "TARGET T-1034", "NETFLIX.COM", "AMAZON MKTPL", "DUKE ENERGY" }[i - 1]},-{(7.5 + i * 13.27):0.00}"));
-        await CaptureDialog(new ImportDialog("Chase-Visa-statement.csv", Importer.ReadCsv(csv)), $"{n++:00}-dialog-import-statement");
-        await CaptureDialog(new CategoriesDialog(), $"{n++:00}-dialog-categories");
+        foreach (var mode in new[] { AppTheme.Light, AppTheme.Dark })
+        {
+            App.ApplyTheme(mode);
+            string m = mode.ToLowerInvariant();
+            await Show(window, "transactions");
+            await CaptureDialog(window, new TransactionDialog(null, DateTime.Today), $"{n++:00}-dialog-add-transaction-{m}");
+            await CaptureDialog(window, new TransactionDialog(DataStore.Transactions.Items.First(t => t.IsSplit)), $"{n++:00}-dialog-split-transaction-{m}");
+            await CaptureDialog(window, new ImportDialog("Chase-Visa-statement.csv", Importer.ReadCsv(csv)), $"{n++:00}-dialog-import-{m}");
+            await Show(window, "budgets");
+            await CaptureDialog(window, new BudgetDialog(DataStore.Budgets.Items.First(b => b.Rollover)), $"{n++:00}-dialog-budget-{m}");
+            await CaptureDialog(window, new BudgetTemplateDialog(), $"{n++:00}-dialog-budget-template-{m}");
+            await Show(window, "bills");
+            await CaptureDialog(window, new BillDialog(DataStore.Bills.Items[0]), $"{n++:00}-dialog-bill-{m}");
+            await Show(window, "goals");
+            await CaptureDialog(window, new GoalDialog(DataStore.Goals.Items[1]), $"{n++:00}-dialog-goal-{m}");
+            await Show(window, "settings");
+            await CaptureDialog(window, new CategoriesDialog(), $"{n++:00}-dialog-categories-{m}");
+            await CaptureDialog(window, new SetLockDialog(change: false), $"{n++:00}-dialog-protect-{m}");
+            await CaptureDialog(window, new ConfirmDialog("Restore this backup?", "This replaces everything in CoinPilot with the backup from March 3. Your current data will be lost.", "Restore", danger: true), $"{n++:00}-dialog-confirm-{m}");
+        }
+        App.ApplyTheme(AppTheme.Light);
 
         // Lock screen
         DataLock.Enable("482910", "PIN", 15);
@@ -127,19 +143,39 @@ public static class Screenshots
         }
     }
 
-    private static async Task CaptureDialog(Window dialog, string name)
+    /// <summary>Shows the dialog over the (dimmed) main window and saves the two together, as it looks in the app.</summary>
+    private static async Task CaptureDialog(MainWindow window, DialogShell dialog, string name)
     {
         try
         {
             dialog.Show();
             await Idle();
-            var root = (FrameworkElement)dialog.Content;
-            double w = dialog.Width, h = Math.Min(root.ActualHeight > 0 ? root.ActualHeight : 700, 900);
-            root.Measure(new Size(w, double.PositiveInfinity));
-            h = Math.Min(root.DesiredSize.Height, 980);
-            root.Arrange(new Rect(0, 0, w, h));
+            var root = (FrameworkElement)window.Content;
+            root.Measure(new Size(Width, Height));
+            root.Arrange(new Rect(0, 0, Width, Height));
             root.UpdateLayout();
-            Save(root, w, h, (Brush)Application.Current.FindResource("Brush.Bg"), name);
+
+            var card = dialog.Card;
+            double w = card.ActualWidth, h = Math.Min(card.ActualHeight, Height - 40);
+            var visual = new DrawingVisual();
+            using (var dc = visual.RenderOpen())
+            {
+                dc.DrawRectangle((Brush)Application.Current.FindResource("Brush.Bg"), null, new Rect(0, 0, Width, Height));
+                dc.DrawRectangle(new VisualBrush(root) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top }, null, new Rect(0, 0, Width, Height));
+                // Same dim the main window draws while a dialog is open (already in root's tree), plus the card's own shadow
+                var at = new Rect((Width - w) / 2, Math.Max(20, (Height - h) / 2), w, h);
+                var cardVisual = new VisualBrush(card) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top, ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(0, 0, w, h) };
+                dc.PushOpacity(0.22);
+                dc.DrawRoundedRectangle(Brushes.Black, null, new Rect(at.X, at.Y + 8, w, h), 22, 22);
+                dc.Pop();
+                dc.DrawRectangle(cardVisual, null, at);
+            }
+            var bitmap = new RenderTargetBitmap((int)(Width * Scale), (int)(Height * Scale), 96 * Scale, 96 * Scale, PixelFormats.Pbgra32);
+            bitmap.Render(visual);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var file = File.Create(Path.Combine(OutputFolder!, name + ".png"));
+            encoder.Save(file);
         }
         catch (Exception ex)
         {
@@ -150,6 +186,7 @@ public static class Screenshots
         {
             if (dialog is RecoveryKeyDialog r) r.ForceClose = true;
             dialog.Close();
+            await Idle();
         }
     }
 
