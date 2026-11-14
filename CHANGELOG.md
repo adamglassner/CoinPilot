@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.3 — 2026-11-14
+
+A more modern look for icons and dates.
+
+- **New icons everywhere:** rounded, modern icons (Microsoft's Fluent UI System Icons) replace the old Windows 10 set
+  in the sidebar, page headers, buttons and dialogs. The selected section's icon is solid.
+- **Date fields:** match the other text boxes, with a clean calendar button and dates written out
+  ("Tuesday, December 1, 2026").
+- **Date picker calendar:** a rounded card with round day buttons; today is ringed and the chosen day is filled
+  with your theme color. Click the month name to jump to another month or year.
+- **Bills calendar:** today in a filled circle, days from the months on either side, a colored dot on each bill
+  (due, due soon, overdue, paid), "+N more" on busy days and a key underneath.
+
 ## 1.0.2 — 2026-11-13
 
 **CoinPilot is now WillowWallet.** Same app, same icon, new name.

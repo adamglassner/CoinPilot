@@ -3,7 +3,9 @@
     <!-- Theme-independent styles. Colors come from Light.xaml / Dark.xaml via DynamicResource. -->
 
     <BooleanToVisibilityConverter x:Key="BoolToVis" />
-    <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <!-- Icons: Microsoft's Fluent UI System Icons (MIT), built into a small font by tools/make_icon_font.py -->
+    <FontFamily x:Key="IconFont">pack://application:,,,/Assets/Fonts/#WillowWallet Icons</FontFamily>
+    <FontFamily x:Key="IconFontFilled">pack://application:,,,/Assets/Fonts/#WillowWallet Icons Filled</FontFamily>
     <FontFamily x:Key="DisplayFont">Segoe UI Variable Display, Segoe UI</FontFamily>
 
     <!-- ===== Text ===== -->
@@ -252,8 +254,8 @@
                     <Grid Margin="0,2">
                         <Border x:Name="bd" Background="Transparent" CornerRadius="10" />
                         <DockPanel Margin="14,10">
-                            <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="{StaticResource IconFont}"
-                                       FontSize="16" Width="30" VerticalAlignment="Center" />
+                            <TextBlock x:Name="icon" DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="{StaticResource IconFont}"
+                                       FontSize="18" Width="30" VerticalAlignment="Center" />
                             <Border DockPanel.Dock="Right" Background="{DynamicResource Brush.SidebarCard}" CornerRadius="8" Padding="6,1"
                                     VerticalAlignment="Center" Visibility="{Binding IsComingSoon, Converter={StaticResource BoolToVis}}">
                                 <TextBlock Text="SOON" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource Brush.SidebarMuted}" />
@@ -269,6 +271,8 @@
                             <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.SidebarHover}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="icon" Property="FontFamily" Value="{StaticResource IconFontFilled}" />
+                            <Setter TargetName="icon" Property="Foreground" Value="{DynamicResource Brush.Mint}" />
                             <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.SidebarSelected}" />
                             <Setter Property="Foreground" Value="{DynamicResource Brush.SidebarText}" />
                             <Setter Property="FontWeight" Value="SemiBold" />
@@ -788,11 +792,11 @@
                                 <DockPanel Margin="0,0,0,8">
                                     <Button x:Name="PART_NextButton" DockPanel.Dock="Right" Style="{StaticResource CalendarNavButton}"
                                             AutomationProperties.Name="Next">
-                                        <TextBlock Text="&#xE76C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" />
+                                        <TextBlock Text="&#xE76C;" FontFamily="{StaticResource IconFont}" FontSize="12" />
                                     </Button>
                                     <Button x:Name="PART_PreviousButton" DockPanel.Dock="Right" Style="{StaticResource CalendarNavButton}"
                                             AutomationProperties.Name="Previous" Margin="0,0,2,0">
-                                        <TextBlock Text="&#xE76B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" />
+                                        <TextBlock Text="&#xE76B;" FontFamily="{StaticResource IconFont}" FontSize="12" />
                                     </Button>
                                     <Button x:Name="PART_HeaderButton" HorizontalAlignment="Left" Focusable="False" Cursor="Hand"
                                             Foreground="{DynamicResource Brush.Text}" FontSize="15" FontWeight="SemiBold">
@@ -801,7 +805,7 @@
                                                 <Border x:Name="bd" Background="Transparent" CornerRadius="10" Padding="8,5">
                                                     <StackPanel Orientation="Horizontal">
                                                         <ContentPresenter VerticalAlignment="Center" />
-                                                        <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                                                        <TextBlock Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="10"
                                                                    Margin="8,2,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}" />
                                                     </StackPanel>
                                                 </Border>
@@ -928,7 +932,7 @@
                                     <Button.Template>
                                         <ControlTemplate TargetType="Button">
                                             <Border x:Name="b" Background="Transparent" CornerRadius="7">
-                                                <TextBlock Text="&#xE787;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"
+                                                <TextBlock Text="&#xE787;" FontFamily="{StaticResource IconFont}" FontSize="15"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
                                             <ControlTemplate.Triggers>

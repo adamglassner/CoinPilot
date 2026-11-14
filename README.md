@@ -7,7 +7,7 @@
 **Budgets, spending, accounts, debts, bills, goals and tax documents in one private app for Windows.**
 Made by Bytehawk Studio. *(Formerly CoinPilot; the repository keeps its old name for now.)*
 
-> **Version 1.0.2, Windows 10/11.** Everything works and is saved on your PC, with optional PIN/password encryption.
+> **Version 1.0.3, Windows 10/11.** Everything works and is saved on your PC, with optional PIN/password encryption.
 > Syncing with the WillowWallet mobile app is coming soon.
 
 ## Features
@@ -127,5 +127,9 @@ tools/                   icon and installer image generators (Python + Pillow)
 5. Sign-in and sync between devices, more of the desktop features on Android, iPhone
 
 ## License
+
+Icons: [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons) © Microsoft, MIT License
+(subset built by `tools/make_icon_font.py`).
+
 
 MIT — see [LICENSE](LICENSE). © 2026 Bytehawk Studio.
