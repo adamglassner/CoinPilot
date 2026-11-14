@@ -7,7 +7,7 @@
 **Budgets, spending, accounts, debts, bills, goals and tax documents in one private app for Windows.**
 Made by Bytehawk Studio. *(Formerly CoinPilot; the repository keeps its old name for now.)*
 
-> **Version 1.0.3, Windows 10/11.** Everything works and is saved on your PC, with optional PIN/password encryption.
+> **Version 1.0.4, Windows 10/11.** Everything works and is saved on your PC, with optional PIN/password encryption.
 > Syncing with the WillowWallet mobile app is coming soon.
 
 ## Features

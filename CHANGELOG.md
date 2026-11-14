@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.4 — 2026-11-14
+
+- The calendar that opens from a date field now uses WillowWallet's design and your color theme (light or dark)
+  instead of the plain white Windows calendar.
+
 ## 1.0.3 — 2026-11-14
 
 A more modern look for icons and dates.

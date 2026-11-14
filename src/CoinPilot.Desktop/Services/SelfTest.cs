@@ -248,6 +248,22 @@ public static class SelfTest
         Check("Moved with its file", File.Exists(FileVault.TaxDocumentPath(w2!)) && w2!.Year == today.Year - 2);
         TaxesView.Year = today.Year - 2;
 
+        // ----- Date picker popup uses the app's calendar design -----
+        {
+            var picker = new System.Windows.Controls.DatePicker { SelectedDate = today };
+            var probe = new Window { Content = picker, Width = 400, Height = 200, Left = -2000, Top = -2000, ShowInTaskbar = false, WindowStyle = WindowStyle.None };
+            probe.Show();
+            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+            picker.IsDropDownOpen = true;
+            await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+            var popup = picker.Template.FindName("PART_Popup", picker) as System.Windows.Controls.Primitives.Popup;
+            var cal = popup?.Child as System.Windows.Controls.Calendar;
+            Check("Date picker popup is themed", cal != null && cal.Style == Application.Current.FindResource("ModernCalendar"),
+                cal == null ? "no calendar in the popup" : cal.Style == null ? "no style" : "a different style");
+            picker.IsDropDownOpen = false;
+            probe.Close();
+        }
+
         // ----- Every page, every color theme -----
         BillsView.ShowCalendar = true;
         await AllPages(window, "1.0");

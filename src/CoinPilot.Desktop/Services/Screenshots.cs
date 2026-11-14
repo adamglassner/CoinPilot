@@ -106,10 +106,24 @@ public static class Screenshots
             await Idle();
             try
             {
+                // A real date field with its popup open, so the screenshot shows exactly what people see
                 var today = DateTime.Today;
-                var cal = new System.Windows.Controls.Calendar { SelectedDate = today.AddDays(9 - today.Day % 7), DisplayDate = today };
-                var host = new System.Windows.Controls.Border { Child = cal, Padding = new Thickness(24, 20, 24, 8) };
+                var picker = new System.Windows.Controls.DatePicker { SelectedDate = today.AddDays(9), Width = 270 };
+                var probe = new Window { Content = picker, Width = 400, Height = 200, Left = -2000, Top = -2000, ShowInTaskbar = false, WindowStyle = WindowStyle.None };
+                probe.Show();
+                await Idle();
+                picker.IsDropDownOpen = true;
+                await Idle();
+                var popup = (System.Windows.Controls.Primitives.Popup)picker.Template.FindName("PART_Popup", picker);
+                var cal = (FrameworkElement)popup.Child;
+                cal.UpdateLayout();
+                var host = new System.Windows.Controls.Border { Padding = new Thickness(10, 18, 10, 0) };
                 host.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "Brush.Bg");
+                var shot = new RenderTargetBitmap((int)(cal.ActualWidth * Scale), (int)(cal.ActualHeight * Scale), 96 * Scale, 96 * Scale, PixelFormats.Pbgra32);
+                shot.Render(cal);
+                host.Child = new System.Windows.Controls.Image { Source = shot, Width = cal.ActualWidth, Height = cal.ActualHeight };
+                picker.IsDropDownOpen = false;
+                probe.Close();
                 host.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 host.Arrange(new Rect(host.DesiredSize));
                 host.UpdateLayout();

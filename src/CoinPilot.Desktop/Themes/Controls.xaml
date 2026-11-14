@@ -869,7 +869,9 @@
         </Setter>
     </Style>
 
-    <Style TargetType="Calendar">
+    <!-- Keyed so the date picker can be given it: DatePicker sets its popup calendar's Style from CalendarStyle,
+         which would otherwise be null and leave the old white Windows calendar. -->
+    <Style x:Key="ModernCalendar" TargetType="Calendar">
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
         <Setter Property="FontFamily" Value="Segoe UI" />
         <Setter Property="CalendarItemStyle" Value="{StaticResource ModernCalendarItem}" />
@@ -886,6 +888,8 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <Style TargetType="Calendar" BasedOn="{StaticResource ModernCalendar}" />
 
     <Style TargetType="DatePickerTextBox">
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
@@ -920,6 +924,7 @@
         <Setter Property="Padding" Value="11,0,4,0" />
         <Setter Property="MinHeight" Value="38" />
         <Setter Property="IsTodayHighlighted" Value="True" />
+        <Setter Property="CalendarStyle" Value="{StaticResource ModernCalendar}" />
         <Setter Property="SelectedDateFormat" Value="Long" />
         <Setter Property="FirstDayOfWeek" Value="Sunday" />
         <Setter Property="Template">
