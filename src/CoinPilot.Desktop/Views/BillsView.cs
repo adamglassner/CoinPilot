@@ -205,7 +205,7 @@ public sealed class BillsView : DataPage
             {
                 Margin = new Thickness(3),
                 CornerRadius = new CornerRadius(12),
-                Padding = new Thickness(8, 7, 8, 8),
+                Padding = new Thickness(6, 6, 6, 7),
                 MinHeight = 104,
                 BorderThickness = new Thickness(1),
             };
@@ -238,28 +238,29 @@ public sealed class BillsView : DataPage
             {
                 bool overdue = !paid && date < today.Date;
                 bool soon = !paid && !overdue && (date - today.Date).TotalDays <= 3;
-                string dot = paid ? "Brush.Positive" : overdue ? "Brush.Danger" : soon ? "Brush.Warn" : "Brush.Accent";
+                string dot = paid ? "Brush.TextMuted" : overdue ? "Brush.Danger" : soon ? "Brush.Warn" : "Brush.Accent";
 
-                var chip = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(7, 4, 7, 5), Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Hand, BorderThickness = new Thickness(1) };
+                var chip = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(6, 4, 5, 5), Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Hand, BorderThickness = new Thickness(1) };
                 chip.SetResourceReference(Border.BackgroundProperty, weekend ? "Brush.Surface" : "Brush.SurfaceAlt");
                 chip.BorderBrush = Brushes.Transparent;
                 chip.MouseEnter += (_, _) => chip.SetResourceReference(Border.BorderBrushProperty, "Brush.Accent");
                 chip.MouseLeave += (_, _) => chip.BorderBrush = Brushes.Transparent;
 
-                var row = new DockPanel();
-                var mark = new System.Windows.Shapes.Ellipse { Width = 7, Height = 7, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
-                mark.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, dot);
-                DockPanel.SetDock(mark, Dock.Left);
-                row.Children.Add(mark);
-                var name = Ui.Text(bill.Name, size: 11.5, weight: FontWeights.SemiBold, brushKey: paid ? "Brush.TextMuted" : "Brush.Text");
-                name.TextTrimming = TextTrimming.CharacterEllipsis;
-                if (paid) name.TextDecorations = TextDecorations.Strikethrough;
-                row.Children.Add(name);
+                // Name (up to two lines), then a status dot and the amount
                 var inner = new StackPanel();
+                var name = Ui.Text(bill.Name, size: 11.5, weight: FontWeights.SemiBold, brushKey: paid ? "Brush.TextMuted" : "Brush.Text");
+                name.TextWrapping = TextWrapping.Wrap;
+                name.TextTrimming = TextTrimming.CharacterEllipsis;
+                name.MaxHeight = 32;
+                name.LineHeight = 15;
+                if (paid) name.TextDecorations = TextDecorations.Strikethrough;
+                inner.Children.Add(name);
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 1, 0, 0) };
+                var mark = new System.Windows.Shapes.Ellipse { Width = 7, Height = 7, Margin = new Thickness(0, 1, 5, 0), VerticalAlignment = VerticalAlignment.Center };
+                mark.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, dot);
+                row.Children.Add(mark);
+                row.Children.Add(Ui.Text(paid ? "Paid" : Money.Format(bill.Amount), muted: true, size: 11));
                 inner.Children.Add(row);
-                var amount = Ui.Text(paid ? "Paid" : Money.Format(bill.Amount), muted: true, size: 11);
-                amount.Margin = new Thickness(13, 0, 0, 0);
-                inner.Children.Add(amount);
                 chip.Child = inner;
                 chip.ToolTip = paid ? $"{bill.Name}: paid" : overdue ? $"{bill.Name}: {Money.Format(bill.Amount)}, overdue since {date:MMM d}" : $"{bill.Name}: {Money.Format(bill.Amount)} due {date:MMM d}";
                 var b = bill;
@@ -282,7 +283,7 @@ public sealed class BillsView : DataPage
         var total = occurrences.Where(o => !o.Paid).Sum(o => o.Bill.Amount);
         var foot = new DockPanel { Margin = new Thickness(6, 12, 6, 2) };
         var legend = new StackPanel { Orientation = Orientation.Horizontal };
-        foreach (var (label, key) in new[] { ("Due", "Brush.Accent"), ("Due soon", "Brush.Warn"), ("Overdue", "Brush.Danger"), ("Paid", "Brush.Positive") })
+        foreach (var (label, key) in new[] { ("Due", "Brush.Accent"), ("Due soon", "Brush.Warn"), ("Overdue", "Brush.Danger"), ("Paid", "Brush.TextMuted") })
         {
             var d = new System.Windows.Shapes.Ellipse { Width = 8, Height = 8, Margin = new Thickness(14, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
             d.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, key);

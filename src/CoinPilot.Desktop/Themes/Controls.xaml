@@ -821,6 +821,8 @@
                                         </Button.Template>
                                     </Button>
                                 </DockPanel>
+                                <!-- Month and year views share one cell, so the hidden one takes no extra room -->
+                                <Grid>
                                 <Grid x:Name="PART_MonthView" Visibility="Visible">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
@@ -833,7 +835,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                 </Grid>
-                                <Grid x:Name="PART_YearView" Visibility="Hidden" Margin="0,4,0,0">
+                                <Grid x:Name="PART_YearView" Visibility="Hidden" Margin="0,4,0,0" VerticalAlignment="Top" HorizontalAlignment="Center">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
@@ -841,6 +843,7 @@
                                         <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
+                                </Grid>
                                 </Grid>
                             </StackPanel>
                         </Border>
