@@ -47,6 +47,8 @@ public static class Screenshots
                 {
                     BillsView.ShowCalendar = true;
                     await Show(window, page);
+                    window.PageScroller.ScrollToEnd();
+                    await Idle();
                     await Capture(window, $"{n++:00}-bills-calendar-{mode.ToLowerInvariant()}");
                     BillsView.ShowCalendar = false;
                 }
@@ -94,6 +96,30 @@ public static class Screenshots
             await CaptureDialog(window, new CategoriesDialog(), $"{n++:00}-dialog-categories-{m}");
             await CaptureDialog(window, new SetLockDialog(change: false), $"{n++:00}-dialog-protect-{m}");
             await CaptureDialog(window, new ConfirmDialog("Restore this backup?", "This replaces everything in WillowWallet with the backup from March 3. Your current data will be lost.", "Restore", danger: true), $"{n++:00}-dialog-confirm-{m}");
+        }
+        App.ApplyTheme(AppTheme.Light);
+
+        // The date picker's calendar, light and dark (it opens in a popup, so it's drawn on its own here)
+        foreach (var mode in new[] { AppTheme.Light, AppTheme.Dark })
+        {
+            App.ApplyTheme(mode);
+            await Idle();
+            try
+            {
+                var today = DateTime.Today;
+                var cal = new System.Windows.Controls.Calendar { SelectedDate = today.AddDays(9 - today.Day % 7), DisplayDate = today };
+                var host = new System.Windows.Controls.Border { Child = cal, Padding = new Thickness(24, 20, 24, 8) };
+                host.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "Brush.Bg");
+                host.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                host.Arrange(new Rect(host.DesiredSize));
+                host.UpdateLayout();
+                Save(host, host.ActualWidth, host.ActualHeight, (Brush)Application.Current.FindResource("Brush.Bg"), $"{n++:00}-date-picker-{mode.ToLowerInvariant()}");
+            }
+            catch (Exception ex)
+            {
+                _failures++;
+                File.WriteAllText(Path.Combine(OutputFolder!, $"date-picker-{mode}.error.txt"), ex.ToString());
+            }
         }
         App.ApplyTheme(AppTheme.Light);
 

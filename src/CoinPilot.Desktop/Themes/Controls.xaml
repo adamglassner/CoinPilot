@@ -651,17 +651,323 @@
         </Setter>
     </Style>
 
+    <!-- ===== Date picker: a text field with a calendar button, and a modern calendar popup ===== -->
+
+    <!-- Day-of-week titles (Su Mo Tu …) -->
+    <DataTemplate x:Key="{x:Static CalendarItem.DayTitleTemplateResourceKey}">
+        <TextBlock Text="{Binding}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextMuted}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,2,0,6" />
+    </DataTemplate>
+
+    <!-- ‹ › buttons in the calendar header -->
+    <Style x:Key="CalendarNavButton" TargetType="Button">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="bd" Background="Transparent" CornerRadius="16">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.SurfaceAlt}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.3" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- One day: a circle. Today has a ring, the selected day is filled with the accent color. -->
+    <Style x:Key="ModernCalendarDay" TargetType="CalendarDayButton">
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="Margin" Value="1" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CalendarDayButton">
+                    <Grid>
+                        <Ellipse x:Name="bg" Fill="Transparent" />
+                        <Ellipse x:Name="ring" Stroke="{DynamicResource Brush.Accent}" StrokeThickness="1.5" Visibility="Collapsed" />
+                        <ContentPresenter x:Name="text" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Path x:Name="blackout" Visibility="Collapsed" Stroke="{DynamicResource Brush.TextMuted}" StrokeThickness="1"
+                              Data="M 11,25 L 25,11" Opacity="0.6" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bg" Property="Fill" Value="{DynamicResource Brush.SurfaceAlt}" />
+                        </Trigger>
+                        <Trigger Property="IsInactive" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                        <Trigger Property="IsToday" Value="True">
+                            <Setter TargetName="ring" Property="Visibility" Value="Visible" />
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                            <Setter Property="FontWeight" Value="Bold" />
+                        </Trigger>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="bg" Property="Fill" Value="{DynamicResource Brush.AccentSoft}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="bg" Property="Fill" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="ring" Property="Visibility" Value="Collapsed" />
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsBlackedOut" Value="True">
+                            <Setter TargetName="blackout" Property="Visibility" Value="Visible" />
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.35" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A month or year in the zoomed-out views: a rounded pill -->
+    <Style x:Key="ModernCalendarMonth" TargetType="CalendarButton">
+        <Setter Property="Width" Value="62" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="Margin" Value="2,4" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CalendarButton">
+                    <Border x:Name="bg" Background="Transparent" CornerRadius="12">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bg" Property="Background" Value="{DynamicResource Brush.SurfaceAlt}" />
+                        </Trigger>
+                        <Trigger Property="IsInactive" Value="True">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                        <Trigger Property="HasSelectedDays" Value="True">
+                            <Setter TargetName="bg" Property="Background" Value="{DynamicResource Brush.Accent}" />
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.AccentText}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ModernCalendarItem" TargetType="CalendarItem">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CalendarItem">
+                    <Grid x:Name="PART_Root">
+                        <Border Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}"
+                                BorderThickness="1" CornerRadius="16" Padding="14,12,14,14">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.2" />
+                            </Border.Effect>
+                            <StackPanel>
+                                <!-- Header: month name (click to zoom out) and ‹ › -->
+                                <DockPanel Margin="0,0,0,8">
+                                    <Button x:Name="PART_NextButton" DockPanel.Dock="Right" Style="{StaticResource CalendarNavButton}"
+                                            AutomationProperties.Name="Next">
+                                        <TextBlock Text="&#xE76C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" />
+                                    </Button>
+                                    <Button x:Name="PART_PreviousButton" DockPanel.Dock="Right" Style="{StaticResource CalendarNavButton}"
+                                            AutomationProperties.Name="Previous" Margin="0,0,2,0">
+                                        <TextBlock Text="&#xE76B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" />
+                                    </Button>
+                                    <Button x:Name="PART_HeaderButton" HorizontalAlignment="Left" Focusable="False" Cursor="Hand"
+                                            Foreground="{DynamicResource Brush.Text}" FontSize="15" FontWeight="SemiBold">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="bd" Background="Transparent" CornerRadius="10" Padding="8,5">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <ContentPresenter VerticalAlignment="Center" />
+                                                        <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                                                                   Margin="8,2,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}" />
+                                                    </StackPanel>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.SurfaceAlt}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter TargetName="bd" Property="Opacity" Value="0.6" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </DockPanel>
+                                <Grid x:Name="PART_MonthView" Visibility="Visible">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                </Grid>
+                                <Grid x:Name="PART_YearView" Visibility="Hidden" Margin="0,4,0,0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                        <Rectangle x:Name="PART_DisabledVisual" Fill="{DynamicResource Brush.Surface}" Opacity="0" RadiusX="16" RadiusY="16"
+                                   Stretch="Fill" Visibility="Collapsed" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding DisplayMode, RelativeSource={RelativeSource FindAncestor, AncestorType=Calendar}}" Value="Year">
+                            <Setter TargetName="PART_MonthView" Property="Visibility" Value="Hidden" />
+                            <Setter TargetName="PART_YearView" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding DisplayMode, RelativeSource={RelativeSource FindAncestor, AncestorType=Calendar}}" Value="Decade">
+                            <Setter TargetName="PART_MonthView" Property="Visibility" Value="Hidden" />
+                            <Setter TargetName="PART_YearView" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="PART_DisabledVisual" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="PART_DisabledVisual" Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="Calendar">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="CalendarItemStyle" Value="{StaticResource ModernCalendarItem}" />
+        <Setter Property="CalendarDayButtonStyle" Value="{StaticResource ModernCalendarDay}" />
+        <Setter Property="CalendarButtonStyle" Value="{StaticResource ModernCalendarMonth}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Calendar">
+                    <!-- Transparent room around the card for its shadow (it sits in the date picker's popup) -->
+                    <StackPanel x:Name="PART_Root" HorizontalAlignment="Center" Margin="14,2,14,20">
+                        <CalendarItem x:Name="PART_CalendarItem" Style="{TemplateBinding CalendarItemStyle}" />
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="DatePickerTextBox">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource Brush.Text}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DatePickerTextBox">
+                    <Grid Background="Transparent">
+                        <ContentControl x:Name="PART_Watermark" Foreground="{DynamicResource Brush.TextMuted}" Focusable="False"
+                                        IsHitTestVisible="False" Opacity="0" VerticalAlignment="Center" Margin="2,0,0,0" />
+                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False" VerticalAlignment="Center"
+                                      HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <!-- The watermark ("Select a date") shows only while the box is empty -->
+                        <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource Self}}" Value="">
+                            <Setter TargetName="PART_Watermark" Property="Opacity" Value="1" />
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="DatePicker">
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
-        <Setter Property="Padding" Value="5,5" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="11,0,4,0" />
+        <Setter Property="MinHeight" Value="38" />
+        <Setter Property="IsTodayHighlighted" Value="True" />
+        <Setter Property="SelectedDateFormat" Value="Long" />
+        <Setter Property="FirstDayOfWeek" Value="Sunday" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DatePicker">
+                    <Grid x:Name="PART_Root">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <DockPanel>
+                                <Button x:Name="PART_Button" DockPanel.Dock="Right" Focusable="False" Cursor="Hand" Width="30" Height="30"
+                                        ToolTip="Choose a date" AutomationProperties.Name="Choose a date"
+                                        Foreground="{DynamicResource Brush.Accent}">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="b" Background="Transparent" CornerRadius="7">
+                                                <TextBlock Text="&#xE787;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="b" Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <DatePickerTextBox x:Name="PART_TextBox" VerticalAlignment="Center" />
+                            </DockPanel>
+                        </Border>
+                        <Popup x:Name="PART_Popup" Placement="Bottom" PlacementTarget="{Binding ElementName=bd}" StaysOpen="False"
+                               AllowsTransparency="True" PopupAnimation="Fade" VerticalOffset="6" HorizontalOffset="-14">
+                            <!-- DatePicker puts its Calendar here (the calendar draws its own card and shadow) -->
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Brush.TextMuted}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="bd" Property="BorderThickness" Value="1.5" />
+                        </Trigger>
+                        <Trigger Property="IsDropDownOpen" Value="True">
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="bd" Property="BorderThickness" Value="1.5" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
-    <Style TargetType="DatePickerTextBox">
-        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
-        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
-        <Setter Property="CaretBrush" Value="{DynamicResource Brush.Text}" />
-    </Style>
+
     <Style TargetType="ToolTip">
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />

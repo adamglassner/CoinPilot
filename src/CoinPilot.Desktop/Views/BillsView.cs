@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using CoinPilot.Data;
 using CoinPilot.Services;
 
@@ -179,11 +180,11 @@ public sealed class BillsView : DataPage
         var occurrences = Occurrences(month);
         var grid = new Grid();
         for (int c = 0; c < 7; c++) grid.ColumnDefinitions.Add(new ColumnDefinition());
-        string[] days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+        string[] days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         for (int c = 0; c < 7; c++)
         {
-            var t = Ui.Text(days[c], muted: true, size: 11, weight: FontWeights.SemiBold).At(c, new Thickness(8, 4, 8, 8));
+            var t = Ui.Text(days[c], muted: true, size: 12, weight: FontWeights.SemiBold).At(c, new Thickness(12, 2, 8, 10));
             grid.Children.Add(t);
         }
 
@@ -191,52 +192,109 @@ public sealed class BillsView : DataPage
         int offset = (int)first.DayOfWeek;
         int daysInMonth = DateTime.DaysInMonth(month.Year, month.Month);
         int weeks = (offset + daysInMonth + 6) / 7;
-        for (int w = 0; w < weeks; w++) grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+        for (int w = 0; w < weeks; w++) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         for (int i = 0; i < weeks * 7; i++)
         {
-            int day = i - offset + 1;
-            var cell = new Border { Margin = new Thickness(3), CornerRadius = new CornerRadius(10), Padding = new Thickness(8, 6, 8, 8), MinHeight = 92, BorderThickness = new Thickness(1) };
+            var date = first.AddDays(i - offset);
+            bool inMonth = date.Month == month.Month;
+            bool isToday = date == today.Date;
+            bool weekend = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+
+            var cell = new Border
+            {
+                Margin = new Thickness(3),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(8, 7, 8, 8),
+                MinHeight = 104,
+                BorderThickness = new Thickness(1),
+            };
             Grid.SetRow(cell, i / 7 + 1);
             Grid.SetColumn(cell, i % 7);
-            if (day < 1 || day > daysInMonth)
+            cell.SetResourceReference(Border.BackgroundProperty, !inMonth ? "Brush.Bg" : weekend ? "Brush.SurfaceAlt" : "Brush.Surface");
+            cell.SetResourceReference(Border.BorderBrushProperty, isToday ? "Brush.Accent" : "Brush.Border");
+            if (isToday) cell.BorderThickness = new Thickness(1.5);
+
+            var stack = new StackPanel();
+            // Day number; today's sits in a filled circle
+            var number = new Border { Width = 26, Height = 26, CornerRadius = new CornerRadius(13), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(-2, -1, 0, 2) };
+            var numberText = Ui.Text(date.Day.ToString(), size: 12.5, weight: isToday ? FontWeights.Bold : FontWeights.SemiBold,
+                brushKey: isToday ? "Brush.AccentText" : inMonth ? "Brush.Text" : "Brush.TextMuted");
+            numberText.HorizontalAlignment = HorizontalAlignment.Center;
+            numberText.VerticalAlignment = VerticalAlignment.Center;
+            number.Child = numberText;
+            if (isToday) number.SetResourceReference(Border.BackgroundProperty, "Brush.Accent");
+            stack.Children.Add(number);
+            if (!inMonth)
             {
+                cell.Opacity = 0.55;
+                cell.Child = stack;
                 grid.Children.Add(cell);
                 continue;
             }
-            var date = new DateTime(month.Year, month.Month, day);
-            bool isToday = date == today.Date;
-            cell.SetResourceReference(Border.BackgroundProperty, isToday ? "Brush.AccentSoft" : "Brush.SurfaceAlt");
-            cell.SetResourceReference(Border.BorderBrushProperty, isToday ? "Brush.Accent" : "Brush.SurfaceAlt");
 
-            var stack = new StackPanel();
-            stack.Children.Add(Ui.Text(day.ToString(), size: 12.5, weight: isToday ? FontWeights.Bold : FontWeights.SemiBold, brushKey: isToday ? "Brush.Accent" : "Brush.TextMuted"));
-            foreach (var (_, bill, paid) in occurrences.Where(o => o.Date.Date == date).OrderBy(o => o.Bill.Name))
+            var due = occurrences.Where(o => o.Date.Date == date).OrderBy(o => o.Paid).ThenBy(o => o.Bill.Name).ToList();
+            foreach (var (_, bill, paid) in due.Take(3))
             {
                 bool overdue = !paid && date < today.Date;
-                var tag = new Border { CornerRadius = new CornerRadius(6), Padding = new Thickness(6, 2, 6, 3), Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Hand };
-                tag.SetResourceReference(Border.BackgroundProperty, "Brush.Surface");
-                var text = Ui.Text((paid ? "✓ " : "") + bill.Name, size: 11.5, weight: FontWeights.SemiBold,
-                    brushKey: paid ? "Brush.Positive" : overdue ? "Brush.Danger" : "Brush.Text");
-                var amount = Ui.Text(Money.Format(bill.Amount), muted: true, size: 11);
+                bool soon = !paid && !overdue && (date - today.Date).TotalDays <= 3;
+                string dot = paid ? "Brush.Positive" : overdue ? "Brush.Danger" : soon ? "Brush.Warn" : "Brush.Accent";
+
+                var chip = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(7, 4, 7, 5), Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Hand, BorderThickness = new Thickness(1) };
+                chip.SetResourceReference(Border.BackgroundProperty, weekend ? "Brush.Surface" : "Brush.SurfaceAlt");
+                chip.BorderBrush = Brushes.Transparent;
+                chip.MouseEnter += (_, _) => chip.SetResourceReference(Border.BorderBrushProperty, "Brush.Accent");
+                chip.MouseLeave += (_, _) => chip.BorderBrush = Brushes.Transparent;
+
+                var row = new DockPanel();
+                var mark = new System.Windows.Shapes.Ellipse { Width = 7, Height = 7, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+                mark.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, dot);
+                DockPanel.SetDock(mark, Dock.Left);
+                row.Children.Add(mark);
+                var name = Ui.Text(bill.Name, size: 11.5, weight: FontWeights.SemiBold, brushKey: paid ? "Brush.TextMuted" : "Brush.Text");
+                name.TextTrimming = TextTrimming.CharacterEllipsis;
+                if (paid) name.TextDecorations = TextDecorations.Strikethrough;
+                row.Children.Add(name);
                 var inner = new StackPanel();
-                inner.Children.Add(text);
+                inner.Children.Add(row);
+                var amount = Ui.Text(paid ? "Paid" : Money.Format(bill.Amount), muted: true, size: 11);
+                amount.Margin = new Thickness(13, 0, 0, 0);
                 inner.Children.Add(amount);
-                tag.Child = inner;
-                tag.ToolTip = paid ? $"{bill.Name}: paid" : $"{bill.Name}: {Money.Format(bill.Amount)} due {date:MMM d}";
+                chip.Child = inner;
+                chip.ToolTip = paid ? $"{bill.Name}: paid" : overdue ? $"{bill.Name}: {Money.Format(bill.Amount)}, overdue since {date:MMM d}" : $"{bill.Name}: {Money.Format(bill.Amount)} due {date:MMM d}";
                 var b = bill;
-                tag.MouseLeftButtonUp += (_, _) => BillDialog.Edit(b);
-                stack.Children.Add(tag);
+                chip.MouseLeftButtonUp += (_, _) => BillDialog.Edit(b);
+                stack.Children.Add(chip);
+            }
+            if (due.Count > 3)
+            {
+                var more = Ui.Text($"+{due.Count - 3} more", size: 11, weight: FontWeights.SemiBold, brushKey: "Brush.Accent");
+                more.Margin = new Thickness(4, 5, 0, 0);
+                more.ToolTip = string.Join("\n", due.Skip(3).Select(o => $"{o.Bill.Name} · {Money.Format(o.Bill.Amount)}"));
+                stack.Children.Add(more);
             }
             cell.Child = stack;
             grid.Children.Add(cell);
         }
 
+        // Footer: totals and a key for the dots
+        int paidCount = occurrences.Count(o => o.Paid);
         var total = occurrences.Where(o => !o.Paid).Sum(o => o.Bill.Amount);
+        var foot = new DockPanel { Margin = new Thickness(6, 12, 6, 2) };
+        var legend = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach (var (label, key) in new[] { ("Due", "Brush.Accent"), ("Due soon", "Brush.Warn"), ("Overdue", "Brush.Danger"), ("Paid", "Brush.Positive") })
+        {
+            var d = new System.Windows.Shapes.Ellipse { Width = 8, Height = 8, Margin = new Thickness(14, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+            d.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, key);
+            legend.Children.Add(d);
+            legend.Children.Add(Ui.Text(label, muted: true, size: 12));
+        }
+        DockPanel.SetDock(legend, Dock.Right);
+        foot.Children.Add(legend);
+        foot.Children.Add(Ui.Text($"{Money.Format(total)} still due in {month:MMMM} · {paidCount} paid", muted: true, size: 12.5));
+
         var wrap = new StackPanel();
         wrap.Children.Add(grid);
-        var foot = Ui.Text($"{Money.Format(total)} due in {month:MMMM} · {occurrences.Count(o => o.Paid)} paid", muted: true, size: 12.5);
-        foot.Margin = new Thickness(8, 10, 0, 2);
         wrap.Children.Add(foot);
         return wrap;
     }

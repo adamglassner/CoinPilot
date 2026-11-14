@@ -326,7 +326,7 @@ public abstract class DialogShell : Window
 
     protected static TextBox SmallBox(string text) => new() { Text = text, Width = 200, HorizontalAlignment = HorizontalAlignment.Left };
 
-    protected static DatePicker DateBox(DateTime? value) => new() { SelectedDate = value, Width = 200, HorizontalAlignment = HorizontalAlignment.Left };
+    protected static DatePicker DateBox(DateTime? value) => new() { SelectedDate = value, Width = 270, HorizontalAlignment = HorizontalAlignment.Left };
 
     /// <summary>Reads an amount box: blank is allowed (as 0) only when <paramref name="allowZero"/>.</summary>
     protected static bool ReadAmount(TextBox box, bool allowZero, out decimal value)
