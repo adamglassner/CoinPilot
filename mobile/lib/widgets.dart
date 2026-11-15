@@ -174,7 +174,7 @@ class TxnTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.pal;
-    final sub = [t.category, if (showDate) dayLabel(t.date) else t.account].join(' · ');
+    final sub = [t.isTransfer ? 'Transfer to ${t.transferAccount}' : t.categoryLabel, if (showDate) dayLabel(t.date) else t.account].join(' · ');
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -182,7 +182,14 @@ class TxnTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
           children: [
-            CategoryAvatar(t.category, income: t.isIncome),
+            t.isTransfer
+                ? Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(color: p.surfaceAlt, borderRadius: BorderRadius.circular(12.6)),
+                    child: Icon(Icons.swap_horiz_rounded, size: 21, color: p.muted),
+                  )
+                : CategoryAvatar(t.isSplit ? 'Split' : t.category, income: t.isIncome),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -202,7 +209,7 @@ class TxnTile extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15.5,
                 fontWeight: FontWeight.w600,
-                color: t.isIncome ? p.positive : p.text,
+                color: t.isIncome ? p.positive : t.isTransfer ? p.muted : p.text,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),

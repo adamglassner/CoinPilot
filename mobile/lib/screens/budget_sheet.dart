@@ -68,7 +68,7 @@ class _BudgetSheetState extends State<BudgetSheet> {
     }
     final store = StoreScope.read(context);
     final old = widget.existing ?? store.budgetFor(_category);
-    store.saveBudget(Budget(id: old?.id, category: _category, limitCents: cents, createdAt: old?.createdAt));
+    store.saveBudget(Budget(id: old?.id, category: _category, limitCents: cents, createdAt: old?.createdAt, extra: old?.extra));
     Navigator.pop(context);
     toast(context, '$_category: ${Money.format(cents, whole: true)} a month');
   }
@@ -84,7 +84,7 @@ class _BudgetSheetState extends State<BudgetSheet> {
     final store = StoreScope.read(context);
     store.deleteBudget(b.id);
     Navigator.pop(context);
-    toast(context, 'Deleted the ${b.category} budget', action: 'Undo', onAction: () => store.saveBudget(b));
+    toast(context, 'Deleted the ${b.category} budget', action: 'Undo', onAction: () => store.saveBudget(b.touched()));
   }
 
   @override
@@ -92,7 +92,7 @@ class _BudgetSheetState extends State<BudgetSheet> {
     final p = context.pal;
     final store = StoreScope.of(context);
     final editing = widget.existing != null;
-    final available = spendingCategories.where((c) => c == _category || store.budgetFor(c) == null).toList();
+    final available = store.categoriesFor(income: false).where((c) => c == _category || store.budgetFor(c) == null).toList();
     final suggestion = _category.isEmpty ? 0 : store.suggestedBudget(_category);
 
     return Padding(

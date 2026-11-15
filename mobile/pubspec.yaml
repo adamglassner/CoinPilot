@@ -1,7 +1,7 @@
 name: coinpilot
 description: WillowWallet for Android — budgets and spending, saved on your phone. A Bytehawk Studio app.
 publish_to: none
-version: 0.1.1+2
+version: 0.2.0+3
 
 environment:
   sdk: ^3.5.0
@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   path_provider: ^2.1.4
+  cryptography: ^2.7.0
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:

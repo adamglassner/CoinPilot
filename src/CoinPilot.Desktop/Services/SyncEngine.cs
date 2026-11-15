@@ -314,8 +314,12 @@ public static class SyncEngine
                 list.Add(new LocalChange(store.Name, id, false, updated.Ticks, Ms(updated), null));
             }
             string prefix = store.Name + "/";
-            foreach (var key in s.Synced.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal) && !present.Contains(k[prefix.Length..])))
-                list.Add(new LocalChange(store.Name, key[prefix.Length..], true, 0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), null));
+            foreach (var (key, ticks) in s.Synced.Where(kv => kv.Key.StartsWith(prefix, StringComparison.Ordinal) && !present.Contains(kv.Key[prefix.Length..])))
+            {
+                // A delete is newer than the last version this PC had, even if that edit's clock ran ahead
+                long modified = Math.Max(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), Ms(new DateTime(ticks)) + 1);
+                list.Add(new LocalChange(store.Name, key[prefix.Length..], true, 0, modified, null));
+            }
         }
         foreach (var name in new[] { "preferences", "debt-plan" })
         {
@@ -349,6 +353,9 @@ public static class SyncEngine
             }
             if (request.Count == 0) continue;
             var response = await _api!.PushAsync(new PushRequest(request));
+            // The server has a newer version of these: fetch them again on the pull that follows
+            foreach (var r in response.Results.Where(r => r.Status == "stale"))
+                if (r.Seq > 0 && r.Seq <= _s!.LastSeq) _s.LastSeq = r.Seq - 1;
             foreach (var r in response.Results.Where(r => r.Status == "ok"))
             {
                 string key = r.Collection + "/" + r.Id;

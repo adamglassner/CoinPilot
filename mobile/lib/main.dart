@@ -6,24 +6,60 @@ import 'screens/home_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/transaction_sheet.dart';
 import 'screens/transactions_screen.dart';
+import 'screens/settings_screen.dart' show appVersion;
 import 'store.dart';
+import 'sync/engine.dart';
+import 'sync/scope.dart';
 import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final store = await Store.open();
-  runApp(CoinPilotApp(store: store));
+  final sync = SyncEngine(store, appVersion: appVersion)..start();
+  runApp(CoinPilotApp(store: store, sync: sync));
 }
 
-class CoinPilotApp extends StatelessWidget {
-  const CoinPilotApp({super.key, required this.store, this.initialTab = 0});
+class CoinPilotApp extends StatefulWidget {
+  const CoinPilotApp({super.key, required this.store, this.sync, this.initialTab = 0});
   final Store store;
+
+  /// Syncing with a WillowWallet Server (tests and screenshots get one that never syncs on its own).
+  final SyncEngine? sync;
   final int initialTab;
 
   @override
+  State<CoinPilotApp> createState() => _CoinPilotAppState();
+}
+
+class _CoinPilotAppState extends State<CoinPilotApp> with WidgetsBindingObserver {
+  late final SyncEngine sync = widget.sync ?? SyncEngine(widget.store, appVersion: appVersion, automatic: false);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Coming back to the app picks up changes made on other devices.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && sync.automatic) sync.syncNow();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return StoreScope(
+    final store = widget.store;
+    final initialTab = widget.initialTab;
+    return SyncScope(
+      engine: sync,
+      child: StoreScope(
       store: store,
       child: ListenableBuilder(
         listenable: store,
@@ -42,6 +78,7 @@ class CoinPilotApp extends StatelessWidget {
             home: AppShell(initialTab: initialTab),
           );
         },
+      ),
       ),
     );
   }

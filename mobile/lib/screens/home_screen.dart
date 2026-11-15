@@ -6,7 +6,9 @@ import '../money.dart';
 import '../store.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../sync/scope.dart';
 import 'budget_sheet.dart';
+import 'sync_screen.dart';
 import 'transaction_sheet.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -34,22 +36,7 @@ class HomeScreen extends StatelessWidget {
                     maxLines: 1, overflow: TextOverflow.ellipsis, style: display(22, p.text, weight: FontWeight.w800)),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
-                decoration: BoxDecoration(
-                  color: p.surface,
-                  borderRadius: BorderRadius.circular(99),
-                  border: Border.all(color: p.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.phone_android_rounded, size: 15, color: p.accent),
-                    const SizedBox(width: 5),
-                    Text('On this phone', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: p.text)),
-                  ],
-                ),
-              ),
+              SyncPill(onTap: () => SyncScreen.open(context)),
             ],
           ),
           const SizedBox(height: 22),

@@ -36,6 +36,7 @@ const _icons = <String, IconData>{
   'Interest': Icons.percent_rounded,
   'Gift received': Icons.redeem_rounded,
   'Other income': Icons.add_circle_outline_rounded,
+  'Split': Icons.call_split_rounded,
 };
 
 IconData categoryIcon(String category) => _icons[category] ?? Icons.label_outline_rounded;

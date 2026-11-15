@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../money.dart';
 import '../store.dart';
+import '../sync/scope.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'sync_screen.dart';
 
-const appVersion = '0.1.1';
+const appVersion = '0.2.0';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -13,6 +15,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
+    final sync = SyncScope.of(context);
     final p = context.pal;
     final s = store.settings;
     const modes = ['system', 'light', 'dark'];
@@ -64,10 +67,13 @@ class SettingsScreen extends StatelessWidget {
             padding: EdgeInsets.zero,
             child: Column(
               children: [
-                const _Tile(
-                  icon: Icons.lock_outline_rounded,
-                  title: 'Saved on this phone',
-                  subtitle: 'Private to WillowWallet. Sync with WillowWallet for Windows is coming soon.',
+                _Tile(
+                  icon: syncLook(sync.status, p).$1,
+                  title: sync.isSetUp ? 'Sync · ${sync.statusText}' : 'Sync with your PC',
+                  subtitle: sync.isSetUp
+                      ? '${sync.username} on ${sync.serverName}. Everything is kept on this phone too.'
+                      : 'Saved on this phone. Connect to a WillowWallet Server to sync with WillowWallet for Windows.',
+                  onTap: () => SyncScreen.open(context),
                 ),
                 const Divider(indent: 64),
                 _Tile(
@@ -88,7 +94,9 @@ class SettingsScreen extends StatelessWidget {
                   onTap: () async {
                     final ok = await confirm(context,
                         title: 'Erase everything?',
-                        message: 'This deletes all transactions and budgets on this phone. It can\'t be undone.',
+                        message: sync.isSetUp
+                            ? 'This deletes all transactions and budgets on this phone and, because sync is on, on your other devices too. It can\'t be undone.'
+                            : 'This deletes all transactions and budgets on this phone. It can\'t be undone.',
                         confirmText: 'Erase',
                         danger: true);
                     if (ok) store.eraseAll();

@@ -41,7 +41,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   void _delete(Txn t) {
     final store = StoreScope.read(context);
     store.deleteTxn(t.id);
-    toast(context, 'Deleted ${t.payee}', action: 'Undo', onAction: () => store.saveTxn(t));
+    toast(context, 'Deleted ${t.payee}', action: 'Undo', onAction: () => store.saveTxn(t.touched()));
   }
 
   @override

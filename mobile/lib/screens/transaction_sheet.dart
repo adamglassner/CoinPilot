@@ -69,7 +69,7 @@ class _TransactionSheetState extends State<TransactionSheet> {
       error = 'Enter an amount.';
     } else if (payee.isEmpty) {
       error = _income ? 'Who paid you? Enter a name.' : 'Where did you spend it? Enter a payee.';
-    } else if (_category.isEmpty) {
+    } else if (_category.isEmpty && !(_old?.isSplit ?? false) && !(_old?.isTransfer ?? false)) {
       error = 'Pick a category.';
     }
     if (error != null) {
@@ -85,6 +85,7 @@ class _TransactionSheetState extends State<TransactionSheet> {
       cents: _income ? cents! : -cents!,
       note: _note.text.trim(),
       createdAt: _old?.createdAt,
+      extra: _old?.extra,
     );
     StoreScope.read(context).saveTxn(t);
     Navigator.pop(context);
@@ -102,14 +103,15 @@ class _TransactionSheetState extends State<TransactionSheet> {
     final store = StoreScope.read(context);
     store.deleteTxn(t.id);
     Navigator.pop(context);
-    toast(context, 'Deleted ${t.payee}', action: 'Undo', onAction: () => store.saveTxn(t));
+    toast(context, 'Deleted ${t.payee}', action: 'Undo', onAction: () => store.saveTxn(t.touched()));
   }
 
   @override
   Widget build(BuildContext context) {
     final p = context.pal;
     final store = StoreScope.of(context);
-    final cats = _income ? incomeCategories : spendingCategories;
+    final cats = store.categoriesFor(income: _income);
+    final fromPc = _old != null && (_old!.isSplit || _old!.isTransfer);
     final quick = _old == null && _payee.text.isEmpty ? store.recentPayees(income: _income) : const <String>[];
 
     return Padding(
@@ -199,6 +201,26 @@ class _TransactionSheetState extends State<TransactionSheet> {
               ),
             ],
             const FieldLabel('Category'),
+            if (fromPc)
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: p.surfaceAlt, borderRadius: BorderRadius.circular(14)),
+                child: Row(
+                  children: [
+                    Icon(_old!.isTransfer ? Icons.swap_horiz_rounded : Icons.call_split_rounded, color: p.accent),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _old!.isTransfer
+                            ? 'Transfer from ${_old!.account} to ${_old!.transferAccount}. Change it in WillowWallet on your PC.'
+                            : '${_old!.categoryLabel}: ${[for (final (c, cents) in _old!.parts()) '$c ${Money.format(cents.abs())}'].join(', ')}. Change the split on your PC.',
+                        style: TextStyle(fontSize: 14, color: p.muted, height: 1.35),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
             Wrap(
               spacing: 8,
               runSpacing: 8,

@@ -32,6 +32,15 @@ class Store extends ChangeNotifier {
   AppSettings settings = AppSettings();
   Future<void> _writing = Future.value();
 
+  /// Records from the PC this app doesn't edit but uses (account names, custom categories), by collection then id.
+  final Map<String, Map<String, Map<String, dynamic>>> _raw = {'accounts': {}, 'categories': {}};
+
+  /// The sync engine's saved state (server, session, what the server has). Empty when not syncing.
+  Map<String, dynamic> syncState = {};
+
+  /// Called after every change made on this phone (the sync engine syncs a few seconds later).
+  VoidCallback? onLocalChange;
+
   List<Txn> get transactions => List.unmodifiable(_txns);
   List<Budget> get budgets => List.unmodifiable(_budgets..sort((a, b) => a.category.compareTo(b.category)));
   bool get isEmpty => _txns.isEmpty && _budgets.isEmpty;
@@ -57,6 +66,8 @@ class Store extends ChangeNotifier {
         'Settings': settings.toJson(),
         'Transactions': [for (final t in _txns) t.toJson()],
         'Budgets': [for (final b in _budgets) b.toJson()],
+        'Raw': _raw,
+        'Sync': syncState,
       };
 
   void fromJson(Map<String, dynamic> j) {
@@ -68,12 +79,21 @@ class Store extends ChangeNotifier {
       ..addAll([for (final b in (j['Budgets'] as List? ?? const [])) Budget.fromJson(b as Map<String, dynamic>)]);
     final s = j['Settings'];
     settings = s is Map<String, dynamic> ? AppSettings.fromJson(s) : AppSettings();
+    final raw = j['Raw'];
+    for (final c in _raw.keys) {
+      _raw[c] = {
+        if (raw is Map && raw[c] is Map)
+          for (final e in (raw[c] as Map).entries) '${e.key}': Map<String, dynamic>.from(e.value as Map),
+      };
+    }
+    syncState = j['Sync'] is Map<String, dynamic> ? j['Sync'] as Map<String, dynamic> : {};
     Money.currency = currencyFor(settings.currency);
   }
 
-  void _changed() {
+  void _changed({bool local = true}) {
     Money.currency = currencyFor(settings.currency);
     notifyListeners();
+    if (local) onLocalChange?.call();
     final f = _file;
     if (f == null) return;
     final data = const JsonEncoder.withIndent('  ').convert(toJson());
@@ -125,16 +145,105 @@ class Store extends ChangeNotifier {
 
   void updateSettings(void Function(AppSettings s) change) {
     change(settings);
-    _changed();
+    _changed(local: false);
   }
+
+  /// Saves the sync engine's state (no sync is triggered by this).
+  void saveSyncState() => _changed(local: false);
 
   void eraseAll() {
     _txns.clear();
     _budgets.clear();
+    for (final c in _raw.values) {
+      c.clear();
+    }
     _changed();
   }
 
+  // ----- Sync -----
+
+  /// Collections this app edits and sends to the server.
+  static const editable = ['transactions', 'budgets'];
+
+  /// (id, last change in ms) of every record in a collection this app edits.
+  List<(String, int)> syncEntries(String collection) => switch (collection) {
+        'transactions' => [for (final t in _txns) (t.id, t.updatedAt.millisecondsSinceEpoch)],
+        'budgets' => [for (final b in _budgets) (b.id, b.updatedAt.millisecondsSinceEpoch)],
+        _ => const [],
+      };
+
+  /// The record's JSON (with every field from the PC), or null.
+  Map<String, dynamic>? syncRecord(String collection, String id) {
+    switch (collection) {
+      case 'transactions':
+        for (final t in _txns) {
+          if (t.id == id) return t.toJson();
+        }
+      case 'budgets':
+        for (final b in _budgets) {
+          if (b.id == id) return b.toJson();
+        }
+      default:
+        return _raw[collection]?[id];
+    }
+    return null;
+  }
+
+  int? syncModified(String collection, String id) {
+    final r = syncRecord(collection, id);
+    if (r == null) return null;
+    return DateTime.tryParse('${r['UpdatedAt'] ?? ''}')?.millisecondsSinceEpoch;
+  }
+
+  /// Whether the server's records of this kind are kept here.
+  bool keeps(String collection) => editable.contains(collection) || _raw.containsKey(collection);
+
+  /// Records from the server: added or replaced without being sent back.
+  void applyRemote(String collection, List<Map<String, dynamic>> records) {
+    for (final j in records) {
+      final id = j['Id'] as String? ?? '';
+      if (id.isEmpty) continue;
+      switch (collection) {
+        case 'transactions':
+          final t = Txn.fromJson(j);
+          final i = _txns.indexWhere((x) => x.id == id);
+          i >= 0 ? _txns[i] = t : _txns.add(t);
+        case 'budgets':
+          final b = Budget.fromJson(j);
+          final i = _budgets.indexWhere((x) => x.id == id);
+          i >= 0 ? _budgets[i] = b : _budgets.add(b);
+        default:
+          _raw[collection]?[id] = j;
+      }
+    }
+    _changed(local: false);
+  }
+
+  void removeRemote(String collection, List<String> ids) {
+    final set = ids.toSet();
+    switch (collection) {
+      case 'transactions':
+        _txns.removeWhere((t) => set.contains(t.id));
+      case 'budgets':
+        _budgets.removeWhere((b) => set.contains(b.id));
+      default:
+        _raw[collection]?.removeWhere((k, _) => set.contains(k));
+    }
+    _changed(local: false);
+  }
+
+  /// Empties this phone's copy so it can be replaced with the server's ("use only the server's data").
+  void clearForServer() {
+    _txns.clear();
+    _budgets.clear();
+    for (final c in _raw.values) {
+      c.clear();
+    }
+    _changed(local: false);
+  }
+
   void loadSample({DateTime? now}) {
+    // (sample data counts as a change made here)
     final data = sampleData(now ?? DateTime.now());
     _txns.addAll(data.transactions);
     for (final b in data.budgets) {
@@ -164,10 +273,43 @@ class Store extends ChangeNotifier {
     return list.take(count).toList();
   }
 
-  /// Money spent in a month (positive), optionally for one category.
-  int spentIn(DateTime month, {String? category}) => -_txns
-      .where((t) => t.isSpending && sameMonth(t.date, month) && (category == null || t.category == category))
-      .fold<int>(0, (s, t) => s + t.cents);
+  /// Money spent in a month (positive), optionally for one category (its subcategories from the PC count too).
+  int spentIn(DateTime month, {String? category}) {
+    var total = 0;
+    for (final t in _txns) {
+      if (!t.isSpending || !sameMonth(t.date, month)) continue;
+      if (category == null) {
+        total -= t.cents;
+        continue;
+      }
+      for (final (c, cents) in t.parts()) {
+        if (c == category || parentOf(c) == category) total -= cents;
+      }
+    }
+    return total;
+  }
+
+  /// A subcategory's parent ("Coffee" → "Dining out"), from categories made on the PC; null for top-level ones.
+  String? parentOf(String category) {
+    for (final c in _raw['categories']!.values) {
+      if (c['Name'] == category) {
+        final p = c['Parent'] as String? ?? '';
+        return p.isEmpty ? null : p;
+      }
+    }
+    return null;
+  }
+
+  /// Categories to pick from: the built-in ones plus any added on the PC.
+  List<String> categoriesFor({required bool income}) {
+    final base = income ? incomeCategories : spendingCategories;
+    final extra = [
+      for (final c in _raw['categories']!.values)
+        if ((c['Kind'] == 'Income') == income && c['IsHidden'] != true && !base.contains(c['Name']) && '${c['Name'] ?? ''}'.isNotEmpty)
+          '${c['Name']}',
+    ];
+    return [...base.where((b) => b != 'Other' && b != 'Other income'), ...extra..sort(), income ? 'Other income' : 'Other'];
+  }
 
   int incomeIn(DateTime month) =>
       _txns.where((t) => t.isIncome && sameMonth(t.date, month)).fold<int>(0, (s, t) => s + t.cents);
@@ -188,8 +330,12 @@ class Store extends ChangeNotifier {
   List<MapEntry<String, int>> unbudgeted(DateTime month) {
     final totals = <String, int>{};
     for (final t in _txns) {
-      if (!t.isSpending || !sameMonth(t.date, month) || budgetFor(t.category) != null) continue;
-      totals[t.category] = (totals[t.category] ?? 0) - t.cents;
+      if (!t.isSpending || !sameMonth(t.date, month)) continue;
+      for (final (c, cents) in t.parts()) {
+        final top = parentOf(c) ?? c;
+        if (budgetFor(top) != null) continue;
+        totals[top] = (totals[top] ?? 0) - cents;
+      }
     }
     return totals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
   }
@@ -225,9 +371,15 @@ class Store extends ChangeNotifier {
     return result;
   }
 
+  /// Accounts set up on the PC (open ones) when there are any, otherwise the defaults; plus names used in transactions.
   List<String> get accounts {
-    final used = {for (final t in _txns) t.account}..removeWhere((a) => a.isEmpty);
-    return [...defaultAccounts, ...used.where((a) => !defaultAccounts.contains(a))];
+    final fromPc = [
+      for (final a in _raw['accounts']!.values)
+        if (a['IsClosed'] != true && '${a['Name'] ?? ''}'.isNotEmpty) '${a['Name']}',
+    ];
+    final base = fromPc.isNotEmpty ? fromPc : defaultAccounts;
+    final used = {for (final t in _txns) t.account}..removeWhere((a) => a.isEmpty || base.contains(a));
+    return [...base, ...used];
   }
 
   /// A starting amount for a new budget: the average of the last three months, rounded up to $10.

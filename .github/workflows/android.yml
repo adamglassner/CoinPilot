@@ -7,9 +7,9 @@ name: Android
 on:
   push:
     branches: [main, transactions-budgets]
-    paths: ['mobile/**', '.github/workflows/android.yml']
+    paths: ['mobile/**', 'server/**', '.github/workflows/android.yml']
   pull_request:
-    paths: ['mobile/**', '.github/workflows/android.yml']
+    paths: ['mobile/**', 'server/**', '.github/workflows/android.yml']
   workflow_dispatch:
 
 permissions:
@@ -30,6 +30,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
       - uses: subosito/flutter-action@v2
         with:
@@ -52,8 +56,12 @@ jobs:
           flutter create --platforms=android --org com.bytehawkstudio --project-name coinpilot --no-pub . > /dev/null
           rm -f test/widget_test.dart.orig
           cp -r android-res/. android/app/src/main/res/
-          sed -i 's/android:label="coinpilot"/android:label="WillowWallet"/' android/app/src/main/AndroidManifest.xml
-          grep -n 'android:label' android/app/src/main/AndroidManifest.xml
+          m=android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="coinpilot"/android:label="WillowWallet"/' $m
+          # Sync needs the network; home servers are often plain http://192.168.x.x:8484
+          grep -q 'android.permission.INTERNET' $m || sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' $m
+          sed -i 's|<application|<application android:usesCleartextTraffic="true"|' $m
+          grep -nE 'android:label|INTERNET|Cleartext' $m
           git status --short .
 
       - run: flutter pub get
@@ -61,8 +69,19 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
+      - name: Start a WillowWallet Server for the sync tests
+        working-directory: .
+        run: |
+          dotnet build server/WillowWallet.Server/WillowWallet.Server.csproj -c Release -o "$RUNNER_TEMP/ww-server" | tail -3
+          WW_DATA="$RUNNER_TEMP/ww-data" WW_ADMIN_USERNAME=admin WW_ADMIN_PASSWORD=android-test-admin \
+            nohup "$RUNNER_TEMP/ww-server/WillowWalletServer" > "$RUNNER_TEMP/ww-server.log" 2>&1 &
+          for i in $(seq 1 40); do curl -sf http://localhost:8484/api/v1/info && break; sleep 1; done
+          curl -sf http://localhost:8484/api/v1/info >/dev/null || { cat "$RUNNER_TEMP/ww-server.log"; exit 1; }
+          echo "WW_TEST_SERVER=http://localhost:8484" >> "$GITHUB_ENV"
+          echo "WW_TEST_ADMIN_PASSWORD=android-test-admin" >> "$GITHUB_ENV"
+
       - name: Tests
-        run: flutter test test/logic_test.dart test/widget_test.dart
+        run: flutter test test/logic_test.dart test/widget_test.dart test/sync_test.dart
 
       - name: Screenshots
         run: |
