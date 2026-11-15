@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>WillowWallet Server</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="app.css">
+  <script>
+    try { const t = localStorage.getItem('ww-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body>
+  <div id="app" aria-live="polite"></div>
+  <div id="toasts" role="status"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

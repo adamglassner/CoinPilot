@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Fills a server with demo accounts and data through the real API (for screenshots and trying things out):
+       dotnet run --project server/tools/WillowWallet.Seed - http://localhost:8484 admin <admin-password> -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\WillowWallet.Sync\WillowWallet.Sync.csproj" />
+  </ItemGroup>
+</Project>

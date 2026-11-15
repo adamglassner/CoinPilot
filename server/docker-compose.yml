@@ -1,0 +1,15 @@
+# WillowWallet Server with Docker Compose:  docker compose up -d   then open http://<this machine>:8484
+services:
+  willowwallet:
+    image: ghcr.io/adamglassner/willowwallet-server:latest
+    container_name: willowwallet-server
+    restart: unless-stopped
+    ports:
+      - "8484:8484"
+    volumes:
+      - ./willowwallet-data:/data
+    environment:
+      # Optional: create the first admin here instead of on the web panel's setup page
+      # WW_ADMIN_USERNAME: admin
+      # WW_ADMIN_PASSWORD: change-me-please
+      TZ: America/New_York

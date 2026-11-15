@@ -1,0 +1,183 @@
+name: Server
+
+# WillowWallet Server (server/): tests, standalone builds (Windows, Linux, Raspberry Pi), Docker image, Windows installer,
+# web panel screenshots. Push to main with a new <Version> in WillowWallet.Server.csproj → release server-v<version>
+# (never marked "latest", so the launcher keeps installing the Windows app) and ghcr.io/adamglassner/willowwallet-server.
+on:
+  push:
+    branches: [main, transactions-budgets]
+    paths: ['server/**', '.github/workflows/server.yml']
+  pull_request:
+    paths: ['server/**', '.github/workflows/server.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE: ghcr.io/adamglassner/willowwallet-server
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      release: ${{ steps.ver.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Version
+        id: ver
+        run: |
+          v=$(grep -oP '(?<=<Version>)[^<]+' server/WillowWallet.Server/WillowWallet.Server.csproj)
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          release=false
+          if [ "$GITHUB_REF" = "refs/heads/main" ] && [ "$GITHUB_EVENT_NAME" = "push" ] && ! git rev-parse -q --verify "refs/tags/server-v$v" >/dev/null; then release=true; fi
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "WillowWallet Server $v (release: $release)"
+
+      - name: Tests
+        run: dotnet test server/WillowWallet.Server.Tests -c Release --logger "console;verbosity=normal"
+
+      - name: Standalone builds
+        run: |
+          v=${{ steps.ver.outputs.version }}
+          mkdir -p dist-server
+          for rid in linux-x64 linux-arm64 win-x64; do
+            dotnet publish server/WillowWallet.Server/WillowWallet.Server.csproj -c Release -r $rid --self-contained \
+              -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist-server/$rid
+            cp server/standalone/appsettings.json dist-server/$rid/
+            rm -f dist-server/$rid/*.pdb dist-server/$rid/appsettings.Development.json dist-server/$rid/web.config
+          done
+          cp server/standalone/linux/* dist-server/linux-x64/
+          cp server/standalone/linux/* dist-server/linux-arm64/
+          cp server/standalone/windows/* dist-server/win-x64/
+          (cd dist-server/linux-x64 && tar czf ../WillowWalletServer-$v-linux-x64.tar.gz *)
+          (cd dist-server/linux-arm64 && tar czf ../WillowWalletServer-$v-linux-arm64.tar.gz *)
+          (cd dist-server/win-x64 && zip -qr ../WillowWalletServer-$v-win-x64.zip *)
+          ls -la dist-server
+
+      - name: Run the Linux build, seed demo data, screenshot the web panel
+        run: |
+          export WW_DATA=$RUNNER_TEMP/ww-data WW_ADMIN_USERNAME=admin WW_ADMIN_PASSWORD=screenshot-password
+          ./dist-server/linux-x64/WillowWalletServer > $RUNNER_TEMP/server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:8484/api/v1/info && break; sleep 1; done
+          echo
+          curl -sf http://localhost:8484/ | grep -q "WillowWallet Server"
+          dotnet run --project server/tools/WillowWallet.Seed -c Release -- http://localhost:8484 admin screenshot-password
+          mkdir -p server-screenshots
+          cd server/tools
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund playwright@1.48.2 > /dev/null
+          npx playwright install --with-deps chromium > /dev/null
+          node panel-screenshots.mjs http://localhost:8484 admin screenshot-password ../../server-screenshots
+          cd ../..
+          ls server-screenshots
+          echo "--- server log ---"; cat $RUNNER_TEMP/server.log | tail -40
+
+      - name: Publish screenshots to the "screenshots-server" branch
+        if: github.event_name != 'pull_request'
+        working-directory: server-screenshots
+        run: |
+          git init -q -b screenshots-server
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Server screenshots of ${{ github.sha }}"
+          git push -q --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:screenshots-server
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-builds
+          path: |
+            dist-server/*.tar.gz
+            dist-server/*.zip
+            dist-server/win-x64/
+
+  docker:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -f server/Dockerfile -t $IMAGE:test .
+      - name: Run it
+        run: |
+          docker run -d --name ww -p 8484:8484 -e WW_ADMIN_USERNAME=admin -e WW_ADMIN_PASSWORD=docker-password-1 $IMAGE:test
+          for i in $(seq 1 30); do curl -sf http://localhost:8484/api/v1/info && break; sleep 1; done
+          echo
+          curl -sf http://localhost:8484/admin/api/status
+          sleep 35
+          docker inspect --format '{{.State.Health.Status}}' ww
+          docker logs ww
+          test "$(docker inspect --format '{{.State.Health.Status}}' ww)" = "healthy"
+      - name: Push to GitHub Container Registry
+        if: needs.build.outputs.release == 'true'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          v=${{ needs.build.outputs.version }}
+          docker tag $IMAGE:test $IMAGE:$v
+          docker tag $IMAGE:test $IMAGE:latest
+          docker push $IMAGE:$v
+          docker push $IMAGE:latest
+
+  windows-installer:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-builds
+          path: dist-server
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          $v = '${{ needs.build.outputs.version }}'
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp "/DMyAppVersion=$v" "/DSourceDir=..\..\dist-server\win-x64" server\installer\WillowWalletServer.iss
+          if ($LASTEXITCODE) { throw "ISCC failed" }
+          Get-ChildItem dist-server\*.exe
+      - name: Install it, check the service answers, uninstall
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist-server\WillowWalletServer-*-Setup.exe | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/TASKS=firewall' -Wait
+          Get-Service WillowWalletServer | Format-List Name, Status, StartType
+          $ok = $false
+          for ($i = 0; $i -lt 40; $i++) { try { Invoke-RestMethod http://localhost:8484/api/v1/info; $ok = $true; break } catch { Start-Sleep 1 } }
+          if (-not $ok) { throw "The service didn't answer on port 8484" }
+          if (-not (Test-Path 'C:\ProgramData\WillowWallet Server\willowwallet.db')) { throw "No database in ProgramData" }
+          Start-Process "${env:ProgramFiles}\WillowWallet Server\unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES' -Wait
+          Start-Sleep 5
+          if (Get-Service WillowWalletServer -ErrorAction SilentlyContinue) { throw "Service still installed after uninstall" }
+          Write-Host "Installer OK"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-installer
+          path: dist-server/WillowWalletServer-*-Setup.exe
+
+  release:
+    needs: [build, docker, windows-installer]
+    if: needs.build.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dl
+          merge-multiple: true
+      - name: Publish the server release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v=${{ needs.build.outputs.version }}
+          find dl -maxdepth 2 -type f \( -name "*.exe" -o -name "*.zip" -o -name "*.tar.gz" \) | grep -v "/win-x64/" > files.txt
+          cat files.txt
+          gh release create "server-v$v" $(cat files.txt) --target "$GITHUB_SHA" --latest=false \
+            --title "WillowWallet Server $v" --notes-file server/RELEASE_NOTES.md

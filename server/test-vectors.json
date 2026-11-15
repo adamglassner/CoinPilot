@@ -1,0 +1,17 @@
+{
+  "password": "correct horse battery staple ✓",
+  "kdfSalt": "AAECAwQFBgcICQoLDA0ODw==",
+  "iterations": 1000,
+  "authSecret": "orGPHwfislCfwUXNnxHgBhByfcbEoMLw/gzIuxaVfrc=",
+  "kek": "nedt13IIU9ZNTIrTVc4PcsvWq8vXezqwq/uLRqIjQdk=",
+  "dataKey": "ZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXp7fH1+f4CBgoM=",
+  "wrapNonce": "yMnKy8zNzs/Q0dLT",
+  "wrappedKey": "v1.yMnKy8zNzs/Q0dLT9PhqcwlGjrXWyJu+HTBD0JTNM5Ugh/6siu9Uk0tNLg4ipC/mEEhDdgl+1kRBpA/W",
+  "record": "{\"Id\":\"abc\",\"Payee\":\"Kroger\",\"Amount\":-12.5}",
+  "recordNonce": "AQIDBAUGBwgJCgsM",
+  "recordPayload": "v1.AQIDBAUGBwgJCgsMW0/OKopUfMMBlXTOZPm4eFQD5fI3EFGRedULDmoRds+zLgMfa0xmO0Ql15b8lfSe22IS9UdnFMykfSNf",
+  "recoveryKeyBytes": "MjM0NTY3ODk6Ozw9Pj9AQUJDREU=",
+  "recoveryKeyText": "GIZT-INJW-G44D-SOR3-HQ6T-4P2A-IFBE-GRCF",
+  "recoveryAuth": "upBfef26h6r5U13V2YxPUfqTogXALZQQYWzMxnD/k4M=",
+  "recoveryKek": "VSb7NjGYec2wV8inK7mWyM6A41LvX72KaZIA2To8X5k="
+}

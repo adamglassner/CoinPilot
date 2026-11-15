@@ -5,3 +5,11 @@ publish/
 .vs/
 *.user
 *.suo
+
+# Server
+server/**/bin/
+server/**/obj/
+server/tools/node_modules/
+server/tools/package*.json
+dist-server/
+server-screenshots/

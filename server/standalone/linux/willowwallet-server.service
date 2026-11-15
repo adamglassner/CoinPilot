@@ -1,0 +1,22 @@
+[Unit]
+Description=WillowWallet Server (sync for the WillowWallet budgeting app)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=willowwallet
+Group=willowwallet
+WorkingDirectory=/opt/willowwallet-server
+ExecStart=/opt/willowwallet-server/WillowWalletServer
+Environment=WW_DATA=/var/lib/willowwallet-server
+Environment=WW_PORT=8484
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/willowwallet-server
+
+[Install]
+WantedBy=multi-user.target
