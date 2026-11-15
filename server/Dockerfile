@@ -1,5 +1,6 @@
 # WillowWallet Server — docker build -f server/Dockerfile -t willowwallet-server .   (from the repository root)
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# The build runs on the machine's own platform; the output is portable .NET, so one build serves x64 and ARM64 images.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY server/WillowWallet.Sync/WillowWallet.Sync.csproj server/WillowWallet.Sync/
 COPY server/WillowWallet.Server/WillowWallet.Server.csproj server/WillowWallet.Server/

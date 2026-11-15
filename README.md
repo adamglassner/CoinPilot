@@ -7,8 +7,8 @@
 **Budgets, spending, accounts, debts, bills, goals and tax documents in one private app for Windows.**
 Made by Bytehawk Studio. *(Formerly CoinPilot; the repository keeps its old name for now.)*
 
-> **Version 1.0.4, Windows 10/11.** Everything works and is saved on your PC, with optional PIN/password encryption.
-> Syncing with the WillowWallet mobile app is coming soon.
+> **Version 1.1.0, Windows 10/11.** Everything is saved on your PC, with optional PIN/password encryption, and
+> optional **end-to-end encrypted sync** with WillowWallet for Android through your own [WillowWallet Server](server).
 
 ## Features
 
@@ -23,7 +23,7 @@ Made by Bytehawk Studio. *(Formerly CoinPilot; the repository keeps its old name
 | **Goals** | Savings goals with **progress rings**, **milestones**, add or take out money, **link a goal to a savings account**, and the monthly amount to stay on track. |
 | **Reports** | Income vs. spending, spending by category, **net worth**, month-by-month table with savings rate, **Year in review**; export to CSV or **print / PDF**. |
 | **Taxes** | A safe place for **tax documents** (W-2s, 1099s, returns, receipts) by tax year, with a checklist and drag-and-drop. |
-| Sync & Devices | Coming soon: sync with the WillowWallet mobile app. |
+| **Sync & Devices** | Optional: sync with WillowWallet for Android (and other PCs) through **your own WillowWallet Server**. Encrypted on the PC before it's sent; works offline and catches up; newest edit wins; see and sign out devices; recovery key for a forgotten password. |
 
 **Settings:** light/dark/match Windows, **8 color themes** (Pine, Ocean, Lagoon, Indigo, Plum, Rose, Ember, Graphite),
 **currency**, **budget month start day** (budget payday to payday), **your own categories and subcategories**, rules,
@@ -45,8 +45,18 @@ Ctrl+Enter save in an add/edit window · Esc close a window.
 
 A Flutter app in [`mobile/`](mobile): Home (left to spend, income and net, budgets, spending by week, recent),
 Transactions (by month, search, filters, swipe to delete), Budgets and Settings (light/dark, the same eight color themes,
-currency). Everything is saved on the phone, using the same field names as the Windows app so the two can sync later.
-Get the APK from the newest `android-v…` release. See [mobile/README.md](mobile/README.md).
+currency). Everything is saved on the phone, and since 0.2.0 it can **sync with the Windows app** through a WillowWallet
+Server (Settings → Sync). Get the APK from the newest `android-v…` release. See [mobile/README.md](mobile/README.md).
+
+## WillowWallet Server
+
+Self-hosted sync for both apps, with accounts for each person in your household and a web panel to start, stop and
+watch it. Windows installer (a Windows service), Docker (`ghcr.io/adamglassner/willowwallet-server`), or standalone
+builds for Linux x64/ARM64 and Windows, from the newest `server-v…` release, or **Get server** on WillowWallet in the
+Bytehawk Studio Launcher. Data is end-to-end encrypted: the server can't read it. See [server/README.md](server/README.md)
+and [server/PROTOCOL.md](server/PROTOCOL.md).
+
+![WillowWallet Server web panel](https://raw.githubusercontent.com/adamglassner/CoinPilot/screenshots-server/panel-01-overview-light.png)
 
 ## Download
 
@@ -112,6 +122,9 @@ src/CoinPilot.Desktop/
   Services/              money and currencies, color themes, reminders + tray icon, backup, CSV export,
                          settings, Windows theme detection, toast, self-test
 installer/WillowWallet.iss  Inno Setup script (+ wizard images)
+server/                  WillowWallet Server (ASP.NET Core + SQLite, web panel), the shared sync library
+                         (WillowWallet.Sync: crypto, protocol, client), tests, Dockerfile, installer, standalone scripts
+mobile/                  WillowWallet for Android (Flutter); mobile/lib/sync is the Dart sync client
 build.ps1                exe + portable zip + installer
 .github/workflows/       CI: build, self-test, installer test, screenshots, release
 design/mockup/           the desktop + mobile mockup this is built from
@@ -124,7 +137,8 @@ tools/                   icon and installer image generators (Python + Pillow)
 2. ~~Accounts, Debts, Bills, Goals and Reports~~ (0.3.0)
 3. ~~Everything else on the desktop: import, rules, splits, transfers, rollover, templates, reminders, taxes, protection, themes~~ (1.0.0)
 4. ~~WillowWallet for Android: transactions and budgets~~ (android 0.1.0)
-5. Sign-in and sync between devices, more of the desktop features on Android, iPhone
+5. ~~Sign-in and sync between devices, with a self-hosted server~~ (1.1.0, android 0.2.0, server 0.1.0)
+6. More of the desktop features on Android, iPhone
 
 ## License
 

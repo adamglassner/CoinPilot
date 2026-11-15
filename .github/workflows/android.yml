@@ -136,4 +136,4 @@ jobs:
           gh release create "android-v$v" "build/WillowWallet-Android-$v.apk" \
             --target "$GITHUB_SHA" --latest=false \
             --title "WillowWallet for Android $v" \
-            --notes "WillowWallet for Android $v. Download **WillowWallet-Android-$v.apk** on your phone and open it to install (allow installs from your browser or Files app when Android asks). Your data stays on your phone. See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/mobile/CHANGELOG.md)."
+            --notes "WillowWallet for Android $v. Download **WillowWallet-Android-$v.apk** on your phone and open it to install (allow installs from your browser or Files app when Android asks). Your data is saved on your phone, and can sync with WillowWallet for Windows through your own WillowWallet Server (Settings → Sync). See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/mobile/CHANGELOG.md)."

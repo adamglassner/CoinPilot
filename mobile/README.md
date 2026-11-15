@@ -14,8 +14,17 @@ The **+** button adds spending or income from anywhere. WillowWallet remembers t
 ## Your data
 
 One JSON file in the app's private storage (`coinpilot.json`), written safely (temp file then swap). It uses the
-Windows app's field names (`Payee`, `Category`, `Account`, `Date`, `Amount`, `MonthlyLimit`…) so syncing between
-the two can be added later. Uninstalling the app deletes it.
+Windows app's field names (`Payee`, `Category`, `Account`, `Date`, `Amount`, `MonthlyLimit`…) and keeps fields from
+the PC it doesn't show (splits, tags, receipts…). Uninstalling the app deletes it.
+
+## Sync
+
+**Settings → Sync** connects to a [WillowWallet Server](../server/README.md) to sync with WillowWallet for Windows.
+Transactions and budgets sync both ways; accounts and categories come from the PC. Records are encrypted on the phone
+(PBKDF2 + AES-256-GCM, the same as the Windows app, in [`lib/sync`](lib/sync)) before they're sent. The sync state
+(server, session and the data key) is kept in the same private file. Tests in `test/sync_test.dart` check the
+encryption against [`server/test-vectors.json`](../server/test-vectors.json) and, when `WW_TEST_SERVER` is set, run
+two phones against a real server (CI starts one).
 
 ## Install
 

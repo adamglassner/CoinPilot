@@ -503,8 +503,8 @@ Future<void> showRecoveryKey(BuildContext context, String key) {
                 ),
                 child: SelectableText(key,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontFamily: 'monospace', fontSize: 15.5, height: 1.5, letterSpacing: 0.6, fontWeight: FontWeight.w600, color: p.text)),
+                    style: display(16, p.text, weight: FontWeight.w700)
+                        .copyWith(height: 1.5, letterSpacing: 1.2, fontFeatures: const [FontFeature.tabularFigures()])),
               ),
               const SizedBox(height: 8),
               TextButton.icon(

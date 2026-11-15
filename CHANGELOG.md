@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.0 — 2026-11-15
+
+**Sync with your phone, through a server you run yourself.** Optional: without it, WillowWallet works exactly as before.
+
+- **Sync & Devices** (no longer "coming soon"): connect to a **WillowWallet Server**, create an account (with an
+  invite code if the server asks for one) or sign in. Everything is synced: transactions, budgets, accounts, debts,
+  bills, goals, categories and rules, tax documents, settings, receipts and tax files.
+- **End-to-end encrypted.** Your data is locked with a key made from your sync password before it leaves the PC.
+  The server stores it but can't read it. A **recovery key** gets you back in if you forget the password.
+- **Works offline.** Everything stays on this PC too. WillowWallet syncs a few seconds after each change and every
+  minute; when the server can't be reached it keeps your changes and catches up later.
+- **Newest edit wins** when the same thing was changed on two devices. Deletes reach every device.
+- **Combine or replace** when connecting a PC that already has data: merge it with what's on the server, or use
+  only the server's copy.
+- **Devices:** see the devices on your account, sign one out, change your password, or stop syncing (your data
+  stays on the PC). The sidebar and status bar show whether you're synced.
+- New icons for devices, servers and invites.
+
 ## 1.0.4 — 2026-11-14
 
 - The calendar that opens from a date field now uses WillowWallet's design and your color theme (light or dark)
