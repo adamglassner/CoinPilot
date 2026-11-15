@@ -78,6 +78,27 @@ public static class DataStore
         }
     }
 
+    /// <summary>Every kind of record, for sync.</summary>
+    public static IReadOnlyList<ISyncStore> SyncStores =>
+        [Transactions, Budgets, Accounts, Debts, Bills, Goals, CategoryDefs, Rules, TaxDocuments];
+
+    public static ISyncStore? SyncStore(string name) => SyncStores.FirstOrDefault(s => s.Name == name);
+
+    /// <summary>Settings files that sync (Preferences, DebtPlan), by name.</summary>
+    public static JsonFile? SettingsFile(string name) => name switch
+    {
+        "preferences" => Prefs,
+        "debt-plan" => DebtPlan,
+        _ => null,
+    };
+
+    /// <summary>Stores a settings file that came from the server.</summary>
+    public static void ApplyRemoteSettings(string name, string json)
+    {
+        if (name == "preferences") _prefs = JsonFile.Adopt<Preferences>(json, Folder, name);
+        else if (name == "debt-plan") _debtPlan = JsonFile.Adopt<DebtPlanSettings>(json, Folder, name);
+    }
+
     /// <summary>Switches to another folder (the self-test, or after restoring a backup). Reloads on next access.</summary>
     public static void UseFolder(string folder)
     {

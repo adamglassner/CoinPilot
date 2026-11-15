@@ -55,6 +55,11 @@ public sealed class SyncApiClient : IDisposable
     public Task ChangePasswordAsync(ChangePasswordRequest r, CancellationToken ct = default) => Post<JsonElement>("api/v1/auth/password", r, ct);
     public Task LogoutAsync(CancellationToken ct = default) => Post<JsonElement>("api/v1/auth/logout", new { }, ct);
     public Task<AccountResponse> AccountAsync(CancellationToken ct = default) => Get<AccountResponse>("api/v1/account", ct);
+    public async Task SignOutDeviceAsync(string deviceId, CancellationToken ct = default)
+    {
+        using var _ = await Send(new HttpRequestMessage(HttpMethod.Delete, "api/v1/account/devices/" + Uri.EscapeDataString(deviceId)), ct);
+    }
+
     public Task<ChangesResponse> ChangesAsync(long since, CancellationToken ct = default) => Get<ChangesResponse>($"api/v1/sync/changes?since={since}", ct);
     public Task<PushResponse> PushAsync(PushRequest r, CancellationToken ct = default) => Post<PushResponse>("api/v1/sync/push", r, ct);
 

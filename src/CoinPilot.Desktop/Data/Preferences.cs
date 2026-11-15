@@ -8,6 +8,12 @@ public abstract class JsonFile
 {
     private string _path = "";
 
+    /// <summary>When it was last changed on any device (newest wins when syncing).</summary>
+    public DateTime UpdatedAt { get; set; }
+
+    /// <summary>The file's name without .json ("preferences", "debt-plan"); also its id for sync.</summary>
+    [System.Text.Json.Serialization.JsonIgnore] public string Name => Path.GetFileNameWithoutExtension(_path);
+
     protected static T Load<T>(string folder, string name) where T : JsonFile, new()
     {
         string path = Path.Combine(folder, name + ".json");
@@ -26,6 +32,26 @@ public abstract class JsonFile
     }
 
     public void Save()
+    {
+        if (!DataLock.IsOpen) return;
+        UpdatedAt = DateTime.Now;
+        SyncTracker.Changed(SyncTracker.SettingsCollection, Name, false);
+        Write();
+    }
+
+    public string ToJson() => JsonSerializer.Serialize(this, GetType());
+
+    /// <summary>A copy from the server: saved in place of this file without being sent back.</summary>
+    internal static T Adopt<T>(string json, string folder, string name) where T : JsonFile, new()
+    {
+        var value = JsonSerializer.Deserialize<T>(json) ?? new T();
+        value._path = Path.Combine(folder, name + ".json");
+        value.Write();
+        return value;
+    }
+
+    /// <summary>Saves without marking it for sync (a copy that came from the server).</summary>
+    internal void Write()
     {
         if (!DataLock.IsOpen) return;
         try

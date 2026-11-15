@@ -36,6 +36,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\server\WillowWallet.Sync\WillowWallet.Sync.csproj" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="Assets\coinpilot.ico" />
     <Resource Include="Assets\coinpilot.png" />
     <Resource Include="Assets\Fonts\*.ttf" />
