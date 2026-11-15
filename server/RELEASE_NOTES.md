@@ -9,7 +9,13 @@ Your own sync server for WillowWallet: keeps WillowWallet for Windows (1.1.0 and
 
 Then open `http://<server>:8484` to create the admin account, and make an invite for each person.
 
-**What's in 0.1.0**
+**What's new in 0.1.1**
+
+- **Uninstall** from the Start Menu (Uninstall WillowWallet Server), Settings → Apps, or Get server → Uninstall in the Bytehawk Studio Launcher. It asks whether to delete the server's data too; the default keeps it so a reinstall picks up where it left off. Silent: `unins000.exe /SILENT /DELETEDATA=1`.
+- Linux: `install.sh` adds `sudo willowwallet-server-uninstall` (with `--delete-data` to remove the data too). `Uninstall-Service.ps1` takes `-DeleteData`.
+- Uninstalling removes the web panel shortcuts too.
+
+**First release (0.1.0)**
 
 - Sync for budgets, transactions, accounts, debts, bills, goals, tax documents, settings, receipts and tax files.
 - Accounts with invite codes or open sign-up, a user limit, recovery keys for forgotten passwords, and per-device sign-out.

@@ -45,6 +45,22 @@ run `sudo ./install.sh`. That installs it to `/opt/willowwallet-server` as a sys
 Unzip **WillowWalletServer-<version>-win-x64.zip** and double-click `Start-WillowWallet-Server.cmd`. Data goes in the
 `data` folder next to it. `Install-Service.ps1` turns it into a Windows service later.
 
+## Uninstall
+
+Uninstalling keeps the server's data (every account and everything synced) unless you choose to delete it, so a
+reinstall picks up where it left off. Phones and PCs always keep their own copy.
+
+- **Windows installer:** Start Menu → **Uninstall WillowWallet Server**, Settings → Apps, or **Get server →
+  Uninstall** in the Bytehawk Studio Launcher. It asks whether to delete the data too (default: keep it).
+  Silent: `"C:\Program Files\WillowWallet Server\unins000.exe" /SILENT /DELETEDATA=1` (leave out `/DELETEDATA=1`
+  to keep the data).
+- **Docker:** `docker rm -f willowwallet`, then `docker volume rm willowwallet-data` to delete the data
+  (with Compose: `docker compose down`, and delete the `willowwallet-data` folder).
+- **Linux:** `sudo willowwallet-server-uninstall` (servers installed with 0.1.0: `sudo ./uninstall.sh` from the
+  download); add `--delete-data` to remove `/var/lib/willowwallet-server` too.
+- **Windows without installing:** close it (or run `Uninstall-Service.ps1` if you made it a service; add
+  `-DeleteData` to remove the data), then delete the folder.
+
 ## First run
 
 Open `http://<server>:8484` in a browser. The first visit asks you to create the **admin** account for the web

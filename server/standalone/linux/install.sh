@@ -13,6 +13,7 @@ cp -r "$here/WillowWalletServer" "$here/wwwroot" /opt/willowwallet-server/
 chmod +x /opt/willowwallet-server/WillowWalletServer
 chown -R willowwallet:willowwallet /var/lib/willowwallet-server
 cp "$here/willowwallet-server.service" /etc/systemd/system/
+install -m 755 "$here/uninstall.sh" /usr/local/sbin/willowwallet-server-uninstall
 systemctl daemon-reload
 systemctl enable --now willowwallet-server
 
@@ -22,4 +23,5 @@ echo "WillowWallet Server is running."
 echo "  Web panel:  http://${ip:-localhost}:8484"
 echo "  Status:     systemctl status willowwallet-server"
 echo "  Logs:       journalctl -u willowwallet-server -f"
+echo "  Uninstall:  sudo willowwallet-server-uninstall   (add --delete-data to remove the data too)"
 echo "If a firewall is on, allow port 8484 (for example: sudo ufw allow 8484/tcp)."

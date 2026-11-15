@@ -51,6 +51,14 @@ Source: "{#SourceDir}\wwwroot\*"; DestDir: "{app}\wwwroot"; Flags: ignoreversion
 Filename: "{group}\WillowWallet Server panel.url"; Section: "InternetShortcut"; Key: "URL"; String: "http://localhost:8484"
 Filename: "{autodesktop}\WillowWallet Server panel.url"; Section: "InternetShortcut"; Key: "URL"; String: "http://localhost:8484"
 
+[Icons]
+Name: "{group}\Uninstall WillowWallet Server"; Filename: "{uninstallexe}"; Comment: "Remove WillowWallet Server (asks whether to keep its data)"
+
+[UninstallDelete]
+Type: files; Name: "{group}\WillowWallet Server panel.url"
+Type: files; Name: "{autodesktop}\WillowWallet Server panel.url"
+Type: dirifempty; Name: "{group}"
+
 [Run]
 Filename: "{sys}\sc.exe"; Parameters: "create {#Service} binPath= ""\""{app}\{#MyExe}\"""" start= delayed-auto DisplayName= ""{#MyAppName}"""; Flags: runhidden; Check: not ServiceExists
 Filename: "{sys}\sc.exe"; Parameters: "description {#Service} ""Sync server for the WillowWallet budgeting app. Web panel: http://localhost:8484"""; Flags: runhidden
@@ -73,6 +81,8 @@ Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=
 FinishedLabel=WillowWallet Server is installed and running as a Windows service. It starts with Windows, even before anyone signs in.%n%nYour data is kept in C:\ProgramData\WillowWallet Server (uninstalling keeps it).
 
 [Code]
+var DeleteData: Boolean;
+
 function ServiceExists: Boolean;
 var Code: Integer;
 begin
@@ -89,4 +99,24 @@ begin
     Sleep(3000);
   end;
   Result := '';
+end;
+
+// Uninstalling keeps the data unless asked: "Also delete the server's data?" (default No), or
+// unins000.exe /SILENT /DELETEDATA=1 (used by the Bytehawk Studio Launcher).
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var DataDir: String;
+begin
+  DataDir := ExpandConstant('{commonappdata}\WillowWallet Server');
+  if CurUninstallStep = usUninstall then
+  begin
+    DeleteData := ExpandConstant('{param:DELETEDATA|0}') = '1';
+    if (not DeleteData) and (not UninstallSilent) and DirExists(DataDir) then
+      DeleteData := MsgBox('Also delete the server''s data?' + #13#10#13#10 +
+        'This removes every account and everything synced to this server (' + DataDir + '). ' +
+        'Phones and PCs keep their own copy of their data.' + #13#10#13#10 +
+        'Choose No to keep it, so a reinstall picks up where it left off.',
+        mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
+  end;
+  if (CurUninstallStep = usPostUninstall) and DeleteData then
+    DelTree(DataDir, True, True, True);
 end;

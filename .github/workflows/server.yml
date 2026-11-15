@@ -129,6 +129,34 @@ jobs:
           docker buildx build -f server/Dockerfile --platform linux/amd64,linux/arm64 -t $IMAGE:$v -t $IMAGE:latest --push .
           docker buildx imagetools inspect $IMAGE:$v
 
+  linux-install:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-builds
+          path: dist-server
+      - name: Install as a systemd service, uninstall keeping data, reinstall, uninstall deleting data
+        run: |
+          mkdir pkg && tar xzf dist-server/WillowWalletServer-*-linux-x64.tar.gz -C pkg
+          cd pkg
+          wait_up() { for i in $(seq 1 40); do curl -sf http://localhost:8484/api/v1/info && return 0; sleep 1; done; sudo journalctl -u willowwallet-server --no-pager | tail -30; return 1; }
+          sudo ./install.sh
+          wait_up
+          test -f /var/lib/willowwallet-server/willowwallet.db
+          sudo willowwallet-server-uninstall
+          ! systemctl is-active --quiet willowwallet-server
+          test ! -e /opt/willowwallet-server
+          test ! -e /usr/local/sbin/willowwallet-server-uninstall
+          test -f /var/lib/willowwallet-server/willowwallet.db   # data kept
+          sudo ./install.sh
+          wait_up
+          sudo willowwallet-server-uninstall --delete-data
+          test ! -e /var/lib/willowwallet-server
+          ! id willowwallet 2>/dev/null
+          echo "Linux install and uninstall OK"
+
   windows-installer:
     needs: build
     runs-on: windows-latest
@@ -155,17 +183,29 @@ jobs:
           for ($i = 0; $i -lt 40; $i++) { try { Invoke-RestMethod http://localhost:8484/api/v1/info; $ok = $true; break } catch { Start-Sleep 1 } }
           if (-not $ok) { throw "The service didn't answer on port 8484" }
           if (-not (Test-Path 'C:\ProgramData\WillowWallet Server\willowwallet.db')) { throw "No database in ProgramData" }
+          if (-not (Test-Path "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\WillowWallet Server\Uninstall WillowWallet Server.lnk")) { throw "No Uninstall shortcut in the Start Menu" }
+          $data = 'C:\ProgramData\WillowWallet Server'
+          # Uninstall keeping the data (the default)
           Start-Process "${env:ProgramFiles}\WillowWallet Server\unins000.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES' -Wait
           Start-Sleep 5
           if (Get-Service WillowWalletServer -ErrorAction SilentlyContinue) { throw "Service still installed after uninstall" }
-          Write-Host "Installer OK"
+          if (Test-Path "${env:ProgramFiles}\WillowWallet Server\WillowWalletServer.exe") { throw "Program left behind" }
+          if (-not (Test-Path "$data\willowwallet.db")) { throw "Uninstall deleted the data without being asked" }
+          # Reinstall picks the data up again, then uninstall deleting the data (as the launcher does)
+          Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait
+          for ($i = 0; $i -lt 40; $i++) { try { Invoke-RestMethod http://localhost:8484/api/v1/info | Out-Null; break } catch { Start-Sleep 1 } }
+          Start-Process "${env:ProgramFiles}\WillowWallet Server\unins000.exe" -ArgumentList '/SILENT', '/SUPPRESSMSGBOXES', '/DELETEDATA=1' -Wait
+          Start-Sleep 5
+          if (Get-Service WillowWalletServer -ErrorAction SilentlyContinue) { throw "Service still installed after the second uninstall" }
+          if (Test-Path $data) { throw "/DELETEDATA=1 left the data folder" }
+          Write-Host "Installer OK: install, uninstall keeping data, reinstall, uninstall deleting data"
       - uses: actions/upload-artifact@v4
         with:
           name: server-installer
           path: dist-server/WillowWalletServer-*-Setup.exe
 
   release:
-    needs: [build, docker, windows-installer]
+    needs: [build, docker, windows-installer, linux-install]
     if: needs.build.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:

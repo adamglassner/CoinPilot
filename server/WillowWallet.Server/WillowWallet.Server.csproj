@@ -11,7 +11,7 @@
     <Company>Bytehawk Studio</Company>
     <Copyright>© 2026 Bytehawk Studio</Copyright>
     <!-- Releasing: change this and push to main. CI publishes Docker image + standalone builds as server-v<Version>. -->
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <InvariantGlobalization>true</InvariantGlobalization>
     <ApplicationIcon>..\..\src\CoinPilot.Desktop\Assets\coinpilot.ico</ApplicationIcon>
   </PropertyGroup>
