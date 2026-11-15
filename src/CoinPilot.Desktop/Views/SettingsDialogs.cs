@@ -126,8 +126,11 @@ public sealed class RecoveryKeyDialog : DialogShell
     /// <summary>Lets the self-test close it without ticking the box.</summary>
     public bool ForceClose { get; set; }
 
-    public RecoveryKeyDialog(string key)
-        : base("Save your recovery key", "If you ever forget your PIN or password, this key is the only way to open your data. WillowWallet can't recover it for you.",
+    public RecoveryKeyDialog(string key, bool forSync = false)
+        : base(forSync ? "Save your sync recovery key" : "Save your recovery key",
+               forSync
+                   ? "Your synced data is encrypted with your password. If you forget it, this key is the only way back in: nobody, not even the server's admin, can reset it for you."
+                   : "If you ever forget your PIN or password, this key is the only way to open your data. WillowWallet can't recover it for you.",
                allowDelete: false, saveText: "Done", width: 560)
     {
         HideCancel();
@@ -147,7 +150,7 @@ public sealed class RecoveryKeyDialog : DialogShell
         var save = new Button { Content = "Save to a file…", Style = (Style)FindResource("GhostButton"), Margin = new Thickness(0, 0, 8, 0) };
         save.Click += (_, _) =>
         {
-            var dlg = new Microsoft.Win32.SaveFileDialog { FileName = "WillowWallet recovery key.txt", Filter = "Text file (*.txt)|*.txt" };
+            var dlg = new Microsoft.Win32.SaveFileDialog { FileName = forSync ? "WillowWallet sync recovery key.txt" : "WillowWallet recovery key.txt", Filter = "Text file (*.txt)|*.txt" };
             if (dlg.ShowDialog(this) == true)
                 File.WriteAllText(dlg.FileName, $"WillowWallet recovery key\r\n\r\n{key}\r\n\r\nKeep this somewhere safe and separate from your computer (printed, or in a password manager).\r\n");
         };

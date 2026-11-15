@@ -20,6 +20,7 @@ ICONS = {  # code point used in the app -> Fluent icon name
     0xE8AC: 'rename', 0xE8B5: 'arrow_import', 0xE8C7: 'payment', 0xE8C8: 'copy', 0xE8D7: 'key', 0xE8EC: 'tag',
     0xE8EF: 'calculator', 0xE8FD: 'receipt', 0xE9CE: 'question_circle', 0xE9D2: 'data_trending',
     0xEB05: 'data_pie', 0xEB9F: 'image', 0xEDA2: 'storage',
+    0xE8FA: 'person_add', 0xE8EA: 'phone', 0xE968: 'server', 0xE769: 'pause', 0xE7F8: 'desktop',
 }
 
 def build(src_dir, style, family):

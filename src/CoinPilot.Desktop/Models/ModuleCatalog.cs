@@ -140,8 +140,8 @@ public static class ModuleCatalog
         },
         new()
         {
-            Key = "sync", Title = "Sync & Devices", Glyph = "",
-            Tagline = "Your budget on your PC and your phone, always up to date.",
+            Key = "sync", Title = "Sync & Devices", IsComingSoon = false, Glyph = "",
+            Tagline = "Your budget on your PC and your phone, synced through your own server.",
             Description = "Sign in on each device and WillowWallet keeps your budgets, transactions and goals in sync between Windows and the WillowWallet mobile app. Add a purchase on your phone at the store and it's on your PC when you get home.",
             PrimaryAction = "Add a device",
             Kpis = ["Devices", "Last sync", "Pending changes", "Sync status"],

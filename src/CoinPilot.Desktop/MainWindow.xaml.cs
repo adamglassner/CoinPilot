@@ -33,6 +33,7 @@ public partial class MainWindow : Window
 
         App.ThemeChanged += OnThemeChanged;
         DataStore.Changed += (_, _) => UpdateDataStatus();
+        SyncEngine.StatusChanged += (_, _) => Dispatcher.BeginInvoke(UpdateDataStatus);
         SourceInitialized += (_, _) => SystemTheme.ApplyTitleBar(this, App.IsDark);
         UpdateThemeButton();
         RestorePlacement();
@@ -74,6 +75,7 @@ public partial class MainWindow : Window
         _pendingPage = null;
         if (page == "settings") ShowSettings();
         else GoTo(page);
+        SyncEngine.Start();
         UpdateDataStatus();
     }
 
@@ -108,6 +110,7 @@ public partial class MainWindow : Window
             "goals" => new GoalsView(),
             "reports" => new ReportsView(),
             "taxes" => new TaxesView(),
+            "sync" => new SyncView(),
             _ => new ComingSoonView(module),
         });
     }
@@ -298,7 +301,21 @@ public partial class MainWindow : Window
     private void UpdateDataStatus()
     {
         bool protectedOn = DataLock.IsEnabled;
-        DataGlyph.Text = protectedOn ? "" : "";
+        if (SyncEngine.Status != SyncEngine.State.Off)
+        {
+            bool ok = SyncEngine.Status is SyncEngine.State.Idle or SyncEngine.State.Syncing;
+            DataGlyph.Text = ok ? "\uE895" : "\uE7BA";
+            DataGlyph.SetResourceReference(TextBlock.ForegroundProperty, ok ? "Brush.Mint" : "Brush.Warn");
+            DataTitle.Text = SyncEngine.StatusText;
+            DataDetail.Text = ok
+                ? $"{SyncEngine.Settings?.ServerName}{(protectedOn ? " · encrypted here too" : "")}"
+                : (SyncEngine.Status == SyncEngine.State.SignedOut ? "Sign in on the Sync & Devices page." : "Your changes are saved on this PC and sync later.");
+            LockButton.Visibility = protectedOn ? Visibility.Visible : Visibility.Collapsed;
+            StatusRight.Text = "Saved on this PC · " + SyncEngine.StatusText.ToLowerInvariant();
+            return;
+        }
+        DataGlyph.SetResourceReference(TextBlock.ForegroundProperty, "Brush.Mint");
+        DataGlyph.Text = protectedOn ? "\uE72E" : "\uEDA2";
         DataTitle.Text = protectedOn ? "Protected" : "Saved on this PC";
         DataDetail.Text = protectedOn
             ? "Your data is encrypted with your " + (DataLock.Info?.Kind == "PIN" ? "PIN." : "password.")

@@ -213,6 +213,44 @@
     </Style>
 
     <!-- Pill-shaped choice (categories, accounts, expense/income) -->
+    <!-- A big choice: a card with a round indicator, highlighted when picked -->
+    <Style x:Key="CardRadio" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Margin" Value="0,0,0,10" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="bd" CornerRadius="14" BorderThickness="1.5" Padding="14,13,16,14"
+                            Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}">
+                        <DockPanel>
+                            <Grid DockPanel.Dock="Left" Width="20" Height="20" Margin="0,1,12,0" VerticalAlignment="Top">
+                                <Ellipse x:Name="ring" Stroke="{DynamicResource Brush.TextMuted}" StrokeThickness="1.5" />
+                                <Ellipse x:Name="dot" Width="10" Height="10" Fill="{DynamicResource Brush.Accent}" Visibility="Collapsed" />
+                            </Grid>
+                            <ContentPresenter />
+                        </DockPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Brush.TextMuted}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.AccentSoft}" />
+                            <Setter TargetName="ring" Property="Stroke" Value="{DynamicResource Brush.Accent}" />
+                            <Setter TargetName="dot" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="ChipRadio" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
         <Setter Property="Cursor" Value="Hand" />

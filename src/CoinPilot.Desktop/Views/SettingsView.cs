@@ -356,8 +356,15 @@ public sealed class SettingsView : DataPage
     private static Border SyncCard()
     {
         var panel = new StackPanel();
-        panel.Children.Add(Muted("Sign in to keep your budgets, transactions and goals in sync between this PC and the WillowWallet app for iPhone and Android."));
-        return PageKit.Card(panel, "Sync & mobile app", PageKit.Pill("Coming soon", "Brush.Accent"));
+        bool on = SyncEngine.Status != SyncEngine.State.Off;
+        bool ok = SyncEngine.Status is SyncEngine.State.Idle or SyncEngine.State.Syncing;
+        panel.Children.Add(Muted(on
+            ? $"{SyncEngine.StatusText} with {SyncEngine.Settings?.ServerName} as {SyncEngine.Settings?.Username}."
+            : "Keep your budgets, transactions and goals in sync between this PC and WillowWallet for Android, through a WillowWallet Server you run yourself. Everything is encrypted before it leaves this PC."));
+        var open = PageKit.Ghost("\uE895", on ? "Open Sync & Devices" : "Set up sync", (_, _) => MainWindow.Instance?.GoTo("sync"));
+        open.HorizontalAlignment = HorizontalAlignment.Left;
+        panel.Children.Add(open);
+        return PageKit.Card(panel, "Sync & mobile app", on ? PageKit.Pill(ok ? "On" : "Needs attention", ok ? "Brush.Accent" : "Brush.Warn") : null);
     }
 
     private static Border About()

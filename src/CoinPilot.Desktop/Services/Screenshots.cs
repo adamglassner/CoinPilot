@@ -33,7 +33,7 @@ public static class Screenshots
         window.Width = Width; window.Height = Height;
         await Idle();
 
-        string[] pages = ["dashboard", "transactions", "budgets", "accounts", "debts", "bills", "goals", "reports", "taxes", "settings"];
+        string[] pages = ["dashboard", "transactions", "budgets", "accounts", "debts", "bills", "goals", "reports", "taxes", "sync", "settings"];
         int n = 1;
         foreach (var mode in new[] { AppTheme.Light, AppTheme.Dark })
         {
@@ -136,6 +136,39 @@ public static class Screenshots
             }
         }
         App.ApplyTheme(AppTheme.Light);
+
+        // Sync & Devices connected to the CI's test server (when there is one)
+        string? server = Environment.GetEnvironmentVariable("WW_TEST_SERVER");
+        string? adminPassword = Environment.GetEnvironmentVariable("WW_TEST_ADMIN_PASSWORD");
+        if (server != null && adminPassword != null)
+        {
+            try
+            {
+                App.ApplyTheme(AppTheme.Light);
+                await CaptureDialog(window, new SyncMergeDialog(DataStore.SyncStores.Sum(st => st.Count)), $"{n++:00}-dialog-sync-combine-light");
+                var (_, recovery) = await SyncEngine.ConnectAsync(server, "adam", "screenshot-password", create: true,
+                    await TestServerAdmin.Invite(server, adminPassword), iterations: 100_000);
+                await CaptureDialog(window, new RecoveryKeyDialog(recovery!, forSync: true), $"{n++:00}-dialog-sync-recovery-key-light");
+                await SyncEngine.FirstSyncAsync(useServerOnly: false);
+                foreach (var mode in new[] { AppTheme.Light, AppTheme.Dark })
+                {
+                    App.ApplyTheme(mode);
+                    await Show(window, "sync");
+                    await Task.Delay(1500); // the device list loads from the server
+                    await Idle();
+                    await Capture(window, $"{n++:00}-sync-connected-{mode.ToLowerInvariant()}");
+                }
+                App.ApplyTheme(AppTheme.Light);
+                await Show(window, "dashboard");
+                await Capture(window, $"{n++:00}-dashboard-synced-light");
+                await SyncEngine.SignOutAsync();
+            }
+            catch (Exception ex)
+            {
+                _failures++;
+                File.WriteAllText(Path.Combine(OutputFolder!, "sync.error.txt"), ex.ToString());
+            }
+        }
 
         // Lock screen
         DataLock.Enable("482910", "PIN", 15);

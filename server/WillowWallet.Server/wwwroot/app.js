@@ -218,7 +218,7 @@ async function overviewPage() {
         ${stat('people', 'Users', num(o.users), `${num(o.onlineUsers)} online now · ${num(o.activeThisWeek)} this week`)}
         ${stat('phone-laptop', 'Devices', num(o.devices), 'Signed-in phones and PCs')}
         ${stat('arrow-sync', 'Records synced', num(o.records), `${num(o.totalSyncs)} syncs since start`)}
-        ${stat('storage', 'Storage', bytes(o.databaseBytes + o.fileBytes), `${num(o.files)} files · ${bytes(o.freeDiskBytes)} free`)}
+        ${stat('storage', 'Storage', bytes(o.databaseBytes + o.fileBytes), `${num(o.files)} ${o.files === 1 ? 'file' : 'files'} · ${bytes(o.freeDiskBytes)} free`)}
       </div>
 
       <div class="grid cols-3">
@@ -228,7 +228,7 @@ async function overviewPage() {
         </section>
         <section class="card">
           <div class="card-head"><h2>Connect an app</h2></div>
-          <p class="muted small" style="margin:0 0 12px">In WillowWallet on Windows or Android, open <b>Settings → Sync</b> and enter this address:</p>
+          <p class="muted small" style="margin:0 0 12px">In WillowWallet, open <b>Sync &amp; Devices</b> on Windows or <b>Settings → Sync</b> on Android, and enter this address:</p>
           <div class="copy-box"><code>${esc(address)}</code><button class="btn sm" data-copy="${esc(address)}">${icon('copy', 'sm')}Copy</button></div>
           <p class="muted small" style="margin:12px 0 0">${o.openSignup ? 'Anyone who can reach this server can create an account.' : 'New people need an <a href="#invites" data-goto="invites">invite code</a>.'}
             On other devices, use this computer's network address instead of “localhost”.</p>
@@ -340,7 +340,7 @@ async function userDrawer(id) {
       <div style="flex:1"><h2 style="font-size:24px">${esc(u.username)}</h2><div class="muted small">Joined ${esc(date(u.createdAt))} · last seen ${esc(ago(u.lastSeenAt))}</div></div>
       <button class="btn icon-only ghost" data-close aria-label="Close">${icon('dismiss')}</button></div>
     <div class="grid cols-3" style="margin-bottom:16px">
-      ${stat('arrow-sync', 'Records', num(u.records), '')}${stat('storage', 'Files', bytes(u.fileBytes), `${u.files} files`)}${stat('phone-laptop', 'Devices', u.devices, '')}</div>
+      ${stat('arrow-sync', 'Records', num(u.records), '')}${stat('storage', 'Files', bytes(u.fileBytes), `${u.files} ${u.files === 1 ? 'file' : 'files'}`)}${stat('phone-laptop', 'Devices', u.devices, '')}</div>
     <section class="card" style="margin-bottom:16px"><div class="card-head"><h2>Devices</h2></div>
       ${d.devices.length ? `<div class="list">${d.devices.map((v) => `<div class="item"><span class="badge-icon">${icon(platformIcon(v.platform), 'sm')}</span>
         <div style="flex:1"><b>${esc(v.name)}</b><div class="muted small">${esc(v.platform)} ${esc(v.appVersion)} · ${esc(ago(v.lastSeen))}${v.ip ? ' · ' + esc(v.ip) : ''}</div></div>

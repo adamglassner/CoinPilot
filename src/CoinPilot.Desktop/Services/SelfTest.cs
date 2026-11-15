@@ -332,6 +332,162 @@ public static class SelfTest
     // PIN / password protection
     // ======================================================================
 
+    // ----- Sync with a real WillowWallet Server (CI starts one and sets WW_TEST_SERVER) -----
+
+    private static async Task Sync(MainWindow window)
+    {
+        await Step("Sync page before connecting", () => window.GoTo("sync"));
+        Check("Sync is off until you connect", SyncEngine.Status == SyncEngine.State.Off && !SyncEngine.IsConnected);
+        string? url = Environment.GetEnvironmentVariable("WW_TEST_SERVER");
+        string? adminPassword = Environment.GetEnvironmentVariable("WW_TEST_ADMIN_PASSWORD");
+        if (url == null || adminPassword == null)
+        {
+            Report.AppendLine("SKIP  Sync with a real server (WW_TEST_SERVER not set)");
+            return;
+        }
+        const string user = "selftest", password = "self-test-password";
+        var phoneDevice = new WillowWallet.Sync.DeviceInfo("Test phone", "Android", "0.2.0");
+        string? recovery = null;
+        try
+        {
+            string invite = await TestServerAdmin.Invite(url, adminPassword);
+            int localTx = DataStore.Transactions.Items.Count;
+
+            // Create the account from this PC and upload everything
+            (_, recovery) = await SyncEngine.ConnectAsync(url, user, password, create: true, invite, iterations: 100_000);
+            Check("Account created, recovery key shown", recovery != null && WillowWallet.Sync.SyncCrypto.ParseRecoveryKey(recovery) != null, recovery ?? "");
+            Check("First sync", await SyncEngine.FirstSyncAsync(useServerOnly: false), SyncEngine.Problem ?? "");
+            Check("Nothing left to send", SyncEngine.PendingCount == 0, SyncEngine.PendingCount.ToString());
+            await Step("Sync page when connected", () => window.GoTo("sync"));
+
+            // Another device sees it all, encrypted on the server
+            using var phone = new WillowWallet.Sync.SyncApiClient(url);
+            var signed = await WillowWallet.Sync.SyncAccount.LoginAsync(phone, user, password, phoneDevice);
+            var server = await PullAll(phone, signed.DataKey);
+            Check("Server has every transaction", server.Count(kv => kv.Key.StartsWith("transactions/")) == localTx, $"{server.Count(kv => kv.Key.StartsWith("transactions/"))} of {localTx}");
+            Check("Server has budgets, accounts, bills, goals, debts", new[] { "budgets", "accounts", "bills", "goals", "debts" }.All(c => server.Keys.Any(k => k.StartsWith(c + "/"))));
+            Check("Settings sync too", server.ContainsKey("settings/preferences") || DataStore.Prefs.UpdatedAt == default);
+            var taxWithFile = DataStore.TaxDocuments.Items.FirstOrDefault(d => d.FileName.Length > 0 && File.Exists(FileVault.TaxDocumentPath(d)));
+            if (taxWithFile != null)
+            {
+                var sealedFile = await phone.DownloadFileAsync("tax/" + taxWithFile.FileName);
+                Check("Tax document uploaded (encrypted)", sealedFile != null &&
+                    WillowWallet.Sync.SyncCrypto.OpenBytes(signed.DataKey, sealedFile, WillowWallet.Sync.SyncCrypto.FileAad("tax/" + taxWithFile.FileName)).SequenceEqual(DataLock.ReadBytes(FileVault.TaxDocumentPath(taxWithFile))));
+            }
+
+            // Changes from the phone: a new transaction, an edit and a delete
+            var items = DataStore.Transactions.Items.OrderBy(t => t.Date).ToList();
+            var edited = items[0];
+            var deleted = items[1];
+            var added = new Transaction { Id = "phone-" + Guid.NewGuid().ToString("N")[..8], Payee = "From the phone", Category = "Groceries", Account = "Checking", Date = DateTime.Today, Amount = -12.34m, CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now.AddSeconds(5) };
+            var editedCopy = System.Text.Json.JsonSerializer.Deserialize<Transaction>(JsonStore<Transaction>.ToJson(edited))!;
+            editedCopy.Payee = "Edited on the phone";
+            editedCopy.UpdatedAt = DateTime.Now.AddSeconds(5);
+            await phone.PushAsync(new WillowWallet.Sync.PushRequest([
+                Remote(signed.DataKey, "transactions", added),
+                Remote(signed.DataKey, "transactions", editedCopy),
+                new WillowWallet.Sync.PushChange("transactions", deleted.Id, DateTimeOffset.UtcNow.AddSeconds(5).ToUnixTimeMilliseconds(), true, null),
+            ]));
+            Check("Sync now", await SyncEngine.SyncNowAsync(manual: true), SyncEngine.Problem ?? "");
+            Check("Phone's new transaction arrived", DataStore.Transactions.Find(added.Id)?.Payee == "From the phone");
+            Check("Phone's edit arrived", DataStore.Transactions.Find(edited.Id)?.Payee == "Edited on the phone");
+            Check("Phone's delete arrived", DataStore.Transactions.Find(deleted.Id) == null);
+            Check("Applying the phone's changes didn't queue them to send back", SyncEngine.PendingCount == 0, SyncEngine.PendingCount.ToString());
+
+            // A change here reaches the phone
+            var mine = DataStore.Transactions.Items.First(t => t.Id != added.Id);
+            await Step("Edit a transaction here", () => { mine.Note = "Edited on the PC"; DataStore.Transactions.Update(mine); });
+            Check("It's waiting to sync", SyncEngine.PendingCount == 1, SyncEngine.PendingCount.ToString());
+            await SyncEngine.SyncNowAsync(manual: true);
+            server = await PullAll(phone, signed.DataKey);
+            Check("Phone sees the PC's edit", server["transactions/" + mine.Id].Contains("Edited on the PC"));
+
+            // Same record changed in both places: the newer change wins either way
+            var both = DataStore.Transactions.Items.First(t => t.Id != added.Id && t.Id != mine.Id);
+            var newerRemote = System.Text.Json.JsonSerializer.Deserialize<Transaction>(JsonStore<Transaction>.ToJson(both))!;
+            newerRemote.Payee = "Phone wins";
+            newerRemote.UpdatedAt = DateTime.Now.AddMinutes(2);
+            await Step("Edit the same transaction here (older)", () => { both.Payee = "PC loses"; DataStore.Transactions.Update(both); });
+            await phone.PushAsync(new WillowWallet.Sync.PushRequest([Remote(signed.DataKey, "transactions", newerRemote)]));
+            await SyncEngine.SyncNowAsync(manual: true);
+            Check("Newer phone edit wins", DataStore.Transactions.Find(both.Id)?.Payee == "Phone wins", DataStore.Transactions.Find(both.Id)?.Payee ?? "missing");
+            var olderRemote = System.Text.Json.JsonSerializer.Deserialize<Transaction>(JsonStore<Transaction>.ToJson(mine))!;
+            olderRemote.Payee = "Old phone edit";
+            olderRemote.UpdatedAt = DateTime.Now.AddHours(-3);
+            await phone.PushAsync(new WillowWallet.Sync.PushRequest([Remote(signed.DataKey, "transactions", olderRemote)]));
+            await Step("Edit here (newer)", () => { mine.Payee = "PC wins"; DataStore.Transactions.Update(mine); });
+            await SyncEngine.SyncNowAsync(manual: true);
+            Check("Newer PC edit wins", DataStore.Transactions.Find(mine.Id)?.Payee == "PC wins");
+            server = await PullAll(phone, signed.DataKey);
+            Check("Phone gets the PC's newer edit", server["transactions/" + mine.Id].Contains("PC wins"));
+
+            // Deleting here
+            var gone = DataStore.Transactions.Items.Last();
+            await Step("Delete a transaction here", () => DataStore.Transactions.Delete(gone));
+            await SyncEngine.SyncNowAsync(manual: true);
+            server = await PullAll(phone, signed.DataKey);
+            Check("Phone sees the delete", !server.ContainsKey("transactions/" + gone.Id));
+
+            // Stopped on the server: changes wait here
+            await TestServerAdmin.Post(url, adminPassword, "/admin/api/service/stop");
+            await Step("Edit while sync is stopped", () => { mine.Note = "While stopped"; DataStore.Transactions.Update(mine); });
+            Check("Sync reports it's stopped", !await SyncEngine.SyncNowAsync() && SyncEngine.Status == SyncEngine.State.Paused, SyncEngine.Status.ToString());
+            await TestServerAdmin.Post(url, adminPassword, "/admin/api/service/start");
+            Check("Catches up when started again", await SyncEngine.SyncNowAsync(manual: true) && SyncEngine.PendingCount == 0);
+
+            // Stop syncing: data stays here
+            int before = DataStore.Transactions.Items.Count;
+            await SyncEngine.SignOutAsync();
+            Check("Stop syncing keeps the data here", SyncEngine.Status == SyncEngine.State.Off && DataStore.Transactions.Items.Count == before);
+
+            // Sign in again using only the server's copy
+            using (DataStore.Batch()) DataStore.Transactions.Add(new Transaction { Payee = "Only on this PC", Amount = -1, Category = "Other", Account = "Cash" });
+            await SyncEngine.ConnectAsync(url, user, password, create: false, null);
+            Check("Sign in and use only the server's data", await SyncEngine.FirstSyncAsync(useServerOnly: true));
+            Check("Local-only record replaced by the server's copy", DataStore.Transactions.Items.All(t => t.Payee != "Only on this PC") && DataStore.Transactions.Items.Count == before);
+
+            // Forgot the password
+            await SyncEngine.SignOutAsync();
+            await SyncEngine.RecoverAsync(url, user, recovery!, "a-new-password-1", iterations: 100_000);
+            Check("Recovery key sets a new password", SyncEngine.IsConnected && await SyncEngine.SyncNowAsync(manual: true));
+            var wrong = await Catch(() => SyncEngine.ConnectAsync(url, user, password, create: false, null));
+            Check("Old password no longer works", wrong?.Error == "bad_login", wrong?.Error ?? "no error");
+            await SyncEngine.SignOutAsync();
+        }
+        catch (Exception ex)
+        {
+            Check("Sync with a real server", false, ex.ToString());
+            try { await SyncEngine.SignOutAsync(); } catch { }
+        }
+    }
+
+    private static WillowWallet.Sync.PushChange Remote(byte[] key, string collection, Transaction t) => new(collection, t.Id,
+        new DateTimeOffset(t.UpdatedAt).ToUnixTimeMilliseconds(), false, WillowWallet.Sync.SyncAccount.SealRecord(key, collection, t.Id, JsonStore<Transaction>.ToJson(t)));
+
+    /// <summary>Everything on the server for this account, decrypted: "collection/id" → JSON.</summary>
+    private static async Task<Dictionary<string, string>> PullAll(WillowWallet.Sync.SyncApiClient api, byte[] key)
+    {
+        var all = new Dictionary<string, string>();
+        long since = 0;
+        while (true)
+        {
+            var page = await api.ChangesAsync(since);
+            foreach (var c in page.Changes)
+            {
+                if (c.Deleted) all.Remove(c.Collection + "/" + c.Id);
+                else all[c.Collection + "/" + c.Id] = WillowWallet.Sync.SyncAccount.OpenRecord(key, c.Collection, c.Id, c.Payload!);
+            }
+            since = page.Changes.Count > 0 ? page.Changes[^1].Seq : page.Latest;
+            if (!page.More) return all;
+        }
+    }
+
+    private static async Task<WillowWallet.Sync.SyncApiException?> Catch(Func<Task> action)
+    {
+        try { await action(); return null; }
+        catch (WillowWallet.Sync.SyncApiException e) { return e; }
+    }
+
     private static async Task Security(MainWindow window)
     {
         int count = DataStore.Transactions.Items.Count;
@@ -599,11 +755,7 @@ public static class SelfTest
         await NewFeatures(window, month, lastMonth);
 
         // ----- Catalog / navigation -----
-        string[] working = ["dashboard", "transactions", "budgets", "accounts", "debts", "bills", "goals", "reports", "taxes"];
-        Check("Every section works except Sync & Devices (coming soon)",
-            ModuleCatalog.Sidebar.All(m => m.IsComingSoon == !working.Contains(m.Key)));
-        Check("Every coming-soon section lists planned features",
-            ModuleCatalog.Sidebar.Where(m => m.IsComingSoon).All(m => m.Features.Length > 0 && m.Description.Length > 0));
+        Check("Every section works (none left coming soon)", ModuleCatalog.Sidebar.All(m => !m.IsComingSoon));
         Check("Section keys are unique",
             ModuleCatalog.Sidebar.Select(m => m.Key).Distinct().Count() == ModuleCatalog.Sidebar.Count);
         Check("Version is set", App.VersionText != "0.0.0", App.VersionText);
@@ -612,6 +764,7 @@ public static class SelfTest
         Check("Dashboard selected after unknown page", ModuleCatalog.Dashboard.IsSelected);
 
         await Security(window);
+        await Sync(window);
 
         Report.AppendLine(_failed == 0 ? "ALL PASSED" : $"{_failed} FAILED");
         try { File.WriteAllText(OutputFile!, Report.ToString()); } catch { /* ignore */ }
