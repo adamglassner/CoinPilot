@@ -67,23 +67,17 @@ jobs:
             exit 1
           }
 
-      - name: Start a WillowWallet Server for the sync tests
+      - name: Build a WillowWallet Server for the sync tests
         shell: pwsh
         run: |
           dotnet build server/WillowWallet.Server/WillowWallet.Server.csproj -c Release -o "$env:RUNNER_TEMP\ww-server-bin" | Select-Object -Last 3
-          $env:WW_DATA = Join-Path $env:RUNNER_TEMP 'ww-server-data'
-          $env:WW_ADMIN_USERNAME = 'admin'
-          $env:WW_ADMIN_PASSWORD = 'self-test-admin-password'
-          Start-Process "$env:RUNNER_TEMP\ww-server-bin\WillowWalletServer.exe" -RedirectStandardOutput "$env:RUNNER_TEMP\ww-server.log" -RedirectStandardError "$env:RUNNER_TEMP\ww-server.err"
-          $ok = $false
-          for ($i = 0; $i -lt 40; $i++) { try { Invoke-RestMethod http://localhost:8484/api/v1/info | Out-Host; $ok = $true; break } catch { Start-Sleep 1 } }
-          if (-not $ok) { Get-Content "$env:RUNNER_TEMP\ww-server.log", "$env:RUNNER_TEMP\ww-server.err" -ErrorAction SilentlyContinue; throw 'Server did not start' }
           "WW_TEST_SERVER=http://localhost:8484" >> $env:GITHUB_ENV
           "WW_TEST_ADMIN_PASSWORD=self-test-admin-password" >> $env:GITHUB_ENV
 
       - name: Self-test (every page in both themes, navigation)
         shell: pwsh
         run: |
+          ./tools/start-test-server.ps1 ww-selftest-data
           $out = Join-Path $env:RUNNER_TEMP 'selftest.txt'
           $p = Start-Process dist/WillowWallet.exe -ArgumentList '--self-test', "`"$out`"" -PassThru
           if (-not $p.WaitForExit(300000)) { Stop-Process -Id $p.Id -Force; throw 'Self-test timed out' }
@@ -114,6 +108,8 @@ jobs:
       - name: Screenshots (sample data, every page, light and dark)
         shell: pwsh
         run: |
+          Get-Process WillowWalletServer -ErrorAction SilentlyContinue | Stop-Process -Force
+          ./tools/start-test-server.ps1 ww-screenshots-data
           New-Item -ItemType Directory -Force screenshots | Out-Null
           $p = Start-Process dist/WillowWallet.exe -ArgumentList '--screenshots', (Join-Path $PWD 'screenshots') -PassThru
           if (-not $p.WaitForExit(300000)) { $p.Kill(); Write-Host "::warning::Screenshot run timed out" }
