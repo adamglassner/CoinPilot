@@ -35,7 +35,7 @@ jobs:
       - name: Version
         id: ver
         run: |
-          v=$(grep -oP '(?<=<Version>)[^<]+' server/WillowWallet.Server/WillowWallet.Server.csproj)
+          v=$(grep -oP '(?<=<Version>)[0-9][^<]*' server/WillowWallet.Server/WillowWallet.Server.csproj | head -1)
           echo "version=$v" >> "$GITHUB_OUTPUT"
           release=false
           if [ "$GITHUB_REF" = "refs/heads/main" ] && [ "$GITHUB_EVENT_NAME" = "push" ] && ! git rev-parse -q --verify "refs/tags/server-v$v" >/dev/null; then release=true; fi
