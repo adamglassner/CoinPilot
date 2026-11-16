@@ -43,6 +43,13 @@ public static class Screenshots
             {
                 await Show(window, page);
                 await Capture(window, $"{n++:00}-{page}-{mode.ToLowerInvariant()}");
+                if (page is "bills" or "debts")
+                {
+                    // The list under the summary: debts with their monthly bills, bills that pay down debts
+                    window.PageScroller.ScrollToVerticalOffset(page == "debts" ? 330 : 560);
+                    await Idle();
+                    await Capture(window, $"{n++:00}-{page}-list-{mode.ToLowerInvariant()}");
+                }
                 if (page == "bills")
                 {
                     BillsView.ShowCalendar = true;
@@ -90,8 +97,8 @@ public static class Screenshots
             await CaptureDialog(window, new BudgetTemplateDialog(), $"{n++:00}-dialog-budget-template-{m}");
             await Show(window, "bills");
             await CaptureDialog(window, new BillDialog(DataStore.Bills.Items[0]), $"{n++:00}-dialog-bill-{m}");
-            await CaptureDialog(window, new BillDialog(DataStore.Bills.Items.First(b => b.PaysDebt)), $"{n++:00}-dialog-bill-pays-debt-{m}");
-            await CaptureDialog(window, new DebtDialog(null), $"{n++:00}-dialog-add-debt-{m}");
+            await CaptureDialog(window, new BillDialog(DataStore.Bills.Items.First(b => b.PaysDebt)), $"{n++:00}-dialog-bill-pays-debt-{m}", scrollToEnd: true);
+            await CaptureDialog(window, new DebtDialog(null), $"{n++:00}-dialog-add-debt-{m}", scrollToEnd: true);
             await Show(window, "goals");
             await CaptureDialog(window, new GoalDialog(DataStore.Goals.Items[1]), $"{n++:00}-dialog-goal-{m}");
             await Show(window, "settings");
@@ -215,12 +222,13 @@ public static class Screenshots
     }
 
     /// <summary>Shows the dialog over the (dimmed) main window and saves the two together, as it looks in the app.</summary>
-    private static async Task CaptureDialog(MainWindow window, DialogShell dialog, string name)
+    private static async Task CaptureDialog(MainWindow window, DialogShell dialog, string name, bool scrollToEnd = false)
     {
         try
         {
             dialog.Show();
             await Idle();
+            if (scrollToEnd) { dialog.ScrollBodyToEnd(); await Idle(); }
             var root = (FrameworkElement)window.Content;
             double Width = root.ActualWidth, Height = root.ActualHeight;
 

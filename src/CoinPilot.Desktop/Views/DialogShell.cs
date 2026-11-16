@@ -238,6 +238,9 @@ public abstract class DialogShell : Window
         base.OnPreviewKeyDown(e);
     }
 
+    /// <summary>Scrolls a long dialog to its last fields (screenshots).</summary>
+    public void ScrollBodyToEnd() => (Body.Parent as ScrollViewer)?.ScrollToEnd();
+
     // ----- Field helpers -----
 
     /// <summary>Adds a labelled field and returns the input so callers can keep a reference.</summary>
