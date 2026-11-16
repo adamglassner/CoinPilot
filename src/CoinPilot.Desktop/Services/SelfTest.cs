@@ -720,7 +720,7 @@ public static class SelfTest
         Bill? loanBill = null, insurance = null;
         await Step("Link a student loan to a recurring monthly bill and pay it", () =>
         {
-            loan = new Debt { Name = "Student loan", Type = "Student loan", Balance = 650m, OriginalBalance = 5000m, InterestRate = 5m, MinimumPayment = 300m };
+            loan = new Debt { Name = "Student loan", Type = "Student loan", Balance = 550m, OriginalBalance = 5000m, InterestRate = 5m, MinimumPayment = 300m };
             DataStore.Debts.Add(loan);
             loanBill = DebtLink.CreateBill(loan, today, "Checking");
             insurance = new Bill { Name = "Car insurance", Amount = 120m, NextDue = today, DueDay = today.Day, Category = "Transportation", Account = "Checking" };
@@ -730,13 +730,13 @@ public static class SelfTest
         Check("Debt bill is monthly, in Debt payments, at the minimum payment",
             loanBill != null && loanBill.Repeats == BillSchedule.Monthly && loanBill.Category == Categories.DebtPayments && loanBill.Amount == 300m && DebtLink.BillFor(loan!) == loanBill);
         Check("Paying the bill lowers the debt and moves the bill to next month",
-            loan != null && loan.Balance == 350m && loan.Payments.Count == 1 && loanBill!.NextDue == BillSchedule.Next(today, BillSchedule.Monthly, today.Day) && !loanBill.IsDone,
+            loan != null && loan.Balance == 250m && loan.Payments.Count == 1 && loanBill!.NextDue == BillSchedule.Next(today, BillSchedule.Monthly, today.Day) && !loanBill.IsDone,
             loan == null ? "" : $"balance {loan.Balance}, next {loanBill?.NextDue:d}");
         Check("Bill payment is recorded once, as a debt payment",
             DataStore.Transactions.Items.Count(t => t.Payee == "Student loan" && t.Amount == -300m && t.Category == Categories.DebtPayments) == 1);
         Check("Insurance stays an ordinary bill", insurance != null && !insurance.PaysDebt && DebtLink.DebtFor(insurance) == null);
         await Step("Pay the last of the loan through its bill", () => BillSchedule.MarkPaid(loanBill!, today));
-        Check("Last payment is only what's left", loan != null && loan.IsPaidOff && DataStore.Transactions.Items.Any(t => t.Payee == "Student loan" && t.Amount == -350m));
+        Check("Last payment is only what's left", loan != null && loan.IsPaidOff && DataStore.Transactions.Items.Any(t => t.Payee == "Student loan" && t.Amount == -250m));
         Check("The bill ends when the debt is paid off", loanBill != null && loanBill.IsDone && BillSchedule.Status(loanBill, today) == BillStatus.Paid);
         Debt? car = null;
         Bill? carBill = null;
