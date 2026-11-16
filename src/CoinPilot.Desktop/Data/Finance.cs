@@ -249,6 +249,15 @@ public static class BillSchedule
     /// </summary>
     public static Transaction? MarkPaid(Bill b, DateTime paidOn, bool addTransaction = true)
     {
+        // A bill that pays down a debt is a debt payment: it lowers the balance and ends once the debt is paid off.
+        if (DebtLink.DebtFor(b) is { IsPaidOff: false } debt)
+        {
+            var payment = DebtLink.ApplyPayment(debt, Math.Min(b.Amount, debt.Balance), paidOn.Date, b.Account, addTransaction,
+                payee: b.Name, note: $"Bill due {b.NextDue:MMM d}");
+            DebtLink.Advance(b, paidOn, debt);
+            return payment;
+        }
+
         Transaction? t = null;
         if (addTransaction)
         {
@@ -267,6 +276,93 @@ public static class BillSchedule
         if (b.Repeats != Once) b.NextDue = Next(b.NextDue, b.Repeats, b.DueDay);
         DataStore.Bills.Update(b);
         return t;
+    }
+}
+
+// ======================================================================
+// Bills that pay down debts
+// ======================================================================
+
+/// <summary>
+/// Links between a debt (student loan, car loan, card…) and the repeating bill that pays it. Ordinary bills
+/// (insurance, subscriptions, utilities) aren't linked to anything.
+/// </summary>
+public static class DebtLink
+{
+    public static Debt? DebtFor(Bill b) => b.PaysDebt ? DataStore.Debts.Find(b.DebtId) : null;
+
+    /// <summary>The bill that pays this debt, if any (the open one first).</summary>
+    public static Bill? BillFor(Debt d) =>
+        d.Id.Length == 0 ? null : DataStore.Bills.Items.Where(b => b.DebtId == d.Id).OrderBy(b => b.IsDone).FirstOrDefault();
+
+    /// <summary>A monthly bill for the debt's payment, due on <paramref name="firstDue"/>'s day each month.</summary>
+    public static Bill CreateBill(Debt d, DateTime firstDue, string account, decimal? amount = null, bool autoPay = false)
+    {
+        var bill = new Bill
+        {
+            Name = d.Name,
+            Amount = amount ?? (d.MinimumPayment > 0 ? d.MinimumPayment : 0),
+            NextDue = firstDue.Date,
+            DueDay = firstDue.Day,
+            Repeats = BillSchedule.Monthly,
+            Category = Categories.DebtPayments,
+            Account = account,
+            AutoPay = autoPay,
+            DebtId = d.Id,
+        };
+        DataStore.Bills.Add(bill);
+        return bill;
+    }
+
+    /// <summary>Lowers the balance, keeps the payment history and (optionally) records the transaction.</summary>
+    public static Transaction? ApplyPayment(Debt debt, decimal amount, DateTime date, string account, bool addTransaction,
+        string? payee = null, string note = "Debt payment")
+    {
+        debt.Balance = Math.Max(0, debt.Balance - amount);
+        debt.Payments.Add(new MoneyEntry { Date = date, Amount = amount });
+        DataStore.Debts.Update(debt);
+        if (!addTransaction) return null;
+        var t = new Transaction
+        {
+            Payee = payee ?? debt.Name,
+            Category = Categories.DebtPayments,
+            Account = account,
+            Date = date,
+            Amount = -amount,
+            Note = note,
+        };
+        DataStore.Transactions.Add(t);
+        return t;
+    }
+
+    /// <summary>
+    /// After a payment: moves the debt's bill to its next due date, or ends it (paid one-time) when the debt is paid off.
+    /// </summary>
+    public static void Advance(Bill b, DateTime paidOn, Debt debt)
+    {
+        b.LastPaid = paidOn.Date;
+        if (debt.IsPaidOff) b.Repeats = BillSchedule.Once;
+        else if (b.Repeats != BillSchedule.Once) b.NextDue = BillSchedule.Next(b.NextDue, b.Repeats, b.DueDay);
+        DataStore.Bills.Update(b);
+    }
+
+    /// <summary>
+    /// Whether a payment recorded on the Debts page on <paramref name="date"/> is most likely this bill's payment
+    /// (it's overdue or due within 10 days).
+    /// </summary>
+    public static bool LooksLikeBillPayment(Bill b, DateTime date) => !b.IsDone && (b.NextDue.Date - date.Date).Days <= 10;
+
+    /// <summary>A deleted debt's bills become ordinary bills.</summary>
+    public static int Unlink(Debt d)
+    {
+        int n = 0;
+        foreach (var b in DataStore.Bills.Items.Where(b => b.DebtId == d.Id).ToList())
+        {
+            b.DebtId = "";
+            DataStore.Bills.Update(b);
+            n++;
+        }
+        return n;
     }
 }
 

@@ -17,7 +17,7 @@ public sealed class DebtsView : DataPage
         var plan = DebtPlanner.CurrentPlan();
 
         Add(PageKit.Header("", "Debts", "See what you owe and the fastest way to pay it off."));
-        Add(PageKit.ActionBar("Record payments here to lower each balance.",
+        Add(PageKit.ActionBar("Loans and cards you're paying down. Give each a monthly bill, and marking the bill paid lowers the balance.",
             PageKit.Primary("", "Add debt", (_, _) => DebtDialog.Edit(null))));
 
         string freeDate = active.Count == 0 ? (debts.Count > 0 ? "Debt-free!" : "—")
@@ -163,6 +163,33 @@ public sealed class DebtsView : DataPage
             : plan.PayoffMonth.TryGetValue(d.Id, out int m) ? $"Paid off by {new DateTime(today.Year, today.Month, 1).AddMonths(m):MMM yyyy} with your plan"
             : "Won't be paid off at this pace";
         middle.Children.Add(Ui.Text($"{Money.Format(d.PaidOff)} paid of {Money.Format(d.OriginalBalance)} · {when}", muted: true, size: 12.5));
+
+        // Its recurring monthly bill, or a way to add one
+        if (!d.IsPaidOff)
+        {
+            var billLine = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 0) };
+            var icon = Ui.Text("\uE787", size: 12, brushKey: "Brush.Accent");
+            icon.FontFamily = (System.Windows.Media.FontFamily)Application.Current.FindResource("IconFont");
+            icon.Margin = new Thickness(0, 1, 6, 0);
+            icon.VerticalAlignment = VerticalAlignment.Center;
+            billLine.Children.Add(icon);
+            if (DebtLink.BillFor(d) is { IsDone: false } bill)
+            {
+                var status = BillSchedule.Status(bill, today);
+                var text = Ui.Text($"{Money.Format(bill.Amount)} {bill.Repeats.ToLowerInvariant()} bill · {BillSchedule.StatusText(bill, today).ToLowerInvariant()} ({bill.NextDue:MMM d}){(bill.AutoPay ? " · auto-pay" : "")}",
+                    size: 12.5, weight: FontWeights.SemiBold,
+                    brushKey: status == BillStatus.Overdue ? "Brush.Danger" : status is BillStatus.DueToday or BillStatus.DueSoon ? "Brush.Warn" : "Brush.Accent");
+                text.VerticalAlignment = VerticalAlignment.Center;
+                billLine.Children.Add(text);
+            }
+            else
+            {
+                var add = PageKit.Link("Add a recurring monthly bill for the payment", () => BillDialog.Edit(null, d));
+                add.Margin = new Thickness(-8, -4, 0, -4);
+                billLine.Children.Add(add);
+            }
+            middle.Children.Add(billLine);
+        }
         grid.Children.Add(middle);
 
         var right = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };

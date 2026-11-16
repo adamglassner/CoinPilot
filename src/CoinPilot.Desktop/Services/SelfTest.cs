@@ -715,6 +715,43 @@ public static class SelfTest
         Check("Mark paid adds transactions", DataStore.Transactions.Items.Any(t => t.Payee == "Rent" && t.Amount == -1500m && t.Category == "Housing")
             && DataStore.Transactions.Items.Any(t => t.Payee == "Car registration" && t.Amount == -85m));
 
+        // ----- Bills that pay down debts -----
+        Debt? loan = null;
+        Bill? loanBill = null, insurance = null;
+        await Step("Link a student loan to a recurring monthly bill and pay it", () =>
+        {
+            loan = new Debt { Name = "Student loan", Type = "Student loan", Balance = 650m, OriginalBalance = 5000m, InterestRate = 5m, MinimumPayment = 300m };
+            DataStore.Debts.Add(loan);
+            loanBill = DebtLink.CreateBill(loan, today, "Checking");
+            insurance = new Bill { Name = "Car insurance", Amount = 120m, NextDue = today, DueDay = today.Day, Category = "Transportation", Account = "Checking" };
+            DataStore.Bills.Add(insurance);
+            BillSchedule.MarkPaid(loanBill, today);
+        });
+        Check("Debt bill is monthly, in Debt payments, at the minimum payment",
+            loanBill != null && loanBill.Repeats == BillSchedule.Monthly && loanBill.Category == Categories.DebtPayments && loanBill.Amount == 300m && DebtLink.BillFor(loan!) == loanBill);
+        Check("Paying the bill lowers the debt and moves the bill to next month",
+            loan != null && loan.Balance == 350m && loan.Payments.Count == 1 && loanBill!.NextDue == BillSchedule.Next(today, BillSchedule.Monthly, today.Day) && !loanBill.IsDone,
+            loan == null ? "" : $"balance {loan.Balance}, next {loanBill?.NextDue:d}");
+        Check("Bill payment is recorded once, as a debt payment",
+            DataStore.Transactions.Items.Count(t => t.Payee == "Student loan" && t.Amount == -300m && t.Category == Categories.DebtPayments) == 1);
+        Check("Insurance stays an ordinary bill", insurance != null && !insurance.PaysDebt && DebtLink.DebtFor(insurance) == null);
+        await Step("Pay the last of the loan through its bill", () => BillSchedule.MarkPaid(loanBill!, today));
+        Check("Last payment is only what's left", loan != null && loan.IsPaidOff && DataStore.Transactions.Items.Any(t => t.Payee == "Student loan" && t.Amount == -350m));
+        Check("The bill ends when the debt is paid off", loanBill != null && loanBill.IsDone && BillSchedule.Status(loanBill, today) == BillStatus.Paid);
+        Debt? car = null;
+        Bill? carBill = null;
+        await Step("Record a car loan payment on the Debts page that counts as its bill", () =>
+        {
+            car = new Debt { Name = "Car loan", Type = "Car loan", Balance = 9000m, OriginalBalance = 12000m, InterestRate = 6.9m, MinimumPayment = 325m };
+            DataStore.Debts.Add(car);
+            carBill = DebtLink.CreateBill(car, today.AddDays(3), "Checking");
+            DebtPaymentDialog.Apply(car, 325m, today, "Checking", addTransaction: true);
+            if (DebtLink.LooksLikeBillPayment(carBill, today)) DebtLink.Advance(carBill, today, car);
+        });
+        Check("A payment near the due date moves the bill on", carBill != null && carBill.NextDue == BillSchedule.Next(today.AddDays(3), BillSchedule.Monthly, today.AddDays(3).Day) && car!.Balance == 8675m);
+        await Step("Delete the car loan", () => { DebtLink.Unlink(car!); DataStore.Debts.Delete(car!); });
+        Check("Deleting a debt keeps its bill as a regular bill", carBill != null && DataStore.Bills.Items.Contains(carBill) && !carBill.PaysDebt);
+
         // ----- Goals -----
         Goal? fund = null;
         await Step("Add a goal and money to it", () =>
@@ -734,7 +771,8 @@ public static class SelfTest
         var reloadedGoals = new JsonStore<Goal>(DataStore.Folder, "goals");
         var reloadedBills = new JsonStore<Bill>(DataStore.Folder, "bills");
         var reloadedDebts = new JsonStore<Debt>(DataStore.Folder, "debts");
-        Check("Goals, bills and debts saved to disk", reloadedGoals.Items.Count == 2 && reloadedBills.Items.Count == 3 && reloadedDebts.Items.Count == 2
+        Check("Goals, bills and debts saved to disk", reloadedGoals.Items.Count == 2 && reloadedBills.Items.Count == 6 && reloadedDebts.Items.Count == 3
+            && reloadedBills.Items.Any(b => b.DebtId == loan!.Id && b.IsDone)
             && reloadedDebts.Items.Single(d => d.Name == "Visa card").Payments.Count == 1 && reloadedBills.Items.Single(b => b.Name == "Car registration").IsDone);
 
         // ----- Every page with everything filled in -----

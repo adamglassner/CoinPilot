@@ -328,6 +328,18 @@ public sealed class BillsView : DataPage
         if (b.Account.Length > 0) parts.Add(b.Account);
         if (b.AutoPay) parts.Add("Auto-pay");
         middle.Children.Add(Ui.Text(string.Join(" · ", parts), muted: true, size: 12.5));
+        if (DebtLink.DebtFor(b) is { } debt)
+        {
+            // Pays down a debt: show what's left on it
+            var link = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
+            var icon = Ui.Text("\uE8C7", size: 11.5, brushKey: "Brush.Accent");
+            icon.FontFamily = (FontFamily)FindResource("IconFont");
+            icon.Margin = new Thickness(0, 1, 5, 0);
+            link.Children.Add(icon);
+            link.Children.Add(Ui.Text(debt.IsPaidOff ? $"Paid off {debt.Name}" : $"Pays down {debt.Name} · {Money.Format(debt.Balance)} left",
+                size: 12, weight: FontWeights.SemiBold, brushKey: "Brush.Accent"));
+            middle.Children.Add(link);
+        }
         grid.Children.Add(middle);
 
         var status = BillSchedule.Status(b, today);
@@ -358,6 +370,13 @@ public sealed class BillsView : DataPage
     {
         var due = b.NextDue;
         BillSchedule.MarkPaid(b, DateTime.Today);
+        if (DebtLink.DebtFor(b) is { } debt)
+        {
+            Toaster.Show(debt.IsPaidOff
+                ? $"Paid {b.Name}, and {debt.Name} is paid off! The bill has ended."
+                : $"Paid {b.Name} for {due:MMM d}. {Money.Format(debt.Balance)} left on {debt.Name}; next due {b.NextDue:MMM d}.");
+            return;
+        }
         Toaster.Show(b.Repeats == BillSchedule.Once
             ? $"Paid {b.Name} ({Money.Format(b.Amount)}). Added to Transactions."
             : $"Paid {b.Name} for {due:MMM d}. Added to Transactions; next due {b.NextDue:MMM d}.");

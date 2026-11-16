@@ -7,7 +7,7 @@
 **Budgets, spending, accounts, debts, bills, goals and tax documents in one private app for Windows.**
 Made by Bytehawk Studio. *(Formerly CoinPilot; the repository keeps its old name for now.)*
 
-> **Version 1.1.0, Windows 10/11.** Everything is saved on your PC, with optional PIN/password encryption, and
+> **Version 1.2.0, Windows 10/11.** Everything is saved on your PC, with optional PIN/password encryption, and
 > optional **end-to-end encrypted sync** with WillowWallet for Android through your own [WillowWallet Server](server).
 
 ## Features
@@ -18,8 +18,8 @@ Made by Bytehawk Studio. *(Formerly CoinPilot; the repository keeps its old name
 | **Transactions** | Spending, income and transfers between accounts; split across categories; tags; receipts; search and filters; month by month; **import bank statements (CSV, OFX, QFX)** with duplicate detection; automatic categories from your rules and history; CSV export. |
 | **Budgets** | A monthly amount per category (subcategories roll up), progress bars and warnings, **rollover**, one-month amounts, **copy last month**, **templates** (50/30/20, zero-based, starter) and "left to assign". |
 | **Accounts** | Checking, savings, credit cards, cash and investments with balances kept up to date from transactions; **net worth over time**; transfers; statement imports can set the balance. |
-| **Debts** | Credit cards and loans with APR and minimum payments; record payments; **avalanche or snowball payoff plan** with a debt-free date and the interest you'll pay. |
-| **Bills** | Bills and subscriptions on any schedule; overdue / due soon; mark paid; **reminders** (Windows notifications, optionally running in the background); **calendar view**; **finds subscriptions** you haven't added. |
+| **Debts** | Credit cards and loans with APR and minimum payments; record payments; **avalanche or snowball payoff plan** with a debt-free date and the interest you'll pay. Each debt's payment can be a **recurring monthly bill**: marking it paid lowers the balance, and it ends when the debt is paid off. |
+| **Bills** | Bills and subscriptions on any schedule (insurance, utilities, rent, streaming…), and loan payments linked to their debt; overdue / due soon; mark paid; **reminders** (Windows notifications, optionally running in the background); **calendar view**; **finds subscriptions** you haven't added. |
 | **Goals** | Savings goals with **progress rings**, **milestones**, add or take out money, **link a goal to a savings account**, and the monthly amount to stay on track. |
 | **Reports** | Income vs. spending, spending by category, **net worth**, month-by-month table with savings rate, **Year in review**; export to CSV or **print / PDF**. |
 | **Taxes** | A safe place for **tax documents** (W-2s, 1099s, returns, receipts) by tax year, with a checklist and drag-and-drop. |

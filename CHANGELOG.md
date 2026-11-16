@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.0 — 2026-11-16
+
+**Debts and their monthly bills, linked.** A loan or card payment is both a debt and a recurring bill; now they're one thing.
+
+- **Add debt** can set up the payment as a **recurring monthly bill** in the same step: its due date and the account
+  it's paid from. It shows on the Bills page with reminders like any other bill.
+- **Mark paid** on that bill lowers the debt's balance (recorded once, under Debt payments). When the debt is paid
+  off, the bill ends by itself, and the last payment is only what was left.
+- Any bill can be linked with **Pays down a debt** in the bill's settings, and the Debts page offers **Add a recurring
+  monthly bill** for a debt that doesn't have one.
+- Each debt on the Debts page shows its bill and when it's next due; each linked bill shows how much is left on its
+  debt. Recording a payment on the Debts page near the due date counts as that month's bill, so it isn't paid twice.
+- Ordinary bills (car insurance, subscriptions, utilities, rent) work as before.
+
 ## 1.1.0 — 2026-11-15
 
 **Sync with your phone, through a server you run yourself.** Optional: without it, WillowWallet works exactly as before.

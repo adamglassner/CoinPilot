@@ -97,8 +97,14 @@ public sealed class DebtDialog : DialogShell
     private readonly TextBox _rate;
     private readonly TextBox _minimum;
     private readonly TextBox _note;
+    private readonly CheckBox? _makeBill;
+    private readonly DatePicker? _billDue;
+    private readonly WrapPanel? _billAccount;
+    private readonly decimal _oldMinimum;
 
     public Debt Result => _target;
+    /// <summary>Set up a recurring monthly bill for the payment (first due date and account) after saving.</summary>
+    public (DateTime FirstDue, string Account)? NewBill { get; private set; }
 
     public DebtDialog(Debt? existing)
         : base(existing == null ? "Add debt" : "Edit debt",
@@ -112,6 +118,31 @@ public sealed class DebtDialog : DialogShell
         _rate = AddField("Interest rate (APR %)", SmallBox(existing == null || existing.InterestRate == 0 ? "" : existing.InterestRate.ToString("0.###", Money.Us)),
             hint: "The yearly rate from your statement, like 22.99. Leave empty for 0%.");
         _minimum = AddField("Minimum monthly payment", AmountBox(existing?.MinimumPayment), required: true);
+        _oldMinimum = existing?.MinimumPayment ?? 0;
+
+        // The monthly payment as a recurring bill (due dates, reminders, Mark paid lowers the balance)
+        var bill = existing == null ? null : DebtLink.BillFor(existing);
+        if (bill != null)
+        {
+            var info = new TextBlock { TextWrapping = System.Windows.TextWrapping.Wrap, LineHeight = 19 };
+            info.Text = bill.IsDone
+                ? $"Paid by the bill \"{bill.Name}\", which ended when the debt was paid off."
+                : $"Paid by the bill \"{bill.Name}\": {Money.Format(bill.Amount)} {bill.Repeats.ToLowerInvariant()}, next due {bill.NextDue:MMM d}. Marking it paid on the Bills page lowers this balance.";
+            AddField("Monthly bill", info);
+        }
+        else if (existing == null || !existing.IsPaidOff)
+        {
+            _makeBill = AddField("Monthly bill", Check("Add the payment as a recurring monthly bill", existing == null),
+                hint: "It shows on the Bills page with its due date and reminders. Marking it paid lowers this balance, and the bill ends when the debt is paid off.");
+            var firstDue = DateTime.Today.AddMonths(1);
+            _billDue = AddField("Payment due", DateBox(firstDue), hint: "The next due date. It repeats on this day every month.");
+            var accounts = DataStore.AccountChoices();
+            _billAccount = AddField("Paid from", Chips(accounts, accounts[0]));
+            void Toggle() { ShowField(_billDue, _makeBill.IsChecked == true); ShowField(_billAccount, _makeBill.IsChecked == true); }
+            _makeBill.Checked += (_, _) => Toggle();
+            _makeBill.Unchecked += (_, _) => Toggle();
+            Toggle();
+        }
         _note = AddField("Note", new TextBox { Text = _target.Note });
         Loaded += (_, _) => _name.Focus();
     }
@@ -131,6 +162,13 @@ public sealed class DebtDialog : DialogShell
         _target.InterestRate = rate;
         _target.MinimumPayment = minimum;
         _target.Note = _note.Text.Trim();
+        NewBill = null;
+        if (_makeBill?.IsChecked == true)
+        {
+            if (minimum <= 0) return "Enter the monthly payment so the bill knows how much it is.";
+            if (_billDue!.SelectedDate is not DateTime due) return "Pick when the payment is due.";
+            NewBill = (due.Date, Selected(_billAccount!) ?? DataStore.AccountChoices()[0]);
+        }
         return null;
     }
 
@@ -138,21 +176,31 @@ public sealed class DebtDialog : DialogShell
     {
         var dialog = new DebtDialog(existing);
         if (dialog.ShowDialog() != true) return false;
-        if (existing == null)
+        var d = dialog.Result;
+        if (dialog.DeleteRequested && existing != null)
         {
-            DataStore.Debts.Add(dialog.Result);
-            Toaster.Show($"Added {dialog.Result.Name}.");
-        }
-        else if (dialog.DeleteRequested)
-        {
+            int unlinked = DebtLink.Unlink(existing);
             DataStore.Debts.Delete(existing);
-            Toaster.Show($"Deleted {existing.Name}.");
+            Toaster.Show(unlinked > 0 ? $"Deleted {existing.Name}. Its bill stays on the Bills page as a regular bill." : $"Deleted {existing.Name}.");
+            return true;
         }
+        if (existing == null) DataStore.Debts.Add(d);
         else
         {
             DataStore.Debts.Update(existing);
-            Toaster.Show("Debt saved.");
+            // The bill follows a changed minimum payment if it was paying the old minimum
+            if (DebtLink.BillFor(existing) is { IsDone: false } linked && linked.Amount == dialog._oldMinimum && d.MinimumPayment > 0 && d.MinimumPayment != linked.Amount)
+            {
+                linked.Amount = d.MinimumPayment;
+                DataStore.Bills.Update(linked);
+            }
         }
+        if (dialog.NewBill is { } nb)
+        {
+            var bill = DebtLink.CreateBill(d, nb.FirstDue, nb.Account);
+            Toaster.Show($"{(existing == null ? "Added" : "Saved")} {d.Name}, with a {Money.Format(bill.Amount)} monthly bill due {bill.NextDue:MMM d}.");
+        }
+        else Toaster.Show(existing == null ? $"Added {d.Name}." : "Debt saved.");
         return true;
     }
 }
@@ -165,8 +213,12 @@ public sealed class DebtPaymentDialog : DialogShell
     private readonly DatePicker _date;
     private readonly WrapPanel _account;
     private readonly CheckBox _addTransaction;
+    private readonly CheckBox? _countsForBill;
+    private readonly Bill? _bill;
 
     public decimal Amount { get; private set; }
+    /// <summary>The payment is the debt's bill for its current due date (moves the bill on).</summary>
+    public bool PaysBill { get; private set; }
     public DateTime Date { get; private set; }
     public string Account { get; private set; } = "";
     public bool AddTransaction { get; private set; }
@@ -181,6 +233,10 @@ public sealed class DebtPaymentDialog : DialogShell
         var accounts = DataStore.AccountChoices();
         _account = AddField("Paid from", Chips(accounts, accounts[0]));
         _addTransaction = AddField("Transactions", Check($"Also add it to Transactions (category \"{Categories.DebtPayments}\")", true));
+        _bill = DebtLink.BillFor(debt) is { IsDone: false } b ? b : null;
+        if (_bill != null)
+            _countsForBill = AddField("Bill", Check($"This is the \"{_bill.Name}\" payment due {_bill.NextDue:MMM d} (moves the bill to its next due date)",
+                DebtLink.LooksLikeBillPayment(_bill, DateTime.Today)));
         Loaded += (_, _) => { _amount.Focus(); _amount.SelectAll(); };
     }
 
@@ -192,6 +248,7 @@ public sealed class DebtPaymentDialog : DialogShell
         Date = date.Date;
         Account = Selected(_account) ?? DataStore.AccountChoices()[0];
         AddTransaction = _addTransaction.IsChecked == true;
+        PaysBill = _countsForBill?.IsChecked == true;
         return null;
     }
 
@@ -200,29 +257,17 @@ public sealed class DebtPaymentDialog : DialogShell
         var dialog = new DebtPaymentDialog(debt);
         if (dialog.ShowDialog() != true) return false;
         Apply(debt, dialog.Amount, dialog.Date, dialog.Account, dialog.AddTransaction);
-        Toaster.Show(debt.IsPaidOff ? $"{debt.Name} is paid off!" : $"Paid {Money.Format(dialog.Amount)} toward {debt.Name}. {Money.Format(debt.Balance)} left.");
+        var bill = DebtLink.BillFor(debt);
+        if (bill is { IsDone: false } && (dialog.PaysBill || debt.IsPaidOff)) DebtLink.Advance(bill, dialog.Date, debt);
+        Toaster.Show(debt.IsPaidOff
+            ? $"{debt.Name} is paid off!{(bill != null ? " Its monthly bill has ended." : "")}"
+            : $"Paid {Money.Format(dialog.Amount)} toward {debt.Name}. {Money.Format(debt.Balance)} left.{(dialog.PaysBill && bill != null ? $" Next bill due {bill.NextDue:MMM d}." : "")}");
         return true;
     }
 
     /// <summary>Lowers the balance, keeps the payment history and (optionally) records the transaction.</summary>
-    public static void Apply(Debt debt, decimal amount, DateTime date, string account, bool addTransaction)
-    {
-        debt.Balance = Math.Max(0, debt.Balance - amount);
-        debt.Payments.Add(new MoneyEntry { Date = date, Amount = amount });
-        DataStore.Debts.Update(debt);
-        if (addTransaction)
-        {
-            DataStore.Transactions.Add(new Transaction
-            {
-                Payee = debt.Name,
-                Category = Categories.DebtPayments,
-                Account = account,
-                Date = date,
-                Amount = -amount,
-                Note = "Debt payment",
-            });
-        }
-    }
+    public static void Apply(Debt debt, decimal amount, DateTime date, string account, bool addTransaction) =>
+        DebtLink.ApplyPayment(debt, amount, date, account, addTransaction);
 }
 
 /// <summary>Add or edit a bill or subscription.</summary>
@@ -237,17 +282,25 @@ public sealed class BillDialog : DialogShell
     private readonly WrapPanel _account;
     private readonly CheckBox _autoPay;
     private readonly TextBox _note;
+    private readonly WrapPanel? _debt;
 
     public Bill Result => _target;
 
-    public BillDialog(Bill? existing)
+    public BillDialog(Bill? existing, Debt? forDebt = null)
         : base(existing == null ? "Add bill" : "Edit bill",
                existing == null ? "Add a bill or subscription so you know what's coming up." : "Change the details, or delete it.",
                allowDelete: existing != null, saveText: existing == null ? "Add bill" : "Save")
     {
         _target = existing ?? new Bill { NextDue = DateTime.Today.AddDays(7), Account = DataStore.AccountChoices()[0] };
-        _name = AddField("Name", new TextBox { Text = _target.Name }, hint: "Like \"Electric\", \"Rent\" or \"Netflix\".", required: true);
-        _amount = AddField("Amount", AmountBox(existing?.Amount), hint: "If it changes each time, enter a typical amount.", required: true);
+        if (existing == null && forDebt != null)
+        {
+            _target.Name = forDebt.Name;
+            _target.DebtId = forDebt.Id;
+            _target.Category = Categories.DebtPayments;
+            _target.Amount = forDebt.MinimumPayment;
+        }
+        _name = AddField("Name", new TextBox { Text = _target.Name }, hint: "Like \"Electric\", \"Car insurance\", \"Netflix\" or \"Student loan\".", required: true);
+        _amount = AddField("Amount", AmountBox(_target.Amount > 0 ? _target.Amount : null), hint: "If it changes each time, enter a typical amount.", required: true);
         _due = AddField(existing == null ? "First due date" : "Next due date", DateBox(_target.NextDue), required: true);
         _repeats = AddField("Repeats", Chips(BillSchedule.All, _target.Repeats));
         var categories = Categories.Spending.ToList();
@@ -255,6 +308,28 @@ public sealed class BillDialog : DialogShell
         _category = AddField("Category", CategoryChips(categories, _target.Category));
         _account = AddField("Paid from", Chips(DataStore.AccountChoices(_target.Account), _target.Account));
         _autoPay = AddField("Auto-pay", Check("This bill pays itself automatically", _target.AutoPay));
+
+        // Pays down a debt (student loan, car loan, card…) or not (insurance, subscriptions, utilities)
+        var debts = DataStore.Debts.Items.Where(d => !d.IsPaidOff || d.Id == _target.DebtId).OrderBy(d => d.Name).ToList();
+        if (debts.Count > 0)
+        {
+            var choices = new List<(string, string)> { ("", "No, a regular bill") };
+            choices.AddRange(debts.Select(d => (d.Id, d.Name)));
+            _debt = new WrapPanel();
+            SetChips(_debt, choices, _target.DebtId);
+            AddField("Pays down a debt", _debt,
+                hint: "For a loan or card payment. Mark paid lowers that debt's balance, and the bill ends when it's paid off. Insurance, subscriptions and utilities aren't debts.");
+            foreach (var chip in _debt.Children.OfType<RadioButton>())
+                chip.Checked += (_, _) =>
+                {
+                    if (DataStore.Debts.Find(Selected(_debt) ?? "") is not { } d) return;
+                    // Fill in what's still empty from the debt
+                    if (_name.Text.Trim().Length == 0) _name.Text = d.Name;
+                    if (_amount.Text.Trim().Length == 0 && d.MinimumPayment > 0) _amount.Text = d.MinimumPayment.ToString("0.00", Money.Us);
+                    SetCategoryChips(_category, categories.Contains(Categories.DebtPayments) ? categories : categories.Append(Categories.DebtPayments), Categories.DebtPayments);
+                    if (Selected(_repeats) == BillSchedule.Once) SetChips(_repeats, BillSchedule.All, BillSchedule.Monthly);
+                };
+        }
         _note = AddField("Note", new TextBox { Text = _target.Note });
         Loaded += (_, _) => _name.Focus();
     }
@@ -278,12 +353,16 @@ public sealed class BillDialog : DialogShell
         _target.Account = Selected(_account) ?? DataStore.AccountChoices()[0];
         _target.AutoPay = _autoPay.IsChecked == true;
         _target.Note = _note.Text.Trim();
+        string debtId = _debt == null ? _target.DebtId : Selected(_debt) ?? "";
+        if (debtId.Length > 0 && DataStore.Bills.Items.FirstOrDefault(b => b != _target && b.DebtId == debtId && !b.IsDone) is { } other)
+            return $"{DataStore.Debts.Find(debtId)?.Name ?? "That debt"} is already paid by the bill \"{other.Name}\". Edit that one instead.";
+        _target.DebtId = debtId;
         return null;
     }
 
-    public static bool Edit(Bill? existing)
+    public static bool Edit(Bill? existing, Debt? forDebt = null)
     {
-        var dialog = new BillDialog(existing);
+        var dialog = new BillDialog(existing, forDebt);
         if (dialog.ShowDialog() != true) return false;
         if (existing == null)
         {

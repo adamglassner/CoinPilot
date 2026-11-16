@@ -154,6 +154,13 @@ public sealed class Bill : RecordBase
     public bool AutoPay { get; set; }
     public DateTime? LastPaid { get; set; }
     public string Note { get; set; } = "";
+    /// <summary>
+    /// The debt this bill pays down (a student loan, car loan, card…), or "" for an ordinary bill like insurance or a
+    /// subscription. Paying a linked bill lowers the debt's balance; the bill ends when the debt is paid off.
+    /// </summary>
+    public string DebtId { get; set; } = "";
+
+    [JsonIgnore] public bool PaysDebt => DebtId.Length > 0;
 
     /// <summary>A one-time bill that has been paid. Repeating bills move to their next due date instead.</summary>
     [JsonIgnore] public bool IsDone => Repeats == BillSchedule.Once && LastPaid != null;

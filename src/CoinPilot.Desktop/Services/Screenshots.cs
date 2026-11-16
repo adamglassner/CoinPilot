@@ -90,6 +90,8 @@ public static class Screenshots
             await CaptureDialog(window, new BudgetTemplateDialog(), $"{n++:00}-dialog-budget-template-{m}");
             await Show(window, "bills");
             await CaptureDialog(window, new BillDialog(DataStore.Bills.Items[0]), $"{n++:00}-dialog-bill-{m}");
+            await CaptureDialog(window, new BillDialog(DataStore.Bills.Items.First(b => b.PaysDebt)), $"{n++:00}-dialog-bill-pays-debt-{m}");
+            await CaptureDialog(window, new DebtDialog(null), $"{n++:00}-dialog-add-debt-{m}");
             await Show(window, "goals");
             await CaptureDialog(window, new GoalDialog(DataStore.Goals.Items[1]), $"{n++:00}-dialog-goal-{m}");
             await Show(window, "settings");
@@ -388,6 +390,9 @@ public static class DemoData
             new Debt { Name = "Car loan", Type = "Car loan", Balance = 9860m, OriginalBalance = 18500m, InterestRate = 6.9m, MinimumPayment = 325m },
             new Debt { Name = "Store card", Type = DebtTypes.CreditCard, Balance = 640m, OriginalBalance = 1100m, InterestRate = 26.99m, MinimumPayment = 35m },
         ]);
+        // Loan payments as recurring monthly bills (car insurance and subscriptions above are ordinary bills)
+        DebtLink.CreateBill(DataStore.Debts.Items.First(d => d.Name == "Student loan"), Next(15), "Chase Checking", 300m);
+        DebtLink.CreateBill(DataStore.Debts.Items.First(d => d.Name == "Car loan"), Next(3), "Chase Checking", autoPay: true);
         DataStore.DebtPlan.ExtraPayment = 150m;
         DataStore.DebtPlan.Save();
 
