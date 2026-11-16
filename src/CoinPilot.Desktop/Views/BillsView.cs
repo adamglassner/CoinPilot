@@ -336,8 +336,13 @@ public sealed class BillsView : DataPage
             icon.FontFamily = (FontFamily)FindResource("IconFont");
             icon.Margin = new Thickness(0, 1, 5, 0);
             link.Children.Add(icon);
-            link.Children.Add(Ui.Text(debt.IsPaidOff ? $"Paid off {debt.Name}" : $"Pays down {debt.Name} · {Money.Format(debt.Balance)} left",
-                size: 12, weight: FontWeights.SemiBold, brushKey: "Brush.Accent"));
+            bool sameName = string.Equals(debt.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+            var debtText = Ui.Text(debt.IsPaidOff ? $"{debt.Name} paid off"
+                    : sameName ? $"Debt · {Money.Format(debt.Balance)} left" : $"{Money.Format(debt.Balance)} left on {debt.Name}",
+                size: 12, weight: FontWeights.SemiBold, brushKey: "Brush.Accent");
+            debtText.TextTrimming = TextTrimming.CharacterEllipsis;
+            link.Children.Add(debtText);
+            link.ToolTip = $"Pays down {debt.Name}: {Money.Format(debt.Balance)} left. Mark paid lowers the balance.";
             middle.Children.Add(link);
         }
         grid.Children.Add(middle);
