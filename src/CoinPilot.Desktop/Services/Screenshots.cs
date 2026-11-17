@@ -43,6 +43,14 @@ public static class Screenshots
             {
                 await Show(window, page);
                 await Capture(window, $"{n++:00}-{page}-{mode.ToLowerInvariant()}");
+                if (page == "budgets" && BudgetsView.CutsCard is { IsLoaded: true } cuts)
+                {
+                    // Subscriptions you could cut
+                    var at = cuts.TransformToAncestor(window.PageScroller).Transform(new System.Windows.Point(0, 0));
+                    window.PageScroller.ScrollToVerticalOffset(window.PageScroller.VerticalOffset + at.Y - 24);
+                    await Idle();
+                    await Capture(window, $"{n++:00}-budgets-cuts-{mode.ToLowerInvariant()}");
+                }
                 if (page is "bills" or "debts")
                 {
                     // The list under the summary: debts with their monthly bills, bills that pay down debts
@@ -368,6 +376,8 @@ public static class DemoData
             if (d.Day == 12) T(d, "Verizon Wireless", "Utilities", "Chase Checking", -65m);
             if (d.Day == 9) T(d, "Netflix", "Subscriptions", "Visa Signature", -15.49m);
             if (d.Day == 14) T(d, "Spotify P2D84C", "Subscriptions", "Visa Signature", -10.99m);
+            if (d.Day == 21) T(d, "Hulu", "Subscriptions", "Visa Signature", -17.99m);
+            if (d.Day == 26) T(d, "DISNEY PLUS 8842", "Subscriptions", "Visa Signature", d < today.AddMonths(-2) ? -10.99m : -13.99m);
             if (d.Day == 5) T(d, "Planet Fitness", "Health", "Visa Signature", -24.99m);
             if (d.Day == 3) T(d, "Navient Student Loan", "Debt payments", "Chase Checking", -210m);
             if (d.Day == 15) T(d, "Toyota Financial", "Debt payments", "Chase Checking", -325m);
@@ -416,6 +426,7 @@ public static class DemoData
             new Bill { Name = "Netflix", Amount = 15.49m, NextDue = Next(9), DueDay = 9, Category = "Subscriptions", Account = "Visa Signature", AutoPay = true },
             new Bill { Name = "Car insurance", Amount = 618m, NextDue = today.AddDays(5), DueDay = today.AddDays(5).Day, Repeats = BillSchedule.Quarterly, Category = "Transportation", Account = "Chase Checking" },
             new Bill { Name = "Water & sewer", Amount = 46.20m, NextDue = today.AddDays(-2), DueDay = today.AddDays(-2).Day, Category = "Utilities", Account = "Chase Checking" },
+            new Bill { Name = "Amazon Prime", Amount = 139m, NextDue = today.AddDays(19), DueDay = today.AddDays(19).Day, Repeats = BillSchedule.Yearly, Category = "Subscriptions", Account = "Visa Signature", AutoPay = true },
             new Bill { Name = "Planet Fitness", Amount = 24.99m, NextDue = Next(5), DueDay = 5, Category = "Health", Account = "Visa Signature", AutoPay = true },
         ]);
 

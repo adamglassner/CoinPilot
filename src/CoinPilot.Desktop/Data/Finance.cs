@@ -547,9 +547,11 @@ public static class SubscriptionFinder
 
             var charges = group.OrderBy(t => t.Date).ToList();
             if (charges.Count < 2) continue;
-            var amounts = charges.Select(t => -t.Amount).OrderBy(a => a).ToList();
-            decimal median = amounts[amounts.Count / 2];
-            if (median <= 0 || amounts.Any(a => Math.Abs(a - median) > median * 0.10m)) continue;
+            // The last few charges are the same amount (within 10%); older ones may differ by a price change.
+            var recent = charges.TakeLast(3).Select(t => -t.Amount).OrderBy(a => a).ToList();
+            decimal median = recent[recent.Count / 2];
+            if (median <= 0 || recent.Any(a => Math.Abs(a - median) > median * 0.10m)) continue;
+            if (charges.Any(t => -t.Amount <= 0 || Math.Abs(-t.Amount - median) > median * 0.5m)) continue;
 
             var gaps = charges.Zip(charges.Skip(1), (a, b) => (b.Date - a.Date).TotalDays).OrderBy(g => g).ToList();
             double gap = gaps[gaps.Count / 2];

@@ -665,6 +665,55 @@ public static class SelfTest
         await Step("Clean up", () => DataStore.EraseAll(syncDeletes: false));
     }
 
+    /// <summary>"Subscriptions you could cut" on the Budgets page, and skipping a suggestion for a month or for good.</summary>
+    private static async Task CutsFlow(MainWindow window)
+    {
+        var today = DateTime.Today;
+        var month = Budgeting.MonthStart(today);
+        await Step("Three streaming services, one with a price increase", () =>
+        {
+            DataStore.Bills.Add(new Bill { Name = "Netflix", Amount = 15.49m, NextDue = today.AddDays(5), DueDay = today.AddDays(5).Day, Category = "Subscriptions", Account = "Visa" });
+            DataStore.Bills.Add(new Bill { Name = "Hulu", Amount = 17.99m, NextDue = today.AddDays(9), DueDay = today.AddDays(9).Day, Category = "Entertainment", Account = "Visa" });
+            foreach (int m in new[] { 4, 3, 2, 1, 0 })
+                DataStore.Transactions.Add(new Transaction { Payee = "DISNEY PLUS 8842", Category = "Subscriptions", Account = "Visa", Amount = m >= 3 ? -10.99m : -13.99m, Date = today.AddDays(-2 - 30 * m) });
+            DataStore.Bills.Add(new Bill { Name = "Amazon Prime", Amount = 139m, Repeats = BillSchedule.Yearly, NextDue = today.AddDays(20), DueDay = today.AddDays(20).Day, Category = "Subscriptions", Account = "Visa" });
+            DataStore.Bills.Add(new Bill { Name = "Dropbox", Amount = 11.99m, NextDue = today.AddDays(12), DueDay = today.AddDays(12).Day, Category = "Subscriptions", Account = "Visa" });
+            foreach (int m in new[] { 5, 3, 1 })
+                DataStore.Transactions.Add(new Transaction { Payee = "Dropbox", Category = "Subscriptions", Account = "Visa", Amount = m == 5 ? -9.99m : -11.99m, Date = today.AddDays(-30 * m) });
+            DataStore.Bills.Add(new Bill { Name = "Car insurance", Amount = 120m, NextDue = today.AddDays(3), DueDay = today.AddDays(3).Day, Category = "Transportation", Account = "Visa" });
+        });
+        var subs = SubscriptionCuts.All(today);
+        Check("Subscriptions found on Bills and in Transactions", subs.Count == 5 && subs.Any(x => x.Name == "Hulu") && subs.Any(x => x.Guess != null && x.Key.StartsWith("disney")) && !subs.Any(x => x.Name == "Car insurance"),
+            string.Join(", ", subs.Select(x => x.Name)));
+        var cuts = SubscriptionCuts.Suggest(month, today);
+        string Names(List<CutSuggestion> c) => string.Join(", ", c.Select(x => $"{x.Sub.Name}:{x.Priority}"));
+        Check("Overlapping streaming: keeps the priciest, suggests the others", cuts.Any(c => c.Sub.Name == "Netflix" && c.Priority == 40) && !cuts.Any(c => c.Sub.Name == "Hulu" && c.Priority == 40)
+            && cuts.Any(c => c.Key.StartsWith("disney") && c.Priority == 40), Names(cuts));
+        Check("Yearly renewal soon is suggested", cuts.Any(c => c.Sub.Name == "Amazon Prime" && c.Priority == 30 && c.YearlySaving == 139m), Names(cuts));
+        Check("Hulu suggested for what it costs a year", cuts.Any(c => c.Sub.Name == "Hulu" && c.Priority == 10), Names(cuts));
+        Check("Overlap comes first", cuts[0].Priority == 40, Names(cuts));
+        Check("Price increase is noticed", cuts.Any(c => c.Sub.Name == "Dropbox" && c.Priority == 35 && c.Reason.Contains("$9.99") && c.Reason.Contains("$11.99")), Names(cuts));
+        Check("A charge whose price went up is still found", SubscriptionFinder.Find(today).Any(g => g.Payee.StartsWith("DISNEY") && g.Amount == 13.99m));
+
+        await Step("Budgets page with suggestions", () => { MonthSwitcher.Current = month; window.GoTo("budgets"); });
+        await Step("Skip Netflix for this month", () => SubscriptionCuts.Skip("netflix", month));
+        Check("Skipped this month", !SubscriptionCuts.Suggest(month, today).Any(c => c.Key == "netflix"));
+        Check("Back next month", SubscriptionCuts.Suggest(month.AddMonths(1), today).Any(c => c.Key == "netflix"));
+        await Step("Don't suggest Amazon Prime again", () => SubscriptionCuts.Skip("amazon prime", null));
+        Check("Skipped for good", !SubscriptionCuts.Suggest(month.AddMonths(1), today).Any(c => c.Key == "amazon prime") && !SubscriptionCuts.Suggest(month.AddMonths(6), today).Any(c => c.Key == "amazon prime"));
+        Check("Skips are saved", DataStore.Prefs.SkippedCuts.Contains("amazon prime|forever") && DataStore.Prefs.SkippedCuts.Contains($"netflix|{month:yyyy-MM}"));
+        await Step("I canceled Hulu", () => SubscriptionCuts.MarkCanceled(SubscriptionCuts.All(today).First(x => x.Name == "Hulu")));
+        Check("Canceled: off Bills and not suggested", !DataStore.Bills.Items.Any(b => b.Name == "Hulu") && !SubscriptionCuts.Suggest(month.AddMonths(1), today).Any(c => c.Key == "hulu"));
+        await Step("I canceled Disney+ (found in Transactions)", () => SubscriptionCuts.MarkCanceled(SubscriptionCuts.All(today).First(x => x.Key.StartsWith("disney"))));
+        Check("Canceled charge isn't found again", !SubscriptionFinder.Find(today).Any(g => g.Payee.StartsWith("DISNEY")) && SubscriptionCuts.All(today).Count == 3);
+        Check("One streaming service left: no overlap", !SubscriptionCuts.Suggest(month.AddMonths(1), today).Any(c => c.Priority == 40));
+        await Step("Show skipped", SubscriptionCuts.ResetSkips);
+        Check("Skipped ones come back", SubscriptionCuts.Suggest(month, today).Any(c => c.Key == "amazon prime"));
+        await Step("Budgets page after", () => window.GoTo("budgets"));
+        await Step("Clean up", () => DataStore.EraseAll(syncDeletes: false));
+        Check("Delete all data clears skips", DataStore.Prefs.SkippedCuts.Count == 0);
+    }
+
     public static async Task<int> RunAsync(MainWindow window)
     {
         Report.AppendLine($"WillowWallet {App.VersionText} self-test {DateTime.Now:u}");
@@ -687,6 +736,7 @@ public static class SelfTest
 
         await GetStartedFlow(window);
         await IncomeFlow();
+        await CutsFlow(window);
 
         // ----- Add data -----
         var month = Budgeting.MonthStart(DateTime.Today);

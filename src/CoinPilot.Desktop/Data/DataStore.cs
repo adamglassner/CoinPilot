@@ -122,6 +122,7 @@ public static class DataStore
         Prefs.WelcomeDismissed = false;
         Prefs.SetupDone = false;
         Prefs.DismissedSubscriptions.Clear();
+        Prefs.SkippedCuts.Clear();
         Prefs.Save();
         DebtPlan.ExtraPayment = 0;
         DebtPlan.Save();

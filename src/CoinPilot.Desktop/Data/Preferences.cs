@@ -79,6 +79,8 @@ public sealed class Preferences : JsonFile
     public int ReminderDays { get; set; } = 3;
     /// <summary>Payees you said aren't subscriptions (so they stop being suggested).</summary>
     public List<string> DismissedSubscriptions { get; set; } = [];
+    /// <summary>"Subscriptions you could cut" skipped: "key|2026-11" for one month, "key|forever" for good.</summary>
+    public List<string> SkippedCuts { get; set; } = [];
     public bool WelcomeDismissed { get; set; }
     /// <summary>Get started (the first-run setup) was finished or skipped.</summary>
     public bool SetupDone { get; set; }

@@ -79,6 +79,7 @@ public partial class BudgetsView : UserControl
             ? $"Use {Money.MonthName(previous)}'s amounts for {Money.MonthName(month)} ({differences} budget{(differences == 1 ? "" : "s")} differ)."
             : "This month already uses the same amounts as last month.";
 
+        BuildCuts(month);
         BuildUnbudgeted(summary);
     }
 
@@ -115,6 +116,127 @@ public partial class BudgetsView : UserControl
     }
 
     /// <summary>Lists categories with spending this month but no budget (directly or through their parent), each with "Budget it".</summary>
+    // ----- Subscriptions you could cut -----
+
+    /// <summary>The card as last shown (screenshots scroll to it).</summary>
+    internal static FrameworkElement? CutsCard { get; private set; }
+
+    private void BuildCuts(DateTime month)
+    {
+        var today = DateTime.Today;
+        var subs = SubscriptionCuts.All(today);
+        var cuts = SubscriptionCuts.Suggest(month, today).Take(4).ToList();
+        if (cuts.Count == 0)
+        {
+            CutsHost.Content = CutsCard = null;
+            return;
+        }
+
+        var panel = new StackPanel();
+        decimal monthly = subs.Sum(s => s.Monthly), saving = cuts.Sum(c => c.MonthlySaving);
+        panel.Children.Add(Ui.Text($"You pay about {Money.Format(monthly, cents: false)} a month ({Money.Format(monthly * 12, cents: false)} a year) for {subs.Count} subscription{(subs.Count == 1 ? "" : "s")}. " +
+                                   $"Cutting {(cuts.Count == 1 ? "this one" : $"these {cuts.Count}")} would save {Money.Format(saving)} a month, {Money.Format(saving * 12, cents: false)} a year.", muted: true)
+            .Also(t => { t.TextWrapping = TextWrapping.Wrap; t.TextTrimming = TextTrimming.None; t.Margin = new Thickness(0, 4, 0, 10); }));
+
+        for (int i = 0; i < cuts.Count; i++)
+        {
+            var c = cuts[i];
+            var row = new DockPanel { Margin = new Thickness(0, i == 0 ? 2 : 12, 0, 0) };
+            if (i > 0)
+            {
+                var line = new Border { Height = 1, Margin = new Thickness(0, 0, 0, 12) };
+                line.SetResourceReference(Border.BackgroundProperty, "Brush.Border");
+                panel.Children.Add(line);
+                row.Margin = new Thickness(0);
+            }
+
+            var tile = new Border { Width = 40, Height = 40, CornerRadius = new CornerRadius(11), Margin = new Thickness(0, 2, 14, 0), VerticalAlignment = VerticalAlignment.Top };
+            tile.SetResourceReference(Border.BackgroundProperty, "Brush.AccentSoft");
+            tile.Child = Ui.Text(c.Sub.Name.Length > 0 ? c.Sub.Name[..1].ToUpperInvariant() : "?", size: 17, weight: FontWeights.Bold, brushKey: "Brush.Accent")
+                .Also(t => { t.HorizontalAlignment = HorizontalAlignment.Center; t.VerticalAlignment = VerticalAlignment.Center; });
+            DockPanel.SetDock(tile, Dock.Left);
+            row.Children.Add(tile);
+
+            // Amount and actions on the right
+            var right = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(16, 0, 0, 0), MinWidth = 210 };
+            right.Children.Add(Ui.Text($"Save {Money.Format(c.MonthlySaving)}/mo", weight: FontWeights.SemiBold, size: 14.5, brushKey: "Brush.Positive").Also(t => t.HorizontalAlignment = HorizontalAlignment.Right));
+            right.Children.Add(Ui.Text($"{Money.Format(c.YearlySaving, cents: false)} a year", muted: true, size: 12).Also(t => t.HorizontalAlignment = HorizontalAlignment.Right));
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 6, -8, 0) };
+            var cut = c;
+            actions.Children.Add(PageKit.Link("I canceled it", () => Canceled(cut)));
+            actions.Children.Add(SkipButton(cut, month));
+            right.Children.Add(actions);
+            DockPanel.SetDock(right, Dock.Right);
+            row.Children.Add(right);
+
+            var words = new StackPanel();
+            var title = new StackPanel { Orientation = Orientation.Horizontal };
+            title.Children.Add(Ui.Text(c.Sub.Name, weight: FontWeights.SemiBold, size: 14.5));
+            title.Children.Add(Ui.Text($"  {Money.Format(c.Sub.Amount)} {c.Sub.Repeats.ToLowerInvariant()}", muted: true, size: 12.5).Also(t => t.VerticalAlignment = VerticalAlignment.Center));
+            words.Children.Add(title);
+            words.Children.Add(Ui.Text(c.Reason, muted: true, size: 12.5).Also(t => { t.TextWrapping = TextWrapping.Wrap; t.TextTrimming = TextTrimming.None; t.Margin = new Thickness(0, 3, 0, 0); t.LineHeight = 18; }));
+            var how = PageKit.Link("How to cancel", () => OpenSearch(cut.Sub.Name));
+            how.HorizontalAlignment = HorizontalAlignment.Left;
+            how.Margin = new Thickness(-8, 2, 0, 0);
+            words.Children.Add(how);
+            row.Children.Add(words);
+            panel.Children.Add(row);
+        }
+
+        var head = new DockPanel();
+        var skipped = DataStore.Prefs.SkippedCuts.Count;
+        if (skipped > 0)
+        {
+            var reset = PageKit.Link("Show skipped", () => { SubscriptionCuts.ResetSkips(); Refresh(); });
+            DockPanel.SetDock(reset, Dock.Right);
+            head.Children.Add(reset);
+        }
+        head.Children.Add(new TextBlock { Text = "Subscriptions you could cut", Style = (Style)FindResource("CardTitle") });
+        var outer = new StackPanel();
+        outer.Children.Add(head);
+        outer.Children.Add(panel);
+        CutsHost.Content = CutsCard = new Border { Style = (Style)FindResource("Card"), Padding = new Thickness(22, 18, 22, 18), Margin = new Thickness(0, 0, 0, 18), Child = outer };
+    }
+
+    /// <summary>"Skip ▾": for this month, or don't suggest it again.</summary>
+    private Button SkipButton(CutSuggestion cut, DateTime month)
+    {
+        var button = PageKit.Link("Skip \u25BE", () => { });
+        System.Windows.Automation.AutomationProperties.SetName(button, $"Skip {cut.Sub.Name}");
+        var menu = new ContextMenu { PlacementTarget = button, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        var month1 = new MenuItem { Header = $"Skip for {Money.MonthName(month)}" };
+        month1.Click += (_, _) => { SubscriptionCuts.Skip(cut.Key, month); Toaster.Show($"Skipped {cut.Sub.Name} for {Money.MonthName(month)}."); Refresh(); };
+        var forever = new MenuItem { Header = "Don't suggest it again" };
+        forever.Click += (_, _) => { SubscriptionCuts.Skip(cut.Key, null); Toaster.Show($"WillowWallet won't suggest cutting {cut.Sub.Name} again."); Refresh(); };
+        menu.Items.Add(month1);
+        menu.Items.Add(forever);
+        button.ContextMenu = menu;
+        button.Click += (_, _) => menu.IsOpen = true;
+        return button;
+    }
+
+    private void Canceled(CutSuggestion cut)
+    {
+        if (!ConfirmDialog.Ask($"Canceled {cut.Sub.Name}?",
+                cut.Sub.Bill != null
+                    ? $"It's removed from your bills and won't be suggested again. Past charges stay in Transactions. That's {Money.Format(cut.YearlySaving, cents: false)} a year back in your pocket."
+                    : $"WillowWallet stops watching for its charges and won't suggest it again. Past charges stay in Transactions. That's {Money.Format(cut.YearlySaving, cents: false)} a year back in your pocket.",
+                "Yes, I canceled it")) return;
+        SubscriptionCuts.MarkCanceled(cut.Sub);
+        Toaster.Show($"Nice: {Money.Format(cut.MonthlySaving)} a month saved. You could lower your Subscriptions budget to match.");
+        Refresh();
+    }
+
+    private static void OpenSearch(string name)
+    {
+        try
+        {
+            var q = Uri.EscapeDataString($"how to cancel {name} subscription");
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo($"https://www.bing.com/search?q={q}") { UseShellExecute = true });
+        }
+        catch (Exception ex) { Toaster.Show($"Couldn't open the browser: {ex.Message}"); }
+    }
+
     private void BuildUnbudgeted(MonthSummary summary)
     {
         var budgeted = summary.Budgets.Select(b => b.Budget.Category).ToHashSet(StringComparer.OrdinalIgnoreCase);

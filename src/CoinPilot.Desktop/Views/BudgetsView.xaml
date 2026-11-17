@@ -80,6 +80,9 @@
             </StackPanel>
         </Border>
 
+        <!-- Subscriptions you could cut -->
+        <ContentControl x:Name="CutsHost" Focusable="False" />
+
         <!-- Spending with no budget -->
         <Border x:Name="UnbudgetedCard" Style="{StaticResource Card}" Padding="22,18,22,12">
             <StackPanel>

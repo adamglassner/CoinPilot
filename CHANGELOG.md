@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.0 — 2026-11-16
+
+- **Subscriptions you could cut.** The Budgets page now suggests subscriptions to cancel, with how much each would
+  save a month and a year. It looks at subscriptions on your Bills page and repeating charges it finds in your
+  transactions, and suggests:
+  - services that overlap (three streaming services, two music apps, two cloud storage plans): keep the one you pay
+    most for, cut the others;
+  - subscriptions whose price went up;
+  - a yearly renewal coming up in the next 45 days;
+  - the biggest ones when your Subscriptions budget is over, and pricey ones ($15 a month or more).
+- Each suggestion has **I canceled it** (removes the bill, stops watching for the charge), **How to cancel** and
+  **Skip ▾**: **Skip for this month** (it can come back next month) or **Don't suggest it again**. "Show skipped"
+  brings skipped ones back.
+- Repeating charges are still found after a price change.
+
 ## 1.4.0 — 2026-11-16
 
 - **Income.** A new Income page for your paycheck and other money that comes in regularly (a side job, benefits,
