@@ -309,10 +309,46 @@ public sealed class TransactionDialog : DialogShell
                 {
                     _newReceiptSource = pick.FileName;
                     BuildReceiptRow();
+                    _ = FillFromReceipt(pick.FileName);
                 }
             };
             _receiptPanel.Children.Add(attach);
         }
+    }
+
+    /// <summary>A new transaction with nothing typed yet: reads the receipt and fills in the store, total and date.</summary>
+    private async Task FillFromReceipt(string path)
+    {
+        if (!_isNew || _amount.Text.Trim().Length > 0 || !ReceiptReader.CanRead(path)) return;
+        var g = await ReceiptReader.ReadAsync(path);
+        if (g.IsEmpty || _amount.Text.Trim().Length > 0) return;
+        if (g.Total is decimal total) _amount.Text = Money.Plain(total);
+        if (g.Payee != null && _payee.Text.Trim().Length == 0) { _payee.Text = g.Payee; SuggestCategory(); }
+        if (g.Date is DateTime date) _date.SelectedDate = date;
+        Toaster.Show("Filled in from the receipt. Check it looks right.");
+    }
+
+    /// <summary>Scan a receipt: pick its photo, then add a transaction with what it says filled in and the receipt attached.</summary>
+    public static bool Scan()
+    {
+        var pick = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Scan a receipt",
+            Filter = "Receipt photos (*.jpg;*.jpeg;*.png;*.heic;*.pdf)|*.jpg;*.jpeg;*.png;*.heic;*.pdf|All files (*.*)|*.*",
+        };
+        if (pick.ShowDialog(MainWindow.Instance) != true) return false;
+        var dialog = new TransactionDialog(null) { Owner = MainWindow.Instance };
+        dialog._newReceiptSource = pick.FileName;
+        dialog.BuildReceiptRow();
+        dialog.Loaded += async (_, _) =>
+        {
+            await dialog.FillFromReceipt(pick.FileName);
+            if (dialog._amount.Text.Trim().Length == 0) Toaster.Show(ReceiptReader.CanRead(pick.FileName) ? "Couldn't read that receipt. Fill in what it says." : "Receipt attached. Fill in what it says.");
+        };
+        if (dialog.ShowDialog() != true) return false;
+        DataStore.Transactions.Add(dialog.Result);
+        Toaster.Show($"Added {Money.Signed(dialog.Result.Amount)} · {dialog.Result.Payee}, with its receipt.");
+        return true;
     }
 
     public static void OpenReceipt(Transaction t)

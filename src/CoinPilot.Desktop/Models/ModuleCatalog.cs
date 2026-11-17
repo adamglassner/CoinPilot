@@ -127,6 +127,11 @@ public static class ModuleCatalog
         },
         new()
         {
+            Key = "receipts", Title = "Receipts", Glyph = "\uE9F9", IsComingSoon = false,
+            Tagline = "Every receipt you've kept, by year. Scan to add.",
+        },
+        new()
+        {
             Key = "reports", Title = "Reports", Glyph = "", IsComingSoon = false,
             Tagline = "See where your money goes over time.",
             Description = "Charts of spending by category, income versus spending, and month-to-month trends. Pick any date range and export what you see.",

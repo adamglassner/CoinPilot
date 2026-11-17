@@ -785,6 +785,35 @@ public static class SelfTest
         await Step("Clean up", () => DataStore.EraseAll(syncDeletes: false));
     }
 
+    /// <summary>Reading receipts (the same examples as mobile/test/receipt_test.dart), and the Receipts page.</summary>
+    private static async Task ReceiptsFlow(MainWindow window)
+    {
+        var today = new DateTime(2026, 11, 17);
+        var k = ReceiptReader.Parse("KROGER #412\n1234 Main St\nColumbus OH 43215\nTel 614-555-0100\n11/16/2026 5:42 PM\nMILK 2% GAL      3.49\nBREAD            2.99\nSUBTOTAL         6.48\nTAX              0.39\nTOTAL            6.87\nVISA ****1234    6.87\nTHANK YOU", today);
+        Check("Receipts: the store, the total (not the subtotal or tax) and the date", k.Payee == "Kroger" && k.Total == 6.87m && k.Date == new DateTime(2026, 11, 16), $"{k.Payee} {k.Total} {k.Date:d}");
+        var s = ReceiptReader.Parse("Starbucks Coffee\nStore 1234\nNov 15, 2026\nLatte 5.25\nAmount due $5.68", today);
+        Check("Receipts: amount due and a written date", s.Payee == "Starbucks Coffee" && s.Total == 5.68m && s.Date == new DateTime(2026, 11, 15), $"{s.Payee} {s.Total} {s.Date:d}");
+        var h = ReceiptReader.Parse("A&B Hardware\n2026-11-10\nScrews 4.50\nHammer 18.00", today);
+        Check("Receipts: no total line means the biggest amount", h.Payee == "A&B Hardware" && h.Total == 18m && h.Date == new DateTime(2026, 11, 10), $"{h.Payee} {h.Total} {h.Date:d}");
+        Check("Receipts: future dates are ignored, big totals read", ReceiptReader.Parse("Shop\n12/25/2026\nTOTAL 9.99", today).Date == null
+            && ReceiptReader.Parse("Shop\nTOTAL 1,234.50", today).Total == 1234.50m && ReceiptReader.Parse("", today).IsEmpty);
+
+        string photo = Path.Combine(Path.GetTempPath(), "ww-receipt-test.png");
+        await Step("A transaction with a receipt", () =>
+        {
+            var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap(40, 60, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+            var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+            enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));
+            using (var f = File.Create(photo)) enc.Save(f);
+            DataStore.Transactions.Add(new Transaction { Payee = "Kroger", Category = "Groceries", Account = "Checking", Date = DateTime.Today, Amount = -6.87m, Receipt = FileVault.StoreReceipt(photo) });
+        });
+        await Step("Receipts page", () => { ReceiptsView.Year = DateTime.Today.Year; window.GoTo("receipts"); });
+        var withReceipt = DataStore.Transactions.Items.First(t => t.Receipt.Length > 0);
+        await Step("Copy the receipt to Taxes", () => ReceiptsView.CopyToTaxes(withReceipt));
+        Check("Receipts: a copy is kept with that year's tax documents", DataStore.TaxDocuments.Items.Any(d => d.Kind == "Receipt" && d.Year == DateTime.Today.Year && File.Exists(FileVault.TaxDocumentPath(d))));
+        await Step("Clean up", () => DataStore.EraseAll(syncDeletes: false));
+    }
+
     /// <summary>Spending alerts, the paycheck planner and this year vs last: the same example as mobile/test/insights_test.dart.</summary>
     private static async Task InsightsFlow(MainWindow window)
     {
@@ -925,6 +954,7 @@ public static class SelfTest
         await CutsFlow(window);
         await ForecastFlow(window);
         await InsightsFlow(window);
+        await ReceiptsFlow(window);
 
         // ----- Add data -----
         var month = Budgeting.MonthStart(DateTime.Today);
