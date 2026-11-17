@@ -69,6 +69,13 @@ def android():
 -dontwarn com.google.mlkit.vision.text.devanagari.**
 -dontwarn com.google.mlkit.vision.text.japanese.**
 -dontwarn com.google.mlkit.vision.text.korean.**
+
+# WorkManager (used by the home screen widget and notifications) builds its database by name at startup;
+# without these the release build can't start (1.7.0)
+-keep class * extends androidx.room.RoomDatabase { *; }
+-keep class androidx.work.** { *; }
+-keep class androidx.room.** { *; }
+-keep class androidx.startup.** { *; }
 """)
 
     # local_auth shows the system fingerprint/face prompt, which needs a FragmentActivity

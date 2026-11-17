@@ -119,6 +119,31 @@ jobs:
           "$tools/apksigner" verify --print-certs "$out" | head -3
           ls -la "$out"
 
+      # The release build must actually start on Android (1.7.0 didn't: the shrinker removed a class it needs)
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+
+      - name: Launch the APK on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          working-directory: mobile
+          script: |
+            adb install -r build/WillowWallet-Android-${{ steps.ver.outputs.version }}.apk
+            adb logcat -c
+            adb shell monkey -p com.bytehawkstudio.coinpilot -c android.intent.category.LAUNCHER 1
+            sleep 25
+            adb logcat -d -b crash > "$RUNNER_TEMP/crash.txt" || true
+            cat "$RUNNER_TEMP/crash.txt"
+            adb shell pidof com.bytehawkstudio.coinpilot || (echo "::error::WillowWallet isn't running 25 seconds after launch" && exit 1)
+            if grep -q "com.bytehawkstudio.coinpilot" "$RUNNER_TEMP/crash.txt"; then echo "::error::WillowWallet crashed on launch" && exit 1; fi
+            echo "WillowWallet started and is running"
+
       - uses: actions/upload-artifact@v4
         with:
           name: WillowWallet-Android-${{ steps.ver.outputs.version }}

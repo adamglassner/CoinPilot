@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.1 — 2026-11-17
+
+- Keeps WillowWallet for Windows on the same version as the Android fix (1.7.0 didn't start on Android). Nothing
+  changes here.
+
 ## 1.7.0 — 2026-11-17
 
 - **Forecast.** Where your money is headed: your expected balance every day to the end of the month (or 30, 60 or 90
