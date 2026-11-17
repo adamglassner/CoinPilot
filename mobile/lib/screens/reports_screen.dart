@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../dates.dart';
 import '../finance.dart';
+import '../insights.dart';
 import '../kit.dart';
 import '../money.dart';
 import '../store.dart';
@@ -76,6 +77,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ],
             ),
           ),
+        const SectionTitle('Compared with last year'),
+        _YearOverYearPanel(now: now),
         const SizedBox(height: 14),
         OutlinedButton.icon(
           onPressed: () => pushPage(context, YearReviewScreen(year: now.year)),
@@ -377,6 +380,76 @@ class _YearReviewScreenState extends State<YearReviewScreen> {
         Text('${r.billsPaid} bill${r.billsPaid == 1 ? '' : 's'} marked paid in WillowWallet this year.',
             textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: p.muted)),
       ],
+    );
+  }
+}
+
+/// This budget month so far against the same days a year ago: spending, income and the categories that changed most.
+class _YearOverYearPanel extends StatelessWidget {
+  const _YearOverYearPanel({required this.now});
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = StoreScope.of(context);
+    final p = context.pal;
+    final from = store.budgetMonth(now);
+    final to = dayOnly(now);
+    final y = store.yearOverYear(from, to);
+    final period = '${shortMonths[from.month - 1]} ${from.day} – ${shortMonths[to.month - 1]} ${to.day}';
+    if (!y.hasLastYear) {
+      return Panel(
+        child: Text('Once you have a year of history, this shows $period against the same days last year.', style: TextStyle(color: p.muted, height: 1.35)),
+      );
+    }
+    Widget change(int now, int before, {bool spending = true}) {
+      final c = YearOverYear.change(now, before);
+      if (c == null) return Text('new', style: TextStyle(fontSize: 12.5, color: p.muted));
+      final good = spending ? c <= 0 : c >= 0;
+      return Text('${c > 0 ? '+' : ''}$c%', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: c == 0 ? p.muted : (good ? p.positive : p.danger)));
+    }
+
+    return Panel(
+      key: const Key('year-over-year'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('$period, ${from.year} vs ${from.year - 1}', style: TextStyle(fontSize: 13, color: p.muted)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Spent', style: TextStyle(fontSize: 13, color: p.muted)),
+                  Text(Money.format(y.spent, whole: true), style: display(20, p.text)),
+                  Row(children: [Text('${Money.format(y.spentBefore, whole: true)} last year  ', style: TextStyle(fontSize: 12.5, color: p.muted)), change(y.spent, y.spentBefore)]),
+                ]),
+              ),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Income', style: TextStyle(fontSize: 13, color: p.muted)),
+                  Text(Money.format(y.income, whole: true), style: display(20, p.text)),
+                  Row(children: [Text('${Money.format(y.incomeBefore, whole: true)} last year  ', style: TextStyle(fontSize: 12.5, color: p.muted)), change(y.income, y.incomeBefore, spending: false)]),
+                ]),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (final (cat, a, b) in y.categories.take(6))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(
+                children: [
+                  CategoryAvatar(cat, size: 30),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(cat, style: const TextStyle(fontWeight: FontWeight.w600))),
+                  Text('${Money.format(b, whole: true)} → ${Money.format(a, whole: true)}  ', style: TextStyle(fontSize: 13, color: p.muted)),
+                  SizedBox(width: 48, child: Align(alignment: Alignment.centerRight, child: change(a, b))),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

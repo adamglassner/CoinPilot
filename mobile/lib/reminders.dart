@@ -7,6 +7,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'dates.dart';
 import 'finance.dart';
 import 'form.dart';
+import 'insights.dart';
 import 'money.dart';
 import 'records.dart';
 import 'store.dart';
@@ -75,10 +76,38 @@ class Reminders {
       } else {
         await _checkNow(store);
       }
+      await _alerts(store);
     } catch (_) {
       // Notifications aren't worth crashing over.
     }
   }
+
+  /// Spending alerts not sent yet: one notification for each (a few at most), on every platform.
+  static Future<void> _alerts(Store store) async {
+    final fresh = newAlerts(store, DateTime.now());
+    if (fresh.isEmpty) return;
+    var id = 500;
+    for (final a in fresh.take(3)) {
+      await _n.show(id++, a.title, a.body, _alertDetails);
+    }
+    store.updateSettings((s) {
+      final keep = s.alertsNotified.length > 300 ? s.alertsNotified.sublist(s.alertsNotified.length - 200) : s.alertsNotified;
+      s.alertsNotified = [...keep, for (final a in fresh) a.key];
+    });
+  }
+
+  /// Alerts that haven't been sent as notifications on this device.
+  static List<MoneyAlert> newAlerts(Store store, DateTime now) {
+    final sent = store.settings.alertsNotified.toSet();
+    return [for (final a in store.alerts(now)) if (!sent.contains(a.key)) a];
+  }
+
+  static NotificationDetails get _alertDetails => const NotificationDetails(
+        android: AndroidNotificationDetails('alerts', 'Spending alerts',
+            channelDescription: 'Budgets running low, bill price changes, unusual charges and forecast dips', importance: Importance.defaultImportance),
+        macOS: DarwinNotificationDetails(),
+        linux: LinuxNotificationDetails(),
+      );
 
   /// Bills due within the reminder window (or overdue), not paid automatically.
   static List<Bill> due(Store store, DateTime today) {
@@ -106,7 +135,7 @@ class Reminders {
   // ----- Android: scheduled ahead -----
 
   static Future<void> _schedule(Store store) async {
-    await _n.cancelAll();
+    await _n.cancelAllPendingNotifications(); // (alerts already shown stay)
     final p = store.prefs;
     if (!p.remindersOn) return;
     final now = DateTime.now();

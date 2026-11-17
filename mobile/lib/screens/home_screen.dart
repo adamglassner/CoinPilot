@@ -15,6 +15,7 @@ import '../kit.dart';
 import '../desktop_shell.dart' show DesktopShellState;
 import '../main.dart' show AppShellState;
 import 'bills_screen.dart';
+import 'alerts_card.dart';
 import 'forecast_screen.dart';
 import 'budget_sheet.dart';
 import 'income_screen.dart';
@@ -76,6 +77,10 @@ class HomeScreen extends StatelessWidget {
           ] else ...[
             _Hero(month: month, now: now),
             const SizedBox(height: 12),
+            AlertsCard(
+              onForecast: () => _openPage(context, 'forecast'),
+              onBills: () => _openPage(context, 'bills'),
+            ),
             ForecastCard(onOpen: () {
               final desk = context.findAncestorStateOfType<DesktopShellState>();
               if (desk != null) return desk.go('forecast');
@@ -450,4 +455,13 @@ class _WeekChart extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Goes to a page from the dashboard: the computer's sidebar, a bottom-bar tab, or opened on top.
+void _openPage(BuildContext context, String key) {
+  final desk = context.findAncestorStateOfType<DesktopShellState>();
+  if (desk != null) return desk.go(key);
+  final shell = AppShellState.of(context);
+  if (shell != null) return shell.openPage(key);
+  pushPage(context, key == 'forecast' ? const ForecastScreen() : const BillsScreen());
 }

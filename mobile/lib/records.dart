@@ -474,6 +474,13 @@ class Prefs extends Rec {
   set forecastTargetCents(int v) => setMoney('ForecastTarget', v);
   bool get forecastIncludeSavings => flag('ForecastIncludeSavings');
   set forecastIncludeSavings(bool v) => j['ForecastIncludeSavings'] = v;
+  /// Spending alerts: on or off, the budget warning level (80 = at 80% used), and alerts dismissed on any device.
+  bool get alertsOn => j['AlertsOn'] != false;
+  set alertsOn(bool v) => j['AlertsOn'] = v;
+  int get alertPercent => whole('AlertPercent', 80).clamp(50, 99);
+  set alertPercent(int v) => j['AlertPercent'] = v;
+  List<String> get dismissedAlerts => strings('DismissedAlerts');
+  set dismissedAlerts(List<String> v) => j['DismissedAlerts'] = v;
   bool get forecastCountSavings => j['ForecastCountSavings'] != false;
   set forecastCountSavings(bool v) => j['ForecastCountSavings'] = v;
 }

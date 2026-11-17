@@ -4,6 +4,7 @@ import '../categories.dart';
 import '../dates.dart';
 import '../finance.dart';
 import '../kit.dart';
+import 'paycheck_plan.dart';
 import '../money.dart';
 import '../records.dart';
 import '../store.dart';
@@ -76,6 +77,36 @@ class IncomeScreen extends StatelessWidget {
             ),
           ],
         ),
+        if (sources.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Panel(
+            key: const Key('plan-next-paycheck'),
+            onTap: () => showPaycheckPlan(context, sources.first),
+            child: Row(
+              children: [
+                const IconBox(Icons.account_tree_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Plan your next paycheck', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                      Builder(builder: (context) {
+                        final plan = store.planPaycheck(sources.first, sources.first.nextDate);
+                        return Text(
+                            plan.leftoverCents >= 0
+                                ? '${Money.format(plan.leftoverCents, whole: true)} left over after bills and budgets'
+                                : '${Money.format(-plan.leftoverCents, whole: true)} short of what\'s due before the next one',
+                            style: TextStyle(fontSize: 13, color: plan.leftoverCents >= 0 ? p.muted : p.danger));
+                      }),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: p.muted),
+              ],
+            ),
+          ),
+        ],
         const SectionTitle('Regular income'),
         if (sources.isEmpty)
           EmptyState(
@@ -190,6 +221,15 @@ class _IncomeActions extends StatelessWidget {
           },
           icon: const Icon(Icons.check_rounded),
           label: Text(s.varies ? 'Enter what came in' : 'It came in'),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.pop(context);
+            showPaycheckPlan(context, s);
+          },
+          icon: const Icon(Icons.account_tree_outlined, size: 19),
+          label: const Text('Plan this paycheck'),
         ),
         const SizedBox(height: 8),
         Row(

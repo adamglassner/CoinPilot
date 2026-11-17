@@ -127,6 +127,21 @@ class SettingsScreen extends StatelessWidget {
                   onChanged: (v) => store.updatePrefs((x) => x.reminderDays = switch (v) { 'On the day' => 0, '1 day before' => 1, '3 days before' => 3, _ => 7 }),
                 ),
               ],
+              const SizedBox(height: 6),
+              SwitchRow(
+                title: 'Spending alerts',
+                subtitle: 'When a budget is running low, a bill\'s price changes, a charge is unusually big, or the forecast dips.',
+                value: store.prefs.alertsOn,
+                onChanged: (v) => store.updatePrefs((x) => x.alertsOn = v),
+              ),
+              if (store.prefs.alertsOn) ...[
+                const FieldLabel('Warn me when a budget is'),
+                Choices(
+                  options: const ['70% used', '80% used', '90% used'],
+                  selected: '${(store.prefs.alertPercent / 10).round() * 10}% used',
+                  onChanged: (v) => store.updatePrefs((x) => x.alertPercent = int.parse(v.substring(0, 2))),
+                ),
+              ],
               if (isDesktop) ...[
                 const SizedBox(height: 6),
                 SwitchRow(

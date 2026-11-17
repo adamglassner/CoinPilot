@@ -91,6 +91,12 @@ public sealed class Preferences : JsonFile
     public decimal ForecastTarget { get; set; }
     /// <summary>Forecast: start from savings accounts too.</summary>
     public bool ForecastIncludeSavings { get; set; }
+    /// <summary>Spending alerts (budgets running low, bill price changes, unusual charges, a coming dip).</summary>
+    public bool AlertsOn { get; set; } = true;
+    /// <summary>Warn when a budget is this % used (50–99).</summary>
+    public int AlertPercent { get; set; } = 80;
+    /// <summary>Alerts dismissed on any device (their keys).</summary>
+    public List<string> DismissedAlerts { get; set; } = [];
     /// <summary>Forecast: take each month's goal and sinking fund savings out.</summary>
     public bool ForecastCountSavings { get; set; } = true;
 
