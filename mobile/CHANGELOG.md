@@ -1,5 +1,10 @@
 # WillowWallet for Android — changelog
 
+## 1.7.1 — 2026-11-17
+
+- **Fixed:** WillowWallet 1.7.0 closed as soon as it opened. Every Android release is now started on a real Android
+  system before it's published.
+
 ## 1.7.0 — 2026-11-17
 
 - **Forecast.** Where your money is headed: your expected balance every day to the end of the month (or 30, 60 or 90
