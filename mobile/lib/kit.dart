@@ -51,7 +51,8 @@ class SubPage extends StatelessWidget {
       body: CustomScrollView(
         slivers: [
           SliverAppBar.large(
-            title: Text(title, style: display(22, p.text, weight: FontWeight.w800)),
+            // Shrinks to fit rather than being cut off with big phone text
+            title: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(title, maxLines: 1, softWrap: false, style: display(22, p.text, weight: FontWeight.w800))),
             backgroundColor: p.bg,
             surfaceTintColor: Colors.transparent,
             actions: [...actions, const SizedBox(width: 6)],

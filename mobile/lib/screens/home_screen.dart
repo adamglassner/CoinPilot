@@ -38,18 +38,26 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
         children: [
           if (!isDesktop)
-          Row(
-            children: [
-              const CoinLogo(size: 32),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text('WillowWallet',
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: display(22, p.text, weight: FontWeight.w800)),
+            // With big phone text the name still fits: the text grows a little less here, the sync pill shows just its
+            // icon, and the name shrinks to fit rather than being cut off
+            MediaQuery.withClampedTextScaling(
+              maxScaleFactor: 1.3,
+              child: Row(
+                children: [
+                  const CoinLogo(size: 32),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text('WillowWallet', maxLines: 1, softWrap: false, style: display(22, p.text, weight: FontWeight.w800)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SyncPill(onTap: () => SyncScreen.open(context), compact: MediaQuery.textScalerOf(context).scale(1) > 1.2),
+                ],
               ),
-              const SizedBox(width: 8),
-              SyncPill(onTap: () => SyncScreen.open(context)),
-            ],
-          ),
+            ),
           const SizedBox(height: 22),
           Text(greeting(now), style: display(26, p.text, weight: FontWeight.w800)),
           const SizedBox(height: 2),

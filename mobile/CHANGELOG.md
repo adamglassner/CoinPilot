@@ -6,7 +6,9 @@
   Income, Debts, Goals, Reports or Taxes) and their order: More → **Bottom bar**, Settings → Appearance, or
   long-press any button in the bar. Pages that aren't in the bar are under More.
 - **Fixed:** with a large font size on your phone, bottom bar labels like "Transactions" wrapped onto two lines and
-  were cut off. They now stay on one line, and the tiles on More grow so their text fits.
+  were cut off, and so was "WillowWallet" at the top of Home. Labels now stay on one line, the name always fits (the
+  sync status shows as just its icon when text is large), page titles shrink to fit, and the tiles on More grow so
+  their text fits.
 
 ## 1.6.0 — 2026-11-16
 

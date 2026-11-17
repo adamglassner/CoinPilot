@@ -24,8 +24,11 @@ class SyncScope extends InheritedNotifier<SyncEngine> {
 
 /// "On this phone" / "Synced" pill for the top of the home screen.
 class SyncPill extends StatelessWidget {
-  const SyncPill({super.key, this.onTap});
+  const SyncPill({super.key, this.onTap, this.compact = false});
   final VoidCallback? onTap;
+
+  /// Just the icon (for big phone text, where the words would push the app name off the screen).
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -52,13 +55,15 @@ class SyncPill extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
+            padding: compact ? const EdgeInsets.all(9) : const EdgeInsets.fromLTRB(10, 6, 12, 6),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 15, color: color),
-                const SizedBox(width: 5),
-                Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: p.text)),
+                Icon(icon, size: compact ? 18 : 15, color: color),
+                if (!compact) ...[
+                  const SizedBox(width: 5),
+                  Text(label, maxLines: 1, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: p.text)),
+                ],
               ],
             ),
           ),

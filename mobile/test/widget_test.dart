@@ -6,6 +6,7 @@ import 'package:coinpilot/screens/budgets_screen.dart';
 import 'package:coinpilot/screens/more_screen.dart';
 import 'package:coinpilot/store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fonts.dart';
@@ -255,6 +256,11 @@ void main() {
       expect(box.width, lessThan(1080 / 3 / 4), reason: '$name too wide');
     }
     expect(tester.takeException(), isNull);
+
+    // The app name at the top isn't cut off
+    final name = tester.renderObject<RenderParagraph>(find.text('WillowWallet'));
+    expect(name.didExceedMaxLines, isFalse);
+    expect(tester.getRect(find.text('WillowWallet')).right, lessThan(360));
 
     // More: tiles for pages not in the bar, and the Bottom bar setting
     await tester.tap(tab('More'));
