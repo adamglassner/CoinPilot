@@ -134,15 +134,16 @@ jobs:
           disable-animations: true
           working-directory: mobile
           script: |
+            adb wait-for-device
+            adb shell 'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 2; done'
             adb install -r build/WillowWallet-Android-${{ steps.ver.outputs.version }}.apk
             adb logcat -c
-            adb shell monkey -p com.bytehawkstudio.coinpilot -c android.intent.category.LAUNCHER 1
-            sleep 25
+            adb shell am start -W -n com.bytehawkstudio.coinpilot/.MainActivity
+            sleep 30
             adb logcat -d -b crash > "$RUNNER_TEMP/crash.txt" || true
             cat "$RUNNER_TEMP/crash.txt"
-            adb shell pidof com.bytehawkstudio.coinpilot || (echo "::error::WillowWallet isn't running 25 seconds after launch" && exit 1)
             if grep -q "com.bytehawkstudio.coinpilot" "$RUNNER_TEMP/crash.txt"; then echo "::error::WillowWallet crashed on launch" && exit 1; fi
-            echo "WillowWallet started and is running"
+            if adb shell pidof com.bytehawkstudio.coinpilot; then echo "WillowWallet started and is running"; else adb logcat -d | grep -iE "coinpilot|flutter|ActivityManager" | tail -80; echo "::error::WillowWallet isn't running 30 seconds after launch" && exit 1; fi
 
       - uses: actions/upload-artifact@v4
         with:
