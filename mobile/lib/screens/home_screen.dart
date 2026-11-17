@@ -252,15 +252,18 @@ class _Hero extends StatelessWidget {
               height: 9,
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: Text('${Money.format(spent, whole: true)} of ${Money.format(budgeted, whole: true)} spent',
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, color: p.heroMuted)),
-                ),
-                const SizedBox(width: 8),
-                Text('$days ${days == 1 ? 'day' : 'days'} left', style: TextStyle(fontSize: 13.5, color: p.heroMuted)),
-              ],
+            // Side by side, or on two lines when big phone text won't fit both
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: 8,
+                runSpacing: 2,
+                children: [
+                  Text('${Money.format(spent, whole: true)} of ${Money.format(budgeted, whole: true)} spent', style: TextStyle(fontSize: 13.5, color: p.heroMuted)),
+                  Text('$days ${days == 1 ? 'day' : 'days'} left', style: TextStyle(fontSize: 13.5, color: p.heroMuted)),
+                ],
+              ),
             ),
           ] else
             GestureDetector(
