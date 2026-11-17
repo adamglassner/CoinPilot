@@ -99,6 +99,33 @@ public static class DataStore
         else if (name == "debt-plan") _debtPlan = JsonFile.Adopt<DebtPlanSettings>(json, Folder, name);
     }
 
+    /// <summary>Nothing entered yet: no accounts, transactions, budgets, bills, debts, goals or tax documents.</summary>
+    public static bool IsEmpty =>
+        Accounts.Count == 0 && Transactions.Count == 0 && Budgets.Count == 0 && Bills.Count == 0 && Debts.Count == 0 && Goals.Count == 0 && TaxDocuments.Count == 0;
+
+    /// <summary>
+    /// Deletes all data: every record, receipt and tax document file, and the per-data preferences (dismissed suggestions,
+    /// Get started). With <paramref name="syncDeletes"/> the deletes are synced (they reach the server and other devices);
+    /// without, only this PC is emptied. Categories go back to the defaults. App settings (theme, currency, PIN) stay.
+    /// </summary>
+    public static void EraseAll(bool syncDeletes)
+    {
+        using (Batch())
+        {
+            foreach (var store in SyncStores)
+                if (syncDeletes) store.DeleteAll(); else store.ClearLocal();
+        }
+        foreach (var folder in new[] { ReceiptsFolder, TaxesFolder })
+            try { if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        Prefs.WelcomeDismissed = false;
+        Prefs.SetupDone = false;
+        Prefs.DismissedSubscriptions.Clear();
+        Prefs.Save();
+        DebtPlan.ExtraPayment = 0;
+        DebtPlan.Save();
+        RaiseChanged();
+    }
+
     /// <summary>Switches to another folder (the self-test, or after restoring a backup). Reloads on next access.</summary>
     public static void UseFolder(string folder)
     {

@@ -121,6 +121,9 @@
             </Border>
         </Grid>
 
+        <!-- ===== Get started (first run; again from Settings or the Dashboard) ===== -->
+        <ContentControl x:Name="SetupHost" Grid.ColumnSpan="2" Visibility="Collapsed" Focusable="False" />
+
         <!-- ===== Lock screen (covers everything while the data is locked) ===== -->
         <Grid x:Name="LockOverlay" Grid.ColumnSpan="2" Visibility="Collapsed" Background="{DynamicResource Brush.Sidebar}">
             <Border Width="420" VerticalAlignment="Center" HorizontalAlignment="Center" Background="{DynamicResource Brush.Surface}"

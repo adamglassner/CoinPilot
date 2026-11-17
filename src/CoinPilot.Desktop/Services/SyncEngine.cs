@@ -472,6 +472,16 @@ public static class SyncEngine
                 Save();
             }
         }
+
+        // Files no record uses any more (receipts removed, data deleted): remove them from the server too
+        var keep = wanted.Select(w => w.Name).ToHashSet();
+        foreach (var name in s.Files.Where(f => !keep.Contains(f)).ToList())
+        {
+            try { await _api!.DeleteFileAsync(name); }
+            catch (SyncApiException e) when (e.Status == 404) { }
+            s.Files.Remove(name);
+            Save();
+        }
     }
 
     /// <summary>A tax document moved to another year on another device: move the file here too.</summary>

@@ -10,6 +10,8 @@ public interface ISyncStore
     int ApplyRemote(IEnumerable<string> jsonRecords);
     int RemoveRemote(IEnumerable<string> ids);
     void ClearLocal();
+    /// <summary>Deletes every record as if one by one (each delete is synced), with one save.</summary>
+    void DeleteAll();
 }
 
 /// <summary>

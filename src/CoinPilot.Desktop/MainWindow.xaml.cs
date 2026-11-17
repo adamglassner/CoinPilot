@@ -77,6 +77,27 @@ public partial class MainWindow : Window
         else GoTo(page);
         SyncEngine.Start();
         UpdateDataStatus();
+
+        // First run: nothing entered yet and not syncing → Get started
+        if (!DataStore.Prefs.SetupDone && DataStore.IsEmpty && SyncEngine.Settings == null && !SelfTest.IsRunning && !Screenshots.IsRunning && App.StartPage == null)
+            ShowGetStarted();
+    }
+
+    /// <summary>The Get started walkthrough, over the whole window.</summary>
+    public GetStarted? Setup => SetupHost.Content as GetStarted;
+
+    public void ShowGetStarted()
+    {
+        if (!DataLock.IsOpen) return;
+        SetupHost.Content = new GetStarted(CloseGetStarted);
+        SetupHost.Visibility = Visibility.Visible;
+    }
+
+    public void CloseGetStarted()
+    {
+        SetupHost.Visibility = Visibility.Collapsed;
+        SetupHost.Content = null;
+        DataStore.RaiseChanged();
     }
 
     // ----- Navigation -----
@@ -159,7 +180,7 @@ public partial class MainWindow : Window
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         base.OnPreviewKeyDown(e);
-        if (e.Handled || Keyboard.Modifiers != ModifierKeys.Control || !DataLock.IsOpen || LockOverlay.Visibility == Visibility.Visible) return;
+        if (e.Handled || Keyboard.Modifiers != ModifierKeys.Control || !DataLock.IsOpen || LockOverlay.Visibility == Visibility.Visible || SetupHost.Visibility == Visibility.Visible) return;
 
         switch (e.Key)
         {

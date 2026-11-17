@@ -70,6 +70,38 @@ public static class Screenshots
             }
         }
 
+        // Get started (light and dark)
+        foreach (var mode in new[] { AppTheme.Light, AppTheme.Dark })
+        {
+            App.ApplyTheme(mode);
+            string m = mode.ToLowerInvariant();
+            window.ShowGetStarted();
+            var gs = window.Setup!;
+            await Idle();
+            await Capture(window, $"{n++:00}-get-started-welcome-{m}");
+            gs.GoToStep("Accounts");
+            await Idle();
+            await Capture(window, $"{n++:00}-get-started-accounts-{m}");
+            gs.SetIncome("5200", BudgetTemplateDialog.FiftyThirtyTwenty);
+            gs.GoToStep("Income");
+            await Idle();
+            await Capture(window, $"{n++:00}-get-started-income-{m}");
+            gs.TickBill("Electric", "130", "18");
+            gs.TickBill("Internet", "79.99", "22");
+            gs.TickBill("Car insurance", "206", "21");
+            gs.GoToStep("Bills");
+            await Idle();
+            await Capture(window, $"{n++:00}-get-started-bills-{m}");
+            gs.GoToStep("Debts");
+            await Idle();
+            await Capture(window, $"{n++:00}-get-started-debts-{m}");
+            gs.GoToStep("Done");
+            await Idle();
+            await Capture(window, $"{n++:00}-get-started-done-{m}");
+            window.CloseGetStarted();
+        }
+        App.ApplyTheme(AppTheme.Light);
+
         // Color themes
         foreach (var (theme, mode) in new[] { ("Ocean", AppTheme.Light), ("Plum", AppTheme.Light), ("Ember", AppTheme.Light), ("Lagoon", AppTheme.Dark), ("Rose", AppTheme.Dark), ("Graphite", AppTheme.Dark) })
         {
@@ -99,6 +131,7 @@ public static class Screenshots
             await CaptureDialog(window, new BillDialog(DataStore.Bills.Items[0]), $"{n++:00}-dialog-bill-{m}");
             await CaptureDialog(window, new BillDialog(DataStore.Bills.Items.First(b => b.PaysDebt)), $"{n++:00}-dialog-bill-pays-debt-{m}", scrollToEnd: true);
             await CaptureDialog(window, new DebtDialog(null), $"{n++:00}-dialog-add-debt-{m}", scrollToEnd: true);
+            await CaptureDialog(window, new DeleteAllDataDialog(), $"{n++:00}-dialog-delete-all-{m}");
             await Show(window, "goals");
             await CaptureDialog(window, new GoalDialog(DataStore.Goals.Items[1]), $"{n++:00}-dialog-goal-{m}");
             await Show(window, "settings");

@@ -117,6 +117,13 @@ public sealed class JsonStore<T> : ISyncStore where T : RecordBase
         return n;
     }
 
+    public void DeleteAll()
+    {
+        foreach (var item in _items) SyncTracker.Changed(Name, item.Id, true);
+        _items.Clear();
+        Save();
+    }
+
     /// <summary>Empties the store without sending deletes (switching to the server's copy of the data).</summary>
     public void ClearLocal()
     {

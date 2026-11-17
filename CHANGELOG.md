@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.3.0 — 2026-11-16
+
+- **Get started.** The first time WillowWallet opens with no data, a full-window setup walks you through it, one
+  step at a time: your accounts and today's balances, your take-home pay and budgets from it (50/30/20 or starter
+  amounts), the bills you pay regularly (rent, utilities, insurance, subscriptions… tick them and enter the amount and
+  due day), the loans and cards you're paying off (each with a recurring monthly bill), and a PIN or password. Every
+  step can be skipped, and you can go back to change what you entered. The first screen also offers connecting to
+  your WillowWallet Server or restoring a backup instead.
+- **Run Get started again** any time from Settings → Your data, or "Set up step by step" on the Dashboard.
+- **Delete all data** in Settings → Your data: empties WillowWallet after saving a backup to Documents\WillowWallet
+  backups (unless you say not to). When you sync, choose **only on this PC** (it stops syncing; your server keeps
+  everything) or **everywhere**. Then Get started opens so you can begin again.
+- **Switching to sync:** connecting a PC that already has data now asks up front what to do with it: **upload it to
+  the server** (combined with anything already there) or **don't upload it** (use the server's data; this PC's is
+  backed up first). The button says "Sign in and upload" so it's clear what happens.
+- Receipts and tax files that nothing uses any more are removed from the server when syncing.
+
 ## 1.2.0 — 2026-11-16
 
 **Debts and their monthly bills, linked.** A loan or card payment is both a debt and a recurring bill; now they're one thing.

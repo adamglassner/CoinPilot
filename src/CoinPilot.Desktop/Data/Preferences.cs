@@ -80,6 +80,8 @@ public sealed class Preferences : JsonFile
     /// <summary>Payees you said aren't subscriptions (so they stop being suggested).</summary>
     public List<string> DismissedSubscriptions { get; set; } = [];
     public bool WelcomeDismissed { get; set; }
+    /// <summary>Get started (the first-run setup) was finished or skipped.</summary>
+    public bool SetupDone { get; set; }
 
     public static Preferences Load(string folder) => Load<Preferences>(folder, "preferences");
 }

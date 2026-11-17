@@ -70,6 +70,9 @@ public partial class DashboardView : UserControl
         var dismiss = PageKit.Link("Hide", () => { prefs.WelcomeDismissed = true; prefs.Save(); });
         DockPanel.SetDock(dismiss, Dock.Right);
         head.Children.Add(dismiss);
+        var guided = PageKit.Link("Set up step by step", () => MainWindow.Instance?.ShowGetStarted());
+        DockPanel.SetDock(guided, Dock.Right);
+        head.Children.Add(guided);
         var titles = new StackPanel();
         titles.Children.Add(new TextBlock { Text = "Welcome to WillowWallet", Style = (Style)FindResource("CardTitle"), FontSize = 19 });
         titles.Children.Add(Ui.Text($"{done} of {steps.Length} done · a few minutes to get set up", muted: true));

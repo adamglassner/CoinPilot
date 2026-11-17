@@ -7,13 +7,14 @@
 **Budgets, spending, accounts, debts, bills, goals and tax documents in one private app for Windows.**
 Made by Bytehawk Studio. *(Formerly CoinPilot; the repository keeps its old name for now.)*
 
-> **Version 1.2.0, Windows 10/11.** Everything is saved on your PC, with optional PIN/password encryption, and
+> **Version 1.3.0, Windows 10/11.** Everything is saved on your PC, with optional PIN/password encryption, and
 > optional **end-to-end encrypted sync** with WillowWallet for Android through your own [WillowWallet Server](server).
 
 ## Features
 
 | Section | What it does |
 | --- | --- |
+| **Get started** | A step-by-step setup the first time you open WillowWallet: accounts, take-home pay and budgets, regular bills, loans and cards, and a PIN. Run it again any time from Settings. |
 | **Dashboard** | This month's left to spend, spent, income and net; budgets; spending by week; bills coming up; goals; recent transactions; a welcome checklist for new users. |
 | **Transactions** | Spending, income and transfers between accounts; split across categories; tags; receipts; search and filters; month by month; **import bank statements (CSV, OFX, QFX)** with duplicate detection; automatic categories from your rules and history; CSV export. |
 | **Budgets** | A monthly amount per category (subcategories roll up), progress bars and warnings, **rollover**, one-month amounts, **copy last month**, **templates** (50/30/20, zero-based, starter) and "left to assign". |
@@ -23,7 +24,7 @@ Made by Bytehawk Studio. *(Formerly CoinPilot; the repository keeps its old name
 | **Goals** | Savings goals with **progress rings**, **milestones**, add or take out money, **link a goal to a savings account**, and the monthly amount to stay on track. |
 | **Reports** | Income vs. spending, spending by category, **net worth**, month-by-month table with savings rate, **Year in review**; export to CSV or **print / PDF**. |
 | **Taxes** | A safe place for **tax documents** (W-2s, 1099s, returns, receipts) by tax year, with a checklist and drag-and-drop. |
-| **Sync & Devices** | Optional: sync with WillowWallet for Android (and other PCs) through **your own WillowWallet Server**. Encrypted on the PC before it's sent; works offline and catches up; newest edit wins; see and sign out devices; recovery key for a forgotten password. |
+| **Sync & Devices** | Optional: sync with WillowWallet for Android (and other PCs) through **your own WillowWallet Server**. Encrypted on the PC before it's sent; works offline and catches up; newest edit wins; see and sign out devices; recovery key for a forgotten password. A PC that already has data can **upload it to the server** when it connects. |
 
 **Settings:** light/dark/match Windows, **8 color themes** (Pine, Ocean, Lagoon, Indigo, Plum, Rose, Ember, Graphite),
 **currency**, **budget month start day** (budget payday to payday), **your own categories and subcategories**, rules,

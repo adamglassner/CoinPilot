@@ -524,6 +524,79 @@ public static class SelfTest
         Check("Files are plain again", !DataLock.IsEnabled && !DataLock.IsEncrypted(File.ReadAllBytes(txFile)) && DataStore.Transactions.Items.Count == count + 1);
     }
 
+    /// <summary>A control in the window found by its accessible name (as a screen reader would).</summary>
+    private static T? Named<T>(DependencyObject root, string name) where T : FrameworkElement
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            if (child is T t && System.Windows.Automation.AutomationProperties.GetName(t) == name) return t;
+            if (Named<T>(child, name) is { } found) return found;
+        }
+        return null;
+    }
+
+    /// <summary>Get started from a blank WillowWallet: typed in like a person would, then Delete all data.</summary>
+    private static async Task GetStartedFlow(MainWindow window)
+    {
+        Check("Starts with no data", DataStore.IsEmpty);
+        await Step("Open Get started", () => window.ShowGetStarted());
+        var gs = window.Setup;
+        Check("Get started opens on Welcome", gs?.CurrentStep == "Welcome", gs?.CurrentStep ?? "not shown");
+        if (gs == null) return;
+
+        await Step("Welcome → accounts", () => gs.Advance());
+        await Step("Type a checking account and a credit card", () =>
+        {
+            Named<TextBox>(gs, "Account name")!.Text = "Everyday checking";
+            Named<TextBox>(gs, "Bank")!.Text = "Chase";
+            Named<TextBox>(gs, "Balance")!.Text = "1,250.00";
+            Named<Button>(gs, "Add account")!.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Named<RadioButton>(gs, AccountTypes.CreditCard)!.IsChecked = true;
+            Named<TextBox>(gs, "Balance")!.Text = "430";
+        });
+        await Step("Next adds the card left in the form", () => gs.Advance());
+        var checking = DataStore.Accounts.Items.FirstOrDefault(a => a.Name == "Everyday checking");
+        var card = DataStore.Accounts.Items.FirstOrDefault(a => a.Type == AccountTypes.CreditCard);
+        Check("Accounts added with today's balances", checking is { StartingBalance: 1250m, Institution: "Chase" } && card is { Name: "Credit card", StartingBalance: -430m },
+            string.Join(", ", DataStore.Accounts.Items.Select(a => $"{a.Name} {a.StartingBalance}")));
+        Check("On the income step", gs.CurrentStep == "Income", gs.CurrentStep);
+
+        await Step("Income 4,000 with 50/30/20", () => { gs.SetIncome("4000", BudgetTemplateDialog.FiftyThirtyTwenty); gs.Advance(); });
+        decimal budgeted = DataStore.Budgets.Items.Sum(b => b.MonthlyLimit);
+        Check("Budgets from the income", DataStore.Budgets.Count >= 6 && budgeted is > 3800m and <= 4100m && DataStore.Budgets.Items.Any(b => b.Category == "Savings"), $"{DataStore.Budgets.Count} budgets, {budgeted}");
+
+        await Step("Tick rent and car insurance", () => { gs.TickBill("Rent", "1450", "1"); gs.TickBill("Car insurance", "120", "15"); gs.Advance(); });
+        var rent = DataStore.Bills.Items.FirstOrDefault(b => b.Name == "Rent");
+        Check("Bills created, repeating", DataStore.Bills.Count == 2 && rent is { Amount: 1450m, Category: "Housing", Repeats: BillSchedule.Monthly } && rent.NextDue.Day == 1 && rent.NextDue >= DateTime.Today,
+            string.Join(", ", DataStore.Bills.Items.Select(b => $"{b.Name} {b.Amount} {b.NextDue:d}")));
+
+        await Step("Type a student loan with its monthly payment", () =>
+        {
+            Named<TextBox>(gs, "Amount owed")!.Text = "18420";
+            Named<TextBox>(gs, "Monthly payment")!.Text = "300";
+            Named<TextBox>(gs, "Payment due day")!.Text = "15";
+            gs.Advance();
+        });
+        var loan = DataStore.Debts.Items.FirstOrDefault(d => d.Name == "Student loan");
+        Check("Debt added with a linked monthly bill", loan is { Balance: 18420m, MinimumPayment: 300m } && DebtLink.BillFor(loan) is { Amount: 300m, Repeats: BillSchedule.Monthly } lb && lb.NextDue.Day == 15);
+        Check("On the protection step", gs.CurrentStep == "Protect", gs.CurrentStep);
+        await Step("Not now → all set", () => gs.Advance());
+        Check("All set step", gs.CurrentStep == "Done", gs.CurrentStep);
+        await Step("Go to my dashboard", () => gs.Close());
+        Check("Get started closed and remembered", window.Setup == null && DataStore.Prefs.SetupDone && ModuleCatalog.Dashboard.IsSelected);
+
+        await Step("Run Get started again from Settings", () => window.ShowGetStarted());
+        Check("Get started can run again", window.Setup?.CurrentStep == "Welcome");
+        await Step("Back on the bills step keeps them", () => { window.Setup!.GoToStep("Bills"); window.Setup!.Advance(); });
+        Check("Coming back doesn't duplicate bills", DataStore.Bills.Items.Count(b => b.Name == "Rent") == 1);
+        await Step("Skip setup", () => window.CloseGetStarted());
+
+        await Step("Delete all data (this PC)", () => DataStore.EraseAll(syncDeletes: false));
+        Check("Delete all data empties WillowWallet", DataStore.IsEmpty && DataStore.Bills.Count == 0 && DataStore.Debts.Count == 0 && !DataStore.Prefs.SetupDone);
+        Check("Categories are back to the defaults", Categories.Spending.Contains("Groceries"));
+        await AllPages(window, "after deleting all data");
+    }
+
     public static async Task<int> RunAsync(MainWindow window)
     {
         Report.AppendLine($"WillowWallet {App.VersionText} self-test {DateTime.Now:u}");
@@ -543,6 +616,8 @@ public static class SelfTest
 
         // ----- Empty: every page with no data -----
         await AllPages(window, "empty");
+
+        await GetStartedFlow(window);
 
         // ----- Add data -----
         var month = Budgeting.MonthStart(DateTime.Today);

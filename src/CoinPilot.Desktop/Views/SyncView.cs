@@ -16,6 +16,8 @@ public sealed class SyncView : DataPage
     // Kept between rebuilds so typing isn't lost
     private static string _url = "", _user = "", _invite = "";
     private static bool _create;
+    /// <summary>Switching from local-only: upload this PC's data to the server (or start from the server's copy).</summary>
+    private static bool _upload = true;
     private static ServerInfo? _checked;
     private static AccountResponse? _account;
     private static DateTime _accountAt;
@@ -106,9 +108,22 @@ public sealed class SyncView : DataPage
             form.Children.Add(Hint(_checked?.OpenSignup == true ? "Not needed on this server." : "Ask the person who runs the server for one."));
         }
 
+        // Already using WillowWallet on this PC: say what happens to its data, and let them choose
+        int local = DataStore.SyncStores.Sum(st => st.Count);
+        if (!signedOut && local > 0)
+        {
+            form.Children.Add(Label("Your data on this PC"));
+            form.Children.Add(DataChoice(true, "Upload it to the server (recommended)",
+                $"All {local:N0} records (accounts, transactions, budgets, bills, debts, goals, receipts and tax files) are encrypted and copied to your account, and stay on this PC. If the account already has data from another device, the two are combined."));
+            form.Children.Add(DataChoice(false, "Don't upload it",
+                "This PC switches to your account's data on the server. A backup of what's here now is saved to Documents\\WillowWallet backups first, so you can restore it later."));
+        }
+
         if (_error != null) form.Children.Add(Banner("", _error, danger: true));
 
-        var go = PageKit.Primary(_create ? "" : "", _busy ? "Working…" : _create ? "Create account and sync" : "Sign in and sync",
+        var go = PageKit.Primary(_create ? "" : "", _busy ? (local > 0 && _upload && !signedOut ? $"Uploading {local:N0} records…" : "Working…")
+                : _create ? (local > 0 && _upload ? "Create account and upload" : "Create account and sync")
+                : local > 0 && _upload && !signedOut ? "Sign in and upload" : "Sign in and sync",
             async (_, _) => await Connect(pass.Password, confirm?.Password, invite?.Text));
         go.IsEnabled = !_busy;
         go.HorizontalAlignment = HorizontalAlignment.Left;
@@ -124,6 +139,17 @@ public sealed class SyncView : DataPage
         cols.Children.Add(PageKit.Card(form, signedOut ? "Sign in again" : "Connect to a WillowWallet Server").At(0));
         cols.Children.Add(HowItWorks().At(2));
         Add(cols);
+    }
+
+    private RadioButton DataChoice(bool upload, string title, string text)
+    {
+        var panel = new StackPanel { Margin = new Thickness(4, 0, 0, 0) };
+        panel.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold, FontSize = 14 });
+        panel.Children.Add(Ui.Text(text, muted: true, size: 12.5).Also(t => { t.TextWrapping = TextWrapping.Wrap; t.TextTrimming = TextTrimming.None; t.Margin = new Thickness(0, 3, 0, 0); }));
+        var radio = new RadioButton { Content = panel, GroupName = "upload", IsChecked = _upload == upload, Style = (Style)FindResource("CardRadio"), Margin = new Thickness(0, 0, 0, 8) };
+        AutomationName(radio, title);
+        radio.Checked += (_, _) => { _upload = upload; Rebuild(); };
+        return radio;
     }
 
     private Border HowItWorks()
@@ -171,13 +197,14 @@ public sealed class SyncView : DataPage
         if (string.IsNullOrWhiteSpace(_user)) { _error = "Enter your username."; Rebuild(); return; }
         if (password.Length == 0) { _error = "Enter your password."; Rebuild(); return; }
         if (_create && password != confirm) { _error = "The two passwords don't match."; Rebuild(); return; }
+        bool wasSignedOut = SyncEngine.Status == SyncEngine.State.SignedOut && SyncEngine.Settings != null;
         _busy = true;
         Rebuild();
         try
         {
             var (session, recovery) = await SyncEngine.ConnectAsync(_url, _user, password, _create, invite);
             if (recovery != null) new RecoveryKeyDialog(recovery, forSync: true) { Owner = Window.GetWindow(this) }.ShowDialog();
-            await FirstSync(session.LatestSeq > 0);
+            await FirstSync(session.LatestSeq > 0, choseOnPage: !wasSignedOut);
             _invite = "";
         }
         catch (SyncApiException e)
@@ -191,18 +218,43 @@ public sealed class SyncView : DataPage
         }
     }
 
-    private async Task FirstSync(bool serverHasData)
+    private async Task FirstSync(bool serverHasData, bool choseOnPage)
     {
         bool serverOnly = false;
         int local = DataStore.SyncStores.Sum(s => s.Count);
-        if (serverHasData && local > 0)
+        string? backup = null;
+        if (local > 0 && choseOnPage)
+        {
+            // Chosen on the page: upload (combined with what's there) or switch to the server's copy after a backup
+            serverOnly = !_upload;
+            if (serverOnly)
+            {
+                try
+                {
+                    var folder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "WillowWallet backups");
+                    System.IO.Directory.CreateDirectory(folder);
+                    backup = System.IO.Path.Combine(folder, $"WillowWallet backup {DateTime.Now:yyyy-MM-dd HHmm} before sync.zip");
+                    Backup.Create(backup);
+                }
+                catch (Exception ex)
+                {
+                    _error = $"Couldn't save a backup first ({ex.Message}), so nothing on this PC was changed. Choose \"Upload it\" or try again.";
+                    await SyncEngine.SignOutAsync();
+                    return;
+                }
+            }
+        }
+        else if (serverHasData && local > 0)
         {
             var choose = new SyncMergeDialog(local) { Owner = Window.GetWindow(this) };
             if (choose.ShowDialog() != true) choose = new SyncMergeDialog(local); // closed: combine
             serverOnly = choose.UseServerOnly;
         }
         if (await SyncEngine.FirstSyncAsync(serverOnly))
-            Toaster.Show(serverOnly ? "Signed in. This PC now has your account's data." : "Signed in and synced. Changes now go to your other devices automatically.");
+            Toaster.Show(serverOnly
+                ? backup != null ? "Signed in. This PC now has your account's data; the old data is backed up in Documents\\WillowWallet backups." : "Signed in. This PC now has your account's data."
+                : local > 0 ? $"Uploaded {local:N0} records to {SyncEngine.Settings?.ServerName ?? "your server"}. Changes now sync automatically."
+                : "Signed in and synced. Changes now go to your other devices automatically.");
     }
 
     private async Task Recover()
@@ -216,7 +268,7 @@ public sealed class SyncView : DataPage
         {
             var session = await SyncEngine.RecoverAsync(_url, dlg.Username, dlg.RecoveryKey, dlg.NewPassword);
             Toaster.Show("New password set. Your other devices need to sign in with it.");
-            await FirstSync(session.LatestSeq > 0);
+            await FirstSync(session.LatestSeq > 0, choseOnPage: false);
         }
         catch (SyncApiException e) { _error = e.Message; }
         finally

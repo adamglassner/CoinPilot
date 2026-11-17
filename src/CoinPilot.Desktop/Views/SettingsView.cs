@@ -220,7 +220,7 @@ public sealed class SettingsView : DataPage
         return PageKit.Card(panel, "Security", PageKit.Pill("On", "Brush.Positive"));
     }
 
-    private void TurnOn()
+    internal static void TurnOn()
     {
         var dialog = new SetLockDialog(change: false);
         if (dialog.ShowDialog() != true || dialog.RecoveryKey == null) return;
@@ -262,6 +262,13 @@ public sealed class SettingsView : DataPage
             Ghost("Import a bank statement…", () => ImportDialog.Run()),
             Ghost("Export all transactions (CSV)…", () => CsvExporter.Export("coinpilot-all-transactions", Backup.AllTransactionHeaders, Backup.AllTransactionRows()))));
         panel.Children.Add(Muted("A backup is one .zip with all your data, receipts and tax documents. With protection on, it stays encrypted.", 2));
+        var startOver = Buttons(
+            Ghost("Run Get started again", () => MainWindow.Instance?.ShowGetStarted()),
+            Ghost("Delete all data…", () => _ = DeleteAllDataDialog.Run()));
+        startOver.Margin = new Thickness(0, 14, 0, 0);
+        if (startOver.Children.Count > 1 && startOver.Children[1] is Button del) del.SetResourceReference(ForegroundProperty, "Brush.Danger");
+        panel.Children.Add(startOver);
+        panel.Children.Add(Muted("Get started walks you through adding accounts, budgets, bills and debts. Delete all data empties WillowWallet (a backup is saved first unless you say otherwise).", 2));
         return PageKit.Card(panel, "Your data");
     }
 
@@ -280,7 +287,7 @@ public sealed class SettingsView : DataPage
         }
     }
 
-    private static void Restore()
+    internal static void Restore()
     {
         var open = new Microsoft.Win32.OpenFileDialog { Filter = "WillowWallet backup (*.zip)|*.zip", Title = "Restore a backup" };
         if (open.ShowDialog() != true) return;

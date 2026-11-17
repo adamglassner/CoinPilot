@@ -401,3 +401,108 @@ public sealed class CategoriesDialog : DialogShell
 
     protected override string? TrySave() => null;
 }
+
+/// <summary>
+/// Settings → Your data → Delete all data: empties WillowWallet (after an optional backup). When syncing, it can
+/// delete on this PC only (and stop syncing) or everywhere (the server and every device on the account).
+/// </summary>
+public sealed class DeleteAllDataDialog : DialogShell
+{
+    private readonly CheckBox _backup;
+    private readonly TextBox _confirm;
+    private readonly RadioButton? _here, _everywhere;
+    private readonly string _deleteText;
+
+    public bool Everywhere => _everywhere?.IsChecked == true;
+    public bool BackUpFirst => _backup.IsChecked == true;
+    public string? BackupPath { get; private set; }
+
+    public DeleteAllDataDialog()
+        : base("Delete all data", "Removes every account, transaction, budget, bill, debt, goal, category, rule, receipt and tax document from WillowWallet. Your app settings (theme, currency, PIN) stay.",
+               allowDelete: false, saveText: "Delete all data", width: 560)
+    {
+        _deleteText = "Delete all data";
+        UseDangerTone();
+        var counts = new[]
+        {
+            (DataStore.Accounts.Count, "account"), (DataStore.Transactions.Count, "transaction"), (DataStore.Budgets.Count, "budget"),
+            (DataStore.Bills.Count, "bill"), (DataStore.Debts.Count, "debt"), (DataStore.Goals.Count, "goal"), (DataStore.TaxDocuments.Count, "tax document"),
+        }.Where(c => c.Item1 > 0).Select(c => $"{c.Item1:N0} {c.Item2}{(c.Item1 == 1 ? "" : "s")}").ToList();
+        AddField("What's here now", new TextBlock { Text = counts.Count == 0 ? "Nothing yet." : string.Join(", ", counts) + ".", TextWrapping = TextWrapping.Wrap });
+
+        if (SyncEngine.Settings is { } sync)
+        {
+            var where = new StackPanel();
+            _here = Option("Only on this PC", $"This PC stops syncing and starts empty. Your account on {sync.ServerName} and your other devices keep everything.", true);
+            _everywhere = Option("Everywhere", $"Also deletes it from {sync.ServerName} and every device signed in as {sync.Username}. This can't be undone, except from a backup.", false);
+            where.Children.Add(_here);
+            where.Children.Add(_everywhere);
+            AddField("Delete it from", where);
+        }
+
+        _backup = AddField("Backup", Check("Save a backup first, to Documents\\WillowWallet backups", true),
+            hint: "One .zip with everything, so you can bring it back with Settings → Restore.");
+        _confirm = AddField("Type DELETE to confirm", new TextBox { CharacterCasing = CharacterCasing.Upper }, required: true);
+        Loaded += (_, _) =>
+        {
+            foreach (var b in FindButtons(this).Where(b => (b.Content as string) == _deleteText))
+                b.SetResourceReference(BackgroundProperty, "Brush.Danger");
+            _confirm.Focus();
+        };
+    }
+
+    private RadioButton Option(string title, string text, bool isChecked)
+    {
+        var panel = new StackPanel { Margin = new Thickness(4, 0, 0, 0) };
+        panel.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold, FontSize = 14 });
+        var detail = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0), MaxWidth = 440 };
+        detail.SetResourceReference(TextBlock.ForegroundProperty, "Brush.TextMuted");
+        panel.Children.Add(detail);
+        return new RadioButton { Content = panel, GroupName = "erase-where", IsChecked = isChecked, Style = (Style)FindResource("CardRadio"), Margin = new Thickness(0, 0, 0, 8) };
+    }
+
+    private static IEnumerable<Button> FindButtons(DependencyObject root)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            if (child is Button b) yield return b;
+            foreach (var inner in FindButtons(child)) yield return inner;
+        }
+    }
+
+    protected override string? TrySave()
+    {
+        if (_confirm.Text.Trim() != "DELETE") return "Type DELETE (in capitals) to confirm.";
+        if (BackUpFirst)
+        {
+            try
+            {
+                var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "WillowWallet backups");
+                Directory.CreateDirectory(folder);
+                BackupPath = Path.Combine(folder, $"WillowWallet backup {DateTime.Now:yyyy-MM-dd HHmm} before delete.zip");
+                Backup.Create(BackupPath);
+            }
+            catch (Exception ex)
+            {
+                return $"Couldn't save the backup ({ex.Message}), so nothing was deleted. Uncheck the backup to delete anyway.";
+            }
+        }
+        return null;
+    }
+
+    /// <summary>Asks, then deletes. Returns true when the data was deleted.</summary>
+    public static async Task<bool> Run()
+    {
+        var dialog = new DeleteAllDataDialog { Owner = Application.Current.MainWindow };
+        if (dialog.ShowDialog() != true) return false;
+        bool everywhere = dialog.Everywhere;
+        if (SyncEngine.Settings != null && !everywhere) await SyncEngine.SignOutAsync();
+        DataStore.EraseAll(syncDeletes: everywhere);
+        if (everywhere) await SyncEngine.SyncNowAsync(manual: true);
+        Toaster.Show((everywhere ? "Deleted all data here and on your server." : "Deleted all data on this PC.") +
+                     (dialog.BackupPath != null ? " A backup is in Documents\\WillowWallet backups." : ""));
+        MainWindow.Instance?.GoTo("dashboard");
+        MainWindow.Instance?.ShowGetStarted();
+        return true;
+    }
+}
