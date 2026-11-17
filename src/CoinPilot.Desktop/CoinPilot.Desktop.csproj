@@ -2,7 +2,9 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <!-- Windows 10 1809 or later (Windows Hello needs the Windows SDK projection) -->
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <UseWPF>true</UseWPF>
     <!-- Windows Forms only for the notification-area icon (bill reminders). -->
     <UseWindowsForms>true</UseWindowsForms>
@@ -16,7 +18,7 @@
     <Authors>Bytehawk Studio</Authors>
     <Description>WillowWallet: budgets, transactions, accounts, debts, bills, goals, reports and tax documents.</Description>
     <!-- Releasing: change this and push to main. CI builds, tests and publishes GitHub Release v<Version>. -->
-    <Version>1.5.1</Version>
+    <Version>1.6.0</Version>
     <Copyright>© 2026 Bytehawk Studio</Copyright>
     <!-- Lets the project at least restore/compile on non-Windows machines; the app itself is Windows-only. -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
@@ -43,6 +45,7 @@
   <ItemGroup>
     <Resource Include="Assets\coinpilot.ico" />
     <Resource Include="Assets\coinpilot.png" />
+    <EmbeddedResource Include="..\..\CHANGELOG.md" LogicalName="CHANGELOG.md" />
     <Resource Include="Assets\Fonts\*.ttf" />
   </ItemGroup>
 

@@ -199,6 +199,36 @@ public static class DataLock
         RewriteAll(encrypt: false);
         File.Delete(LockFile);
         _key = null;
+        CoinPilot.Services.WindowsHello.TurnOff();
+    }
+
+    /// <summary>A copy of the open data key (for Windows Hello), or null when locked.</summary>
+    internal static byte[]? CopyKey() => _key?.ToArray();
+
+    /// <summary>
+    /// Opens the data with a key kept elsewhere (Windows Hello). Checks it against an encrypted file first, so a key from
+    /// before a restore or a reset is refused.
+    /// </summary>
+    internal static bool UnlockWithKey(byte[] key)
+    {
+        if (!IsEnabled) return true;
+        if (key.Length != 32) return false;
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(DataStore.Folder, "*.json"))
+            {
+                var bytes = File.ReadAllBytes(file);
+                if (!IsEncrypted(bytes)) continue;
+                Decrypt(bytes, key);
+                break;
+            }
+        }
+        catch (Exception ex) when (ex is CryptographicException or IOException or ArgumentException)
+        {
+            return false;
+        }
+        _key = key;
+        return true;
     }
 
     /// <summary>Changes the PIN/password (the data key and recovery key stay the same).</summary>

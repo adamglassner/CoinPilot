@@ -210,6 +210,25 @@ public sealed class SettingsView : DataPage
         System.Windows.Automation.AutomationProperties.SetName(auto, "Lock automatically after");
         row.Children.Add(auto);
         panel.Children.Add(row);
+        // Windows Hello
+        var hello = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
+        var helloButton = WindowsHello.IsOn
+            ? Ghost("Turn off Windows Hello", () => { WindowsHello.TurnOff(); Toaster.Show("Windows Hello is off. Unlock with your PIN or password."); DataStore.RaiseChanged(); })
+            : Ghost("Use Windows Hello…", async () =>
+            {
+                var problem = await WindowsHello.TurnOnAsync();
+                MainWindow.Instance?.Activate();
+                Toaster.Show(problem ?? "Windows Hello is on. Unlock WillowWallet with your fingerprint, face or Windows PIN.");
+                DataStore.RaiseChanged();
+            });
+        DockPanel.SetDock(helloButton, Dock.Right);
+        hello.Children.Add(helloButton);
+        var helloText = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        helloText.Children.Add(Ui.Text(WindowsHello.IsOn ? "Windows Hello: on" : "Windows Hello: off", weight: FontWeights.SemiBold));
+        helloText.Children.Add(Ui.Text(WindowsHello.IsOn ? "Unlock with your fingerprint, face or Windows PIN on this PC." : "Unlock with your fingerprint, face or Windows PIN instead of typing.", muted: true, size: 12.5)
+            .Also(t => { t.TextWrapping = TextWrapping.Wrap; t.TextTrimming = TextTrimming.None; }));
+        hello.Children.Add(helloText);
+        panel.Children.Add(hello);
         panel.Children.Add(Buttons(
             Ghost($"Change {(info.Kind == "PIN" ? "PIN" : "password")}…", () =>
             {
@@ -389,6 +408,10 @@ public sealed class SettingsView : DataPage
         row.Children.Add(text);
         panel.Children.Add(row);
         panel.Children.Add(Muted("Updates arrive through the Bytehawk Studio Launcher. Free and open source (MIT).", 12));
+        var whatsNew = PageKit.Ghost("\uE789", "What's new", (_, _) => new WhatsNewDialog { Owner = MainWindow.Instance }.ShowDialog());
+        whatsNew.HorizontalAlignment = HorizontalAlignment.Left;
+        whatsNew.Margin = new Thickness(0, 12, 0, 0);
+        panel.Children.Add(whatsNew);
         return PageKit.Card(panel, "About");
     }
 }

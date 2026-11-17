@@ -65,6 +65,7 @@ public partial class MainWindow : Window
             else
             {
                 _ = Dispatcher.BeginInvoke(() => Reminders.Check(), DispatcherPriority.ApplicationIdle);
+                _ = Dispatcher.BeginInvoke(() => WhatsNewDialog.ShowAfterUpdate(this), DispatcherPriority.ApplicationIdle);
             }
         };
     }
@@ -259,7 +260,42 @@ public partial class MainWindow : Window
         LockError.Visibility = Visibility.Collapsed;
         LockOverlay.Visibility = Visibility.Visible;
         LockPassword.Clear();
+        HelloButton.Visibility = WindowsHello.IsOn ? Visibility.Visible : Visibility.Collapsed;
         Dispatcher.BeginInvoke(() => LockPassword.Focus(), DispatcherPriority.Input);
+        // Windows Hello asks right away (Esc or Cancel falls back to the PIN or password)
+        if (WindowsHello.IsOn && !SelfTest.IsRunning && IsVisible) Dispatcher.BeginInvoke(() => HelloUnlock_Click(this, new RoutedEventArgs()), DispatcherPriority.ApplicationIdle);
+    }
+
+    private bool _helloBusy;
+
+    private async void HelloUnlock_Click(object sender, RoutedEventArgs e)
+    {
+        if (_helloBusy || LockOverlay.Visibility != Visibility.Visible) return;
+        _helloBusy = true;
+        HelloButton.IsEnabled = false;
+        try
+        {
+            var problem = await WindowsHello.UnlockAsync();
+            Activate();
+            if (problem == null)
+            {
+                CompleteUnlock();
+                Reminders.Check();
+                return;
+            }
+            if (problem != "Canceled.")
+            {
+                LockError.Text = problem;
+                LockError.Visibility = Visibility.Visible;
+            }
+            HelloButton.Visibility = WindowsHello.IsOn ? Visibility.Visible : Visibility.Collapsed;
+            LockPassword.Focus();
+        }
+        finally
+        {
+            _helloBusy = false;
+            HelloButton.IsEnabled = true;
+        }
     }
 
     private bool _recoveryMode;

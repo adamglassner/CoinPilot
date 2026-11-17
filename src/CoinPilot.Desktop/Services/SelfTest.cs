@@ -330,6 +330,7 @@ public static class SelfTest
             await Dialog($"[{theme}] Tax document dialog", () => new TaxDocumentDialog(null, today.Year, tempFile, "W-2"));
             await Dialog($"[{theme}] Lock setup dialog", () => new SetLockDialog(change: false));
             await Dialog($"[{theme}] Recovery key dialog", () => new RecoveryKeyDialog("ABCDE-FGHJK-LMNPQ-RSTUV-WXYZ2") { ForceClose = true });
+            await Dialog($"[{theme}] What's new", () => new WhatsNewDialog());
             await Dialog($"[{theme}] Confirm dialog", () => new ConfirmDialog("Restore?", "Replace your data?", "Restore", danger: true));
             await Dialog($"[{theme}] Linked goal dialog", () => new GoalDialog(DataStore.Goals.Items[0]));
         }
@@ -566,6 +567,11 @@ public static class SelfTest
         var taxDoc = DataStore.TaxDocuments.Items.FirstOrDefault();
         Check("Tax documents are encrypted", taxDoc != null && DataLock.IsEncrypted(File.ReadAllBytes(FileVault.TaxDocumentPath(taxDoc))));
         Check("No plain backup copies left", !Directory.EnumerateFiles(DataStore.Folder, "*.bak", SearchOption.AllDirectories).Any());
+        var keyCopy = DataLock.CopyKey();
+        Check("Windows Hello: the right key opens the data, a wrong one doesn't", keyCopy != null && !DataLock.UnlockWithKey(new byte[32]) && DataLock.UnlockWithKey(keyCopy!));
+        Check("Windows Hello is off until turned on", !WindowsHello.IsOn);
+        var releases = WhatsNewDialog.Releases(WhatsNewDialog.ReadChangelog());
+        Check("What's new lists this version first", releases.Count > 5 && releases[0].Version.StartsWith(App.VersionText) && releases[0].Lines.Count > 0, releases.FirstOrDefault().Version ?? "(none)");
         await Step("Save while protected", () => DataStore.Transactions.Add(new Transaction { Payee = "While locked on", Category = "Other", Account = "Checking", Amount = -2m, Date = DateTime.Today }));
         Check("New saves are encrypted", DataLock.IsEncrypted(File.ReadAllBytes(txFile)));
 

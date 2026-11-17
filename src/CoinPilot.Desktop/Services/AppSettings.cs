@@ -30,6 +30,9 @@ public sealed class AppSettings
     /// <summary>Bill reminders already shown, as "billId|yyyy-MM-dd" (so each due date is announced once a day).</summary>
     public List<string> RemindersShown { get; set; } = [];
 
+    /// <summary>The version What's new was last shown for (it opens once after each update).</summary>
+    public string LastSeenVersion { get; set; } = "";
+
     private static string FilePath => Path.Combine(AppPaths.Root, "settings.json");
 
     public static AppSettings Load()
