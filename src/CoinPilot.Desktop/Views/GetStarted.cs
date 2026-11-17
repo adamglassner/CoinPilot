@@ -515,7 +515,7 @@ public sealed class GetStarted : UserControl
 
         var amountLabel = Label("");
         var amountBox = MoneyBox(_payAmount, "Paycheck amount");
-        var often = Chips(IncomeSchedule.All.Where(r => r != IncomeSchedule.Once), _payRepeats, r => { _payRepeats = r; Refresh(); });
+        var often = Chips(IncomeSchedule.All.Where(r => r != IncomeSchedule.Once), _payRepeats);
         var nextBox = new DatePicker { SelectedDate = _payNext, Width = 270, HorizontalAlignment = HorizontalAlignment.Left };
         AutomationProperties.SetName(nextBox, "Next payday");
         var day2Box = Box(_payDay2.ToString(), 90, "Second payday of the month").Also(b => b.TextAlignment = TextAlignment.Center);
@@ -547,6 +547,8 @@ public sealed class GetStarted : UserControl
         nextBox.SelectedDateChanged += (_, _) => { if (nextBox.SelectedDate is DateTime d) _payNext = d.Date; };
         foreach (var chip in kindChips.Children.OfType<RadioButton>())
             chip.Checked += (_, _) => { _payVaries = (chip.Tag as string) == "Changes each time"; Refresh(); };
+        foreach (var chip in often.Children.OfType<RadioButton>())
+            chip.Checked += (_, _) => { _payRepeats = chip.Tag as string ?? IncomeSchedule.EveryTwoWeeks; Refresh(); };
 
         void Refresh()
         {

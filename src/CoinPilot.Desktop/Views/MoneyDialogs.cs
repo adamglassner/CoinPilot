@@ -39,9 +39,11 @@ public sealed class AccountDialog : DialogShell
         {
             // One click for the common payment apps
             var apps = new WrapPanel();
+            TextBox? balanceLater = null;
+            Loaded += (_, _) => balanceLater = _balance;
             foreach (var (app, company) in AccountTypes.PaymentApps.Where(p => !DataStore.Accounts.Items.Any(a => string.Equals(a.Name, p.Name, StringComparison.OrdinalIgnoreCase))))
             {
-                var b = new Button { Content = app, Style = (Style)FindResource("GhostButton"), Margin = new Thickness(0, 0, 8, 8), Padding = new Thickness(14, 6, 14, 6), MinHeight = 32 };
+                var b = new Button { Content = app, Style = (System.Windows.Style)FindResource("GhostButton"), Margin = new System.Windows.Thickness(0, 0, 8, 8), Padding = new System.Windows.Thickness(14, 6, 14, 6), MinHeight = 32 };
                 System.Windows.Automation.AutomationProperties.SetName(b, $"Add {app}");
                 b.Click += (_, _) =>
                 {
@@ -49,7 +51,7 @@ public sealed class AccountDialog : DialogShell
                     _institution.Text = company;
                     foreach (var chip in _type.Children.OfType<RadioButton>())
                         chip.IsChecked = (chip.Tag as string ?? chip.Content as string) == AccountTypes.PaymentApp;
-                    _balance.Focus();
+                    balanceLater?.Focus();
                 };
                 apps.Children.Add(b);
             }
