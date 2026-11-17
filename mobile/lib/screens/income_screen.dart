@@ -208,6 +208,10 @@ class _IncomeActions extends StatelessWidget {
             Expanded(child: StatTile(label: 'Per month', value: Money.format(store.monthlyIncome(s), whole: true), note: s.varies ? 'Typical' : 'Same each time')),
           ],
         ),
+        if (s.hasBreakdown) ...[
+          const SectionTitle('Where your paycheck goes'),
+          PaycheckBreakdown(s),
+        ],
         const SizedBox(height: 18),
         FilledButton.icon(
           onPressed: () {
@@ -282,6 +286,11 @@ class _IncomeSheetState extends State<IncomeSheet> {
   late final _amount = TextEditingController(text: _s.amountCents > 0 ? Money.editable(_s.amountCents) : '');
   late final _day2 = TextEditingController(text: '${_s.day2}');
   late final _note = TextEditingController(text: _s.note);
+  late final _gross = TextEditingController(text: _s.grossCents > 0 ? Money.editable(_s.grossCents) : '');
+  late final List<(TextEditingController, TextEditingController)> _deductions = [
+    for (final (n, c) in _s.deductions) (TextEditingController(text: n), TextEditingController(text: Money.editable(c))),
+  ];
+  late bool _breakdown = _s.hasBreakdown;
   String? _error;
 
   @override
@@ -306,6 +315,14 @@ class _IncomeSheetState extends State<IncomeSheet> {
       if (day2 < 1 || day2 > 31 || day2 == _s.nextDate.day) return setState(() => _error = 'Enter the other day of the month it\'s paid (1 to 31).');
     }
     if (_s.isDone && (_s.repeats != IncomeSchedule.once || _s.nextDate.isAfter(_s.lastReceived!))) _s.lastReceived = null;
+    _s
+      ..grossCents = _breakdown ? (Money.parse(_gross.text) ?? 0) : 0
+      ..deductions = _breakdown
+          ? [
+              for (final (n, a) in _deductions)
+                if (n.text.trim().isNotEmpty && (Money.parse(a.text) ?? 0) > 0) (n.text.trim(), Money.parse(a.text)!),
+            ]
+          : [];
     _s
       ..name = name
       ..amountCents = cents
@@ -371,6 +388,45 @@ class _IncomeSheetState extends State<IncomeSheet> {
             value: _s.autoAdd,
             onChanged: (v) => setState(() => _s.autoAdd = v),
           ),
+        ],
+        if (!_breakdown)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => setState(() {
+                _breakdown = true;
+                if (_deductions.isEmpty) {
+                  for (final n in ['Federal tax', 'State tax', 'Social Security', 'Medicare', '401(k)', 'Health insurance']) {
+                    _deductions.add((TextEditingController(text: n), TextEditingController()));
+                  }
+                }
+              }),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Paycheck breakdown (before taxes)'),
+            ),
+          )
+        else ...[
+          const FieldLabel('Pay before deductions (gross)'),
+          MoneyField(controller: _gross, size: 22, onChanged: (_) => setState(() {})),
+          const FieldLabel('Deductions'),
+          for (final (i, (n, a)) in _deductions.indexed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(children: [
+                Expanded(flex: 3, child: TextField(controller: n, decoration: const InputDecoration(hintText: 'Deduction'))),
+                const SizedBox(width: 8),
+                Expanded(flex: 2, child: TextField(controller: a, onChanged: (_) => setState(() {}), keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(hintText: '0.00'))),
+                IconButton(tooltip: 'Remove', onPressed: () => setState(() => _deductions.removeAt(i)), icon: const Icon(Icons.close_rounded)),
+              ]),
+            ),
+          Row(children: [
+            TextButton.icon(onPressed: () => setState(() => _deductions.add((TextEditingController(), TextEditingController()))), icon: const Icon(Icons.add_rounded, size: 18), label: const Text('Add a deduction')),
+            const Spacer(),
+            Builder(builder: (context) {
+              final net = (Money.parse(_gross.text) ?? 0) - _deductions.fold<int>(0, (s, d) => s + (Money.parse(d.$2.text) ?? 0));
+              return Text('Take-home ${Money.format(net)}', style: const TextStyle(fontWeight: FontWeight.w700));
+            }),
+          ]),
         ],
         LabeledField(label: 'Note (optional)', controller: _note),
       ],
@@ -464,6 +520,55 @@ class _PaydaySheetState extends State<PaydaySheet> {
         ],
         const SizedBox(height: 12),
         Text('Not here yet? Untick it and WillowWallet asks again next time.', style: TextStyle(fontSize: 13, color: p.muted)),
+      ],
+    );
+  }
+}
+
+/// Gross pay to take-home: a bar split into each deduction and what lands in your account.
+class PaycheckBreakdown extends StatelessWidget {
+  const PaycheckBreakdown(this.s, {super.key});
+  final IncomeSource s;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.pal;
+    final gross = s.grossCents;
+    final deductions = s.deductions;
+    final taken = deductions.fold<int>(0, (x, d) => x + d.$2);
+    final net = gross - taken;
+    final colors = [p.danger, p.warn, const Color(0xFF6C8EF5), const Color(0xFFB678E5), const Color(0xFF4FB3BF), const Color(0xFFE58FB0), p.muted];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            height: 16,
+            child: Row(children: [
+              for (final (i, d) in deductions.indexed) Expanded(flex: (d.$2 * 1000 ~/ (gross <= 0 ? 1 : gross)).clamp(1, 1000), child: Container(color: colors[i % colors.length])),
+              if (net > 0) Expanded(flex: (net * 1000 ~/ (gross <= 0 ? 1 : gross)).clamp(1, 1000), child: Container(color: p.positive)),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 10),
+        for (final (i, d) in deductions.indexed)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(children: [
+              Container(width: 10, height: 10, decoration: BoxDecoration(color: colors[i % colors.length], shape: BoxShape.circle)),
+              const SizedBox(width: 8),
+              Expanded(child: Text(d.$1)),
+              Text('${Money.format(d.$2)}  ${gross <= 0 ? '' : '${(d.$2 * 100 / gross).round()}%'}', style: TextStyle(color: p.muted)),
+            ]),
+          ),
+        const Divider(),
+        Row(children: [
+          Container(width: 10, height: 10, decoration: BoxDecoration(color: p.positive, shape: BoxShape.circle)),
+          const SizedBox(width: 8),
+          const Expanded(child: Text('Take-home', style: TextStyle(fontWeight: FontWeight.w700))),
+          Text('${Money.format(net)} of ${Money.format(gross)}', style: const TextStyle(fontWeight: FontWeight.w700)),
+        ]),
       ],
     );
   }

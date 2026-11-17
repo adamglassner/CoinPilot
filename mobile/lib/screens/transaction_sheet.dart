@@ -6,6 +6,7 @@ import '../categories.dart';
 import '../dates.dart';
 import '../kit.dart';
 import '../receipt_reader.dart';
+import '../records.dart';
 import '../models.dart';
 import '../money.dart';
 import '../platform.dart';
@@ -64,6 +65,13 @@ class _TransactionSheetState extends State<TransactionSheet> {
   late DateTime _date = _old?.date ?? widget.prefill?.date ?? dayOnly(DateTime.now());
   late String _receipt = _old?.receipt ?? widget.prefill?.receipt ?? '';
   late String _paidBy = _old?.paidBy ?? '';
+  late DateTime? _returnBy = _old?.returnBy;
+  late DateTime? _warranty = _old?.warrantyUntil;
+  late bool _expect = (_old?.expectBackCents ?? 0) > 0;
+  late final _expectAmount = TextEditingController(text: (_old?.expectBackCents ?? 0) > 0 ? Money.editable(_old!.expectBackCents) : '');
+  late final _expectFrom = TextEditingController(text: _old?.expectFrom ?? '');
+  late String _deductible = _old?.deductible ?? '';
+  late bool _extras = _returnBy != null || _warranty != null || _expect || _deductible.isNotEmpty;
   late final List<_SplitLine> _splits = [for (final (c, cents) in _old?.splits ?? const <(String, int)>[]) _SplitLine(c, cents)];
   bool _categoryChosen = false;
   bool _more = false;
@@ -164,6 +172,11 @@ class _TransactionSheetState extends State<TransactionSheet> {
       'Tags': tags,
       'Receipt': _receipt,
       'PaidBy': _transfer ? '' : _paidBy,
+      'ReturnBy': _income || _transfer || _returnBy == null ? null : isoDay(_returnBy!),
+      'WarrantyUntil': _income || _transfer || _warranty == null ? null : isoDay(_warranty!),
+      'ExpectBack': !_income && !_transfer && _expect ? (Money.parse(_expectAmount.text) ?? cents!) / 100 : 0,
+      'ExpectFrom': !_income && !_transfer && _expect ? _expectFrom.text.trim() : '',
+      'Deductible': _transfer ? '' : _deductible,
     };
     if (_paidBy.isNotEmpty && _paidBy != store.settings.lastPaidBy) store.updateSettings((s) => s.lastPaidBy = _paidBy);
     final t = Txn(
@@ -374,6 +387,41 @@ class _TransactionSheetState extends State<TransactionSheet> {
         else ...[
           LabeledField(label: 'Note (optional)', controller: _note, maxLines: 2, hint: 'Anything to remember'),
           LabeledField(label: 'Tags (optional)', controller: _tags, hint: 'vacation, work trip', caps: TextCapitalization.none),
+        ],
+        if (!_transfer && !_extras)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => setState(() => _extras = true),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(_income ? 'Tax deductible?' : 'Return by, warranty, money back, taxes'),
+            ),
+          )
+        else if (!_transfer) ...[
+          if (!_income) ...[
+            const FieldLabel('Return by (optional)'),
+            DateTile(date: _returnBy, allowClear: true, emptyText: 'No return deadline', first: DateTime(2000), onChanged: (d) => setState(() => _returnBy = d)),
+            const FieldLabel('Warranty until (optional)'),
+            DateTile(date: _warranty, allowClear: true, emptyText: 'No warranty', first: DateTime(2000), onChanged: (d) => setState(() => _warranty = d)),
+            const SizedBox(height: 6),
+            SwitchRow(
+              title: 'Expecting money back',
+              subtitle: 'A refund, or work paying you back. Listed under Owed to you until it comes.',
+              value: _expect,
+              onChanged: (v) => setState(() => _expect = v),
+            ),
+            if (_expect) ...[
+              const FieldLabel('How much'),
+              MoneyField(controller: _expectAmount, size: 22, hint: _amount.text.isEmpty ? null : _amount.text),
+              LabeledField(label: 'From', controller: _expectFrom, hint: 'Amazon, work, a friend', caps: TextCapitalization.words),
+            ],
+          ],
+          const FieldLabel('Tax deductible'),
+          Choices(
+            options: const ['No', ...deductibleKinds],
+            selected: _deductible.isEmpty ? 'No' : _deductible,
+            onChanged: (v) => setState(() => _deductible = v == 'No' ? '' : v),
+          ),
         ],
         if (_old?.importId.isNotEmpty ?? false) ...[
           const SizedBox(height: 10),

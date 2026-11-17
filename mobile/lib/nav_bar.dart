@@ -10,7 +10,11 @@ import 'screens/forecast_screen.dart';
 import 'screens/goals_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/income_screen.dart';
+import 'screens/documents_screen.dart';
+import 'screens/gifts_screen.dart';
 import 'screens/household_screen.dart';
+import 'screens/owed_screen.dart';
+import 'screens/wishlist_screen.dart';
 import 'screens/receipts_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/taxes_screen.dart';
@@ -32,6 +36,10 @@ class BarPage {
         'forecast' => const ForecastScreen(),
         'receipts' => const ReceiptsScreen(),
         'household' => const HouseholdScreen(),
+        'owed' => const OwedScreen(),
+        'documents' => const DocumentsScreen(),
+        'wishlist' => const WishlistScreen(),
+        'gifts' => const GiftsScreen(),
         'accounts' => const AccountsScreen(),
         'bills' => const BillsScreen(),
         'income' => const IncomeScreen(),
@@ -54,6 +62,10 @@ const barPages = [
   BarPage('goals', 'Goals', Icons.flag_outlined, Icons.flag_rounded, 'What you\'re saving for'),
   BarPage('receipts', 'Receipts', Icons.receipt_outlined, Icons.receipt_rounded, 'Scan and keep receipts'),
   BarPage('household', 'Household', Icons.people_outline_rounded, Icons.people_rounded, 'Who paid what, and who owes whom'),
+  BarPage('owed', 'Owed to you', Icons.handshake_outlined, Icons.handshake_rounded, 'Refunds, IOUs, returns and warranties'),
+  BarPage('wishlist', 'Wishlist', Icons.favorite_border_rounded, Icons.favorite_rounded, 'Want it? Wait 30 days'),
+  BarPage('gifts', 'Gifts', Icons.card_giftcard_outlined, Icons.card_giftcard_rounded, 'Holiday and birthday gift plans'),
+  BarPage('documents', 'Documents', Icons.folder_special_outlined, Icons.folder_special_rounded, 'Insurance, titles, manuals'),
   BarPage('reports', 'Reports', Icons.insights_outlined, Icons.insights_rounded, 'Trends and year in review'),
   BarPage('taxes', 'Taxes', Icons.folder_copy_outlined, Icons.folder_copy_rounded, 'Documents by tax year'),
 ];

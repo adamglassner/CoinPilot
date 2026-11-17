@@ -8,6 +8,9 @@ String newId() => List.generate(16, (_) => _rng.nextInt(256).toRadixString(16).p
 String _two(int n) => n.toString().padLeft(2, '0');
 String _isoDay(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${_two(d.month)}-${_two(d.day)}T00:00:00';
 DateTime _date(Object? v, DateTime fallback) => v is String ? (DateTime.tryParse(v) ?? fallback) : fallback;
+/// Kinds of tax-deductible spending (Taxes totals them by year).
+const deductibleKinds = ['Charity', 'Medical', 'Business', 'Education', 'Other'];
+
 int _cents(Object? v) => v is num ? (v * 100).round() : 0;
 final _epoch = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
@@ -63,6 +66,24 @@ class Txn {
 
   /// Shared household: who paid ("" when it isn't shared).
   String get paidBy => extra['PaidBy'] as String? ?? '';
+
+  /// The last day it can be returned, and when its warranty ends.
+  DateTime? get returnBy => _day(extra['ReturnBy']);
+  DateTime? get warrantyUntil => _day(extra['WarrantyUntil']);
+
+  /// Money expected back (a refund, or work paying you back), who from, and whether it came.
+  int get expectBackCents => _cents(extra['ExpectBack']);
+  String get expectFrom => extra['ExpectFrom'] as String? ?? '';
+  bool get backReceived => extra['BackReceived'] == true;
+  bool get expectingBack => expectBackCents > 0 && !backReceived;
+
+  /// Tax deductible: "Charity", "Medical", "Business", "Education" or "Other"; "" when it isn't.
+  String get deductible => extra['Deductible'] as String? ?? '';
+
+  static DateTime? _day(Object? v) {
+    final d = v is String && v.isNotEmpty ? DateTime.tryParse(v) : null;
+    return d == null ? null : DateTime(d.year, d.month, d.day);
+  }
   String get importId => extra['ImportId'] as String? ?? '';
   /// The split pieces as (category, cents), always positive.
   List<(String, int)> get splits => [

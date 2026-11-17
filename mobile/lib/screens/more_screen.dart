@@ -4,6 +4,7 @@ import '../dates.dart';
 import '../finance.dart';
 import '../kit.dart';
 import '../main.dart' show AppShellState;
+import '../extras.dart';
 import '../nav_bar.dart';
 import '../money.dart';
 import '../store.dart';
@@ -53,6 +54,10 @@ class MoreScreen extends StatelessWidget {
           goals.isEmpty ? '' : '${(goals.fold<double>(0, (s, g) => s + store.fraction(g)) / goals.length * 100).round()}% on average', () => open('goals')),
       'receipts': () => _Feature('Receipts', Icons.receipt_rounded, '${store.transactions.where((t) => t.receipt.isNotEmpty).length} kept', 'scan to add', () => open('receipts')),
       'household': () => _Feature('Household', Icons.people_outline_rounded, store.prefs.household ? store.prefs.householdPeople.join(' & ') : 'Share expenses', store.prefs.household ? 'who owes whom' : '', () => open('household')),
+      'owed': () => _Feature('Owed to you', Icons.handshake_outlined, '${store.expectingBack().length + store.iouBalances().length} open', 'refunds, IOUs', () => open('owed')),
+      'wishlist': () => _Feature('Wishlist', Icons.favorite_border_rounded, '${store.wishlist.where((w) => w.waiting).length} waiting', 'cooling off', () => open('wishlist')),
+      'gifts': () => _Feature('Gifts', Icons.card_giftcard_outlined, store.giftPlans.isEmpty ? 'Plan gifts' : '${store.giftPlans.length} people', 'holidays, birthdays', () => open('gifts')),
+      'documents': () => _Feature('Documents', Icons.folder_special_outlined, '${store.vaultDocs.length} kept', 'insurance, titles', () => open('documents')),
       'reports': () => _Feature('Reports', Icons.insights_rounded, 'Trends', 'year in review', () => open('reports')),
       'taxes': () => _Feature('Taxes', Icons.folder_copy_outlined, '${store.taxDocs.length} document${store.taxDocs.length == 1 ? '' : 's'}', 'by tax year', () => open('taxes')),
     };

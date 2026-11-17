@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../dates.dart';
 import '../finance.dart';
+import '../extras.dart';
 import '../kit.dart';
 import '../models.dart';
 import '../money.dart';
@@ -86,6 +87,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
         if (banks.isNotEmpty) group('Bank and cash', banks),
         if (apps.isNotEmpty) group('Payment apps', apps),
         if (cards.isNotEmpty) group('Credit cards', cards),
+        if (cards.isNotEmpty) _CardHelper(),
+        if (all.isNotEmpty) _RunwayCard(),
         if (closed.isNotEmpty) ...[
           const SizedBox(height: 10),
           TextButton(
@@ -203,6 +206,9 @@ class _AccountSheetState extends State<AccountSheet> {
   late final _institution = TextEditingController(text: _a.institution);
   late final _balance = TextEditingController(
       text: widget.existing == null ? '' : Money.editable(_a.isLiability ? -_a.startingCents : _a.startingCents));
+  late final _limit = TextEditingController(text: _a.creditLimitCents > 0 ? Money.editable(_a.creditLimitCents) : '');
+  late final _statement = TextEditingController(text: _a.statementDay > 0 ? '${_a.statementDay}' : '');
+  late final _due = TextEditingController(text: _a.paymentDueDay > 0 ? '${_a.paymentDueDay}' : '');
   String? _error;
 
   @override
@@ -233,6 +239,12 @@ class _AccountSheetState extends State<AccountSheet> {
         ..name = name
         ..institution = _institution.text.trim()
         ..startingCents = _a.isLiability ? -cents : cents;
+      if (_a.isLiability) {
+        _a
+          ..creditLimitCents = Money.parse(_limit.text) ?? 0
+          ..statementDay = (int.tryParse(_statement.text.trim()) ?? 0).clamp(0, 31)
+          ..paymentDueDay = (int.tryParse(_due.text.trim()) ?? 0).clamp(0, 31);
+      }
       store.put(_a);
       if (old != null && old != name) store.renameAccount(old, name);
     });
@@ -286,6 +298,15 @@ class _AccountSheetState extends State<AccountSheet> {
         const FieldLabel('Type'),
         Choices(options: AccountTypes.all, selected: _a.type, icons: accountIcon, onChanged: (v) => setState(() => _a.type = v)),
         LabeledField(label: 'Bank or company (optional)', controller: _institution, caps: TextCapitalization.words),
+        if (_a.isLiability) ...[
+          const FieldLabel('Credit limit (optional)'),
+          MoneyField(controller: _limit, size: 22),
+          Row(children: [
+            Expanded(child: LabeledField(label: 'Statement closes on day', controller: _statement, hint: '25', keyboard: TextInputType.number)),
+            const SizedBox(width: 10),
+            Expanded(child: LabeledField(label: 'Payment due on day', controller: _due, hint: '18', keyboard: TextInputType.number)),
+          ]),
+        ],
         FieldLabel(_a.isLiability ? 'What you owed on' : 'Balance on'),
         DateTile(date: _a.balanceDate, onChanged: (d) => setState(() => _a.balanceDate = d ?? _a.balanceDate)),
         const SizedBox(height: 10),
@@ -382,6 +403,92 @@ class _TransferSheetState extends State<TransferSheet> {
         DateTile(date: _date, onChanged: (d) => setState(() => _date = d ?? _date)),
         LabeledField(label: 'Note (optional)', controller: _note),
       ],
+    );
+  }
+}
+
+/// Credit cards: how much of each limit you're using, and paying it in full by the due date to avoid interest.
+class _CardHelper extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final store = StoreScope.of(context);
+    final p = context.pal;
+    final cards = store.creditCards(DateTime.now());
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Panel(
+        key: const Key('card-helper'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('CREDIT CARD HELPER', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.6, color: p.muted)),
+            for (final c in cards)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(children: [
+                      Expanded(child: Text(c.account.name, style: const TextStyle(fontWeight: FontWeight.w700))),
+                      if (c.used != null)
+                        Text('${(c.used! * 100).round()}% used',
+                            style: TextStyle(fontWeight: FontWeight.w700, color: c.used! > 0.3 ? p.warn : p.positive)),
+                    ]),
+                    if (c.used != null) ...[
+                      const SizedBox(height: 6),
+                      ProgressBar(value: c.used!.clamp(0, 1).toDouble(), color: c.used! > 0.3 ? p.warn : p.accent, height: 6),
+                    ],
+                    const SizedBox(height: 4),
+                    Text(
+                      c.owedCents == 0
+                          ? 'Paid off.'
+                          : c.nextDue == null
+                              ? 'You owe ${Money.format(c.owedCents)}. Add the due day (edit the card) for a reminder of when to pay.'
+                              : 'Pay ${Money.format(c.owedCents)} by ${shortDate(c.nextDue!)} to avoid interest.',
+                      style: TextStyle(fontSize: 13, color: p.muted, height: 1.3),
+                    ),
+                    if (c.used != null && c.used! > 0.3)
+                      Text('Keeping it under 30% of the limit helps your credit score.', style: TextStyle(fontSize: 12.5, color: p.warn)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Emergency fund runway: how many months your savings would cover your essentials.
+class _RunwayCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final store = StoreScope.of(context);
+    final p = context.pal;
+    final r = store.runway(DateTime.now());
+    final months = r.months;
+    if (months == null) return const SizedBox.shrink();
+    final color = months >= 3 ? p.positive : months >= 1 ? p.warn : p.danger;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Panel(
+        key: const Key('runway'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('EMERGENCY FUND', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.6, color: p.muted)),
+            const SizedBox(height: 4),
+            Text('${months.toStringAsFixed(1)} months', style: display(26, color, weight: FontWeight.w800)),
+            Text('Your savings (${Money.format(r.savedCents, whole: true)}) would cover your bills and essentials (about ${Money.format(r.essentialsPerMonth, whole: true)} a month) for that long.',
+                style: TextStyle(fontSize: 13, color: p.muted, height: 1.35)),
+            const SizedBox(height: 8),
+            ProgressBar(value: (months / 6).clamp(0, 1).toDouble(), color: color, height: 7),
+            const SizedBox(height: 6),
+            Text(months >= 6 ? 'Six months or more: a strong cushion.' : 'Three to six months is a common goal: ${Money.format(r.threeMonths, whole: true)} for three.',
+                style: TextStyle(fontSize: 12.5, color: p.muted)),
+          ],
+        ),
+      ),
     );
   }
 }

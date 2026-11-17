@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../dates.dart';
 import '../finance.dart';
 import '../insights.dart';
+import '../records.dart';
+import '../extras.dart';
 import '../kit.dart';
 import '../money.dart';
 import '../store.dart';
@@ -85,6 +87,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
           icon: const Icon(Icons.summarize_outlined, size: 19),
           label: const Text('Monthly report'),
         ),
+        const SectionTitle('No-spend days'),
+        _NoSpendPanel(now: now),
         const SectionTitle('Compared with last year'),
         _YearOverYearPanel(now: now),
         const SizedBox(height: 14),
@@ -456,6 +460,78 @@ class _YearOverYearPanel extends StatelessWidget {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// This month's days: the ones without spending in green, a streak, and an optional goal.
+class _NoSpendPanel extends StatelessWidget {
+  const _NoSpendPanel({required this.now});
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = StoreScope.of(context);
+    final p = context.pal;
+    final month = store.budgetMonth(now);
+    final end = store.monthEnd(month);
+    final free = {for (final d in store.noSpendDays(now)) isoDay(d)};
+    final streak = store.noSpendStreak(now);
+    final goal = store.prefs.noSpendGoal;
+    final today = dayOnly(now);
+    final days = [for (var d = month; !d.isAfter(end); d = DateTime(d.year, d.month, d.day + 1)) d];
+    return Panel(
+      key: const Key('no-spend'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            Expanded(
+              child: Text('${free.length} no-spend day${free.length == 1 ? '' : 's'}${goal > 0 ? ' of $goal' : ''} this month',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            ),
+            if (streak > 1) Text('🔥 $streak in a row', style: TextStyle(color: p.positive, fontWeight: FontWeight.w700)),
+          ]),
+          if (goal > 0) ...[
+            const SizedBox(height: 8),
+            ProgressBar(value: (free.length / goal).clamp(0, 1).toDouble(), color: free.length >= goal ? p.positive : p.accent, height: 7),
+          ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 5,
+            runSpacing: 5,
+            children: [
+              for (final d in days)
+                Tooltip(
+                  message: '${shortDate(d)}${d.isAfter(today) ? '' : free.contains(isoDay(d)) ? ': no spending' : ': spent'}',
+                  child: Container(
+                    width: 26,
+                    height: 26,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: d.isAfter(today) ? p.surfaceAlt : free.contains(isoDay(d)) ? p.positive.withValues(alpha: 0.85) : p.border,
+                      borderRadius: BorderRadius.circular(7),
+                      border: sameDay(d, today) ? Border.all(color: p.text, width: 1.5) : null,
+                    ),
+                    child: Text('${d.day}', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: !d.isAfter(today) && free.contains(isoDay(d)) ? Colors.white : p.muted)),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(children: [
+            Text('Challenge:', style: TextStyle(fontSize: 13, color: p.muted)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Choices(
+                options: const ['Off', '5 days', '10 days', '15 days'],
+                selected: goal == 0 ? 'Off' : '$goal days',
+                onChanged: (v) => store.updatePrefs((x) => x.noSpendGoal = v == 'Off' ? 0 : int.parse(v.split(' ').first)),
+              ),
+            ),
+          ]),
         ],
       ),
     );

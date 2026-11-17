@@ -10,7 +10,11 @@ import 'screens/budgets_screen.dart';
 import 'screens/debts_screen.dart';
 import 'calculator.dart';
 import 'screens/forecast_screen.dart';
+import 'screens/documents_screen.dart';
+import 'screens/gifts_screen.dart';
 import 'screens/household_screen.dart';
+import 'screens/owed_screen.dart';
+import 'screens/wishlist_screen.dart';
 import 'screens/receipts_screen.dart';
 import 'screens/get_started.dart';
 import 'screens/goals_screen.dart';
@@ -60,6 +64,10 @@ class DesktopShellState extends State<DesktopShell> {
     _Section('goals', 'Goals', Icons.flag_outlined, Icons.flag_rounded),
     _Section('receipts', 'Receipts', Icons.receipt_outlined, Icons.receipt_rounded),
     _Section('household', 'Household', Icons.people_outline_rounded, Icons.people_rounded),
+    _Section('owed', 'Owed to you', Icons.handshake_outlined, Icons.handshake_rounded),
+    _Section('wishlist', 'Wishlist', Icons.favorite_border_rounded, Icons.favorite_rounded),
+    _Section('gifts', 'Gifts', Icons.card_giftcard_outlined, Icons.card_giftcard_rounded),
+    _Section('documents', 'Documents', Icons.folder_special_outlined, Icons.folder_special_rounded),
     _Section('reports', 'Reports', Icons.insights_outlined, Icons.insights_rounded),
     _Section('taxes', 'Taxes', Icons.folder_copy_outlined, Icons.folder_copy_rounded),
     _Section('sync', 'Sync & Devices', Icons.sync_rounded, Icons.sync_rounded),
@@ -123,6 +131,10 @@ class DesktopShellState extends State<DesktopShell> {
         'goals' => const GoalsScreen(),
         'receipts' => const ReceiptsScreen(),
         'household' => const HouseholdScreen(),
+        'owed' => const OwedScreen(),
+        'wishlist' => const WishlistScreen(),
+        'gifts' => const GiftsScreen(),
+        'documents' => const DocumentsScreen(),
         'reports' => const ReportsScreen(),
         'taxes' => const TaxesScreen(),
         'sync' => const SyncScreen(),

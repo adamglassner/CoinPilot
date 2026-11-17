@@ -25,6 +25,11 @@ class Backup {
     'rules': 'rules.json',
     'income': 'income.json',
     'tax-documents': 'tax-documents.json',
+    'ious': 'ious.json',
+    'mileage': 'mileage.json',
+    'documents': 'documents.json',
+    'wishlist': 'wishlist.json',
+    'gift-plans': 'gift-plans.json',
   };
 
   static String suggestedName(DateTime now) =>
@@ -51,6 +56,10 @@ class Backup {
     for (final d in store.taxDocs.where((d) => d.fileName.isNotEmpty)) {
       final path = store.taxPath(d);
       if (path != null && await File(path).exists()) add('taxes/${d.year}/${d.fileName}', await File(path).readAsBytes());
+    }
+    for (final d in store.vaultDocs.where((d) => d.fileName.isNotEmpty)) {
+      final path = store.docPath(d);
+      if (path != null && await File(path).exists()) add('documents/${d.fileName}', await File(path).readAsBytes());
     }
     return Uint8List.fromList(ZipEncoder().encode(archive)!);
   }
@@ -80,7 +89,7 @@ class Backup {
       if (name.contains('..') || name.startsWith('/')) throw const FormatException('That backup contains unsafe file names.');
       files[name] = f.content as List<int>;
     }
-    const known = ['transactions.json', 'budgets.json', 'accounts.json', 'debts.json', 'bills.json', 'goals.json', 'categories.json', 'preferences.json', 'tax-documents.json'];
+    const known = ['transactions.json', 'budgets.json', 'accounts.json', 'debts.json', 'bills.json', 'goals.json', 'categories.json', 'preferences.json', 'tax-documents.json', 'ious.json', 'mileage.json', 'documents.json', 'wishlist.json', 'gift-plans.json'];
     if (!files.keys.any((k) => known.contains(k.toLowerCase()))) throw const FormatException('That file isn\'t a WillowWallet backup.');
 
     // Protected on the PC: unlock the data key with the PIN, password or recovery key.
@@ -114,7 +123,7 @@ class Backup {
 
     final attachments = <String, List<int>>{};
     for (final MapEntry(:key, :value) in files.entries) {
-      if (key.startsWith('receipts/') || key.startsWith('taxes/')) attachments[key] = await plain(value);
+      if (key.startsWith('receipts/') || key.startsWith('taxes/') || key.startsWith('documents/')) attachments[key] = await plain(value);
     }
     return RestoredBackup(data, attachments, protected: lock != null);
   }
@@ -123,7 +132,7 @@ class Backup {
   static Future<void> restore(Store store, RestoredBackup backup) async {
     final dir = store.filesDir;
     if (dir != null) {
-      for (final folder in ['receipts', 'taxes']) {
+      for (final folder in ['receipts', 'taxes', 'documents']) {
         final d = Directory('${dir.path}/$folder');
         if (await d.exists()) await d.delete(recursive: true);
       }

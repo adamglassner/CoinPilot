@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'dates.dart';
 import 'finance.dart';
+import 'extras.dart';
 import 'forecast.dart';
 import 'models.dart';
 import 'money.dart';
@@ -99,7 +100,8 @@ extension Insights on Store {
           'On ${shortDate(low.date)}${f.nextPayday != null && low.date.isBefore(f.nextPayday!) ? ', before payday' : ''}. See Forecast.'));
     }
 
-    const order = {'over': 0, 'dip': 1, 'budget': 2, 'bill-price': 3, 'unusual': 4};
+    list.addAll(extraAlerts(today));
+    const order = {'over': 0, 'dip': 1, 'return': 2, 'budget': 3, 'bill-price': 4, 'unusual': 5, 'owed': 6, 'warranty': 7, 'document': 8, 'wish': 9};
     list.sort((a, b) => order[a.kind]!.compareTo(order[b.kind]!));
     if (includeDismissed) return list;
     final gone = p.dismissedAlerts.toSet();

@@ -45,7 +45,10 @@ class Store extends ChangeNotifier {
   bool _batchChanged = false, _batchLocal = false;
 
   /// Kinds of records kept as JSON (the same as the Windows app's files), by collection then id.
-  static const recordCollections = ['accounts', 'debts', 'bills', 'goals', 'categories', 'rules', 'income', 'tax-documents', 'settings'];
+  static const recordCollections = [
+    'accounts', 'debts', 'bills', 'goals', 'categories', 'rules', 'income', 'tax-documents', //
+    'ious', 'mileage', 'documents', 'wishlist', 'gift-plans', 'settings',
+  ];
   final Map<String, Map<String, Map<String, dynamic>>> _raw = {for (final c in recordCollections) c: {}};
 
   /// The sync engine's saved state (server, session, what the server has). Empty when not syncing.
@@ -66,6 +69,11 @@ class Store extends ChangeNotifier {
   List<Rule> get rules => [for (final j in _list('rules')) Rule(j)];
   List<IncomeSource> get incomeSources => [for (final j in _list('income')) IncomeSource(j)];
   List<TaxDoc> get taxDocs => [for (final j in _list('tax-documents')) TaxDoc(j)];
+  List<Iou> get ious => [for (final j in _list('ious')) Iou(j)];
+  List<MileageTrip> get mileage => [for (final j in _list('mileage')) MileageTrip(j)];
+  List<VaultDoc> get vaultDocs => [for (final j in _list('documents')) VaultDoc(j)];
+  List<WishItem> get wishlist => [for (final j in _list('wishlist')) WishItem(j)];
+  List<GiftPlan> get giftPlans => [for (final j in _list('gift-plans')) GiftPlan(j)];
   Prefs get prefs => _raw['settings']!['preferences'] == null ? Prefs.defaults() : Prefs(_raw['settings']!['preferences']!);
   DebtPlanSettings get debtPlan =>
       _raw['settings']!['debt-plan'] == null ? DebtPlanSettings.defaults() : DebtPlanSettings(_raw['settings']!['debt-plan']!);
@@ -76,7 +84,7 @@ class Store extends ChangeNotifier {
   bool get isEmpty =>
       _txns.isEmpty &&
       _budgets.isEmpty &&
-      ['accounts', 'debts', 'bills', 'goals', 'income', 'tax-documents'].every((c) => _raw[c]!.isEmpty);
+      ['accounts', 'debts', 'bills', 'goals', 'income', 'tax-documents', 'ious', 'mileage', 'documents', 'wishlist', 'gift-plans'].every((c) => _raw[c]!.isEmpty);
 
   // ----- Saving -----
 
@@ -252,6 +260,7 @@ class Store extends ChangeNotifier {
     _raw['settings']!['debt-plan'] = d.j..['UpdatedAt'] = stamp();
     _deleteFolder('receipts');
     _deleteFolder('taxes');
+    _deleteFolder('documents');
     _changed();
   }
 
@@ -267,6 +276,7 @@ class Store extends ChangeNotifier {
   // ----- Files (receipts and tax documents) -----
 
   String? receiptPath(String fileName) => filesDir == null || fileName.isEmpty ? null : '${filesDir!.path}/receipts/$fileName';
+  String? docPath(VaultDoc d) => filesDir == null || d.fileName.isEmpty ? null : '${filesDir!.path}/documents/${d.fileName}';
   String? taxPath(TaxDoc d) => filesDir == null || d.fileName.isEmpty ? null : '${filesDir!.path}/taxes/${d.year}/${d.fileName}';
 
   /// Every file a record uses, as (name on the server, path here).
@@ -275,6 +285,8 @@ class Store extends ChangeNotifier {
           if (t.receipt.isNotEmpty && receiptPath(t.receipt) != null) ('receipt/${t.receipt}', receiptPath(t.receipt)!),
         for (final d in taxDocs)
           if (d.fileName.isNotEmpty && taxPath(d) != null) ('tax/${d.fileName}', taxPath(d)!),
+        for (final d in vaultDocs)
+          if (d.fileName.isNotEmpty && docPath(d) != null) ('document/${d.fileName}', docPath(d)!),
       ];
 
   /// Copies a file into the app's folder under a new random name. Returns that name.

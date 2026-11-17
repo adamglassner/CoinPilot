@@ -22,6 +22,11 @@ class AlertsCard extends StatelessWidget {
           'budget' => Icons.pie_chart_outline_rounded,
           'bill-price' => Icons.trending_up_rounded,
           'dip' => Icons.south_east_rounded,
+          'return' => Icons.assignment_return_outlined,
+          'warranty' => Icons.verified_user_outlined,
+          'owed' => Icons.hourglass_bottom_rounded,
+          'document' => Icons.description_outlined,
+          'wish' => Icons.favorite_border_rounded,
           _ => Icons.bolt_rounded,
         };
     Color color(String kind) => kind == 'over' || kind == 'dip' ? p.danger : p.warn;

@@ -128,6 +128,14 @@ class Account extends Rec {
   bool get isClosed => flag('IsClosed');
   set isClosed(bool v) => j['IsClosed'] = v;
   bool get isLiability => type == AccountTypes.creditCard;
+
+  /// Credit cards: the limit, and the days the statement closes and the payment is due (0 = not set).
+  int get creditLimitCents => money('CreditLimit');
+  set creditLimitCents(int v) => setMoney('CreditLimit', v);
+  int get statementDay => whole('StatementDay');
+  set statementDay(int v) => j['StatementDay'] = v;
+  int get paymentDueDay => whole('PaymentDueDay');
+  set paymentDueDay(int v) => j['PaymentDueDay'] = v;
 }
 
 // ----- Debts -----
@@ -401,6 +409,16 @@ class IncomeSource extends Rec {
 
   bool get isDone => repeats == IncomeSchedule.once && lastReceived != null;
 
+  /// Paycheck breakdown: pay before deductions, and each deduction (taxes, 401k, insurance…).
+  int get grossCents => money('Gross');
+  set grossCents(int v) => setMoney('Gross', v);
+  List<(String, int)> get deductions => [
+        for (final d in (j['Deductions'] as List? ?? const []))
+          if (d is Map) ('${d['Name'] ?? ''}', toCents(d['Amount'])),
+      ];
+  set deductions(List<(String, int)> v) => j['Deductions'] = [for (final (n, c) in v) {'Name': n, 'Amount': c / 100}];
+  bool get hasBreakdown => grossCents > 0;
+
   /// Payday has come and WillowWallet needs an answer (an amount, or a confirmation).
   bool get needsAsking => !isDone && (varies || !autoAdd);
 }
@@ -431,6 +449,161 @@ class TaxDoc extends Rec {
   int get size => whole('Size');
   String get note => str('Note');
   set note(String v) => j['Note'] = v;
+}
+
+// ----- Owed to you: IOUs -----
+
+/// Money lent to or borrowed from someone. Positive: they owe you; negative: you owe them.
+class Iou extends Rec {
+  Iou(super.j);
+  factory Iou.create({required String person, required int cents, DateTime? date, String note = ''}) =>
+      Iou(Rec.fresh({'Person': person, 'Amount': cents / 100, 'Date': isoDay(date ?? DateTime.now()), 'Note': note, 'Settled': false, 'Payments': <dynamic>[]}));
+  Iou copy() => Iou(Rec.copyOf(j));
+  @override
+  String get collection => 'ious';
+
+  String get person => str('Person');
+  set person(String v) => j['Person'] = v;
+  int get cents => money('Amount');
+  set cents(int v) => setMoney('Amount', v);
+  DateTime get date => day('Date');
+  set date(DateTime v) => setDay('Date', v);
+  String get note => str('Note');
+  set note(String v) => j['Note'] = v;
+  bool get settled => flag('Settled');
+  set settled(bool v) => j['Settled'] = v;
+
+  /// Paid back so far (always positive).
+  List<MoneyEntry> get payments => entries('Payments');
+  set payments(List<MoneyEntry> v) => setEntries('Payments', v);
+  int get paidBack => payments.fold(0, (s, p) => s + p.cents);
+
+  /// What's still owed (positive: to you; negative: by you).
+  int get left => settled ? 0 : (cents.abs() - paidBack).clamp(0, 1 << 40) * cents.sign;
+  bool get theyOwe => cents > 0;
+}
+
+// ----- Taxes: mileage -----
+
+class MileageKinds {
+  static const all = ['Business', 'Medical', 'Charity', 'Moving'];
+
+  /// Cents per mile (the IRS standard rates; change them in Taxes → Mileage rates).
+  static const defaultRates = {'Business': 70.0, 'Medical': 21.0, 'Charity': 14.0, 'Moving': 21.0};
+}
+
+/// A trip that counts for taxes: business, medical, charity or moving.
+class MileageTrip extends Rec {
+  MileageTrip(super.j);
+  factory MileageTrip.create({required DateTime date, required double miles, String purpose = '', String kind = 'Business'}) =>
+      MileageTrip(Rec.fresh({'Date': isoDay(date), 'Miles': miles, 'Purpose': purpose, 'Kind': kind}));
+  MileageTrip copy() => MileageTrip(Rec.copyOf(j));
+  @override
+  String get collection => 'mileage';
+
+  DateTime get date => day('Date');
+  set date(DateTime v) => setDay('Date', v);
+  double get miles => number('Miles');
+  set miles(double v) => j['Miles'] = v;
+  String get purpose => str('Purpose');
+  set purpose(String v) => j['Purpose'] = v;
+  String get kind => MileageKinds.all.contains(str('Kind')) ? str('Kind') : 'Business';
+  set kind(String v) => j['Kind'] = v;
+}
+
+// ----- Documents vault -----
+
+class DocumentKinds {
+  static const other = 'Other';
+  static const all = ['Insurance', 'Vehicle', 'Home', 'Warranty', 'Manual', 'Medical', 'Legal', 'Pet', other];
+}
+
+/// A document kept with your money: an insurance policy, a car title, a manual. With an end date, you get a reminder.
+class VaultDoc extends Rec {
+  VaultDoc(super.j);
+  factory VaultDoc.create({required String title, String kind = DocumentKinds.other, required String fileName, String originalName = '', int size = 0, DateTime? expires}) =>
+      VaultDoc(Rec.fresh({'Title': title, 'Kind': kind, 'FileName': fileName, 'OriginalName': originalName, 'Size': size, 'Expires': expires == null ? null : isoDay(expires), 'Note': ''}));
+  VaultDoc copy() => VaultDoc(Rec.copyOf(j));
+  @override
+  String get collection => 'documents';
+
+  String get title => str('Title');
+  set title(String v) => j['Title'] = v;
+  String get kind => str('Kind').isEmpty ? DocumentKinds.other : str('Kind');
+  set kind(String v) => j['Kind'] = v;
+  String get fileName => str('FileName');
+  String get originalName => str('OriginalName');
+  int get size => whole('Size');
+  DateTime? get expires => dayOrNull('Expires');
+  set expires(DateTime? v) => setDay('Expires', v);
+  String get note => str('Note');
+  set note(String v) => j['Note'] = v;
+}
+
+// ----- Wishlist -----
+
+/// Something you want. WillowWallet asks again after a cooling-off period (30 days to start).
+class WishItem extends Rec {
+  WishItem(super.j);
+  factory WishItem.create({required String name, int cents = 0, String link = '', int days = 30, DateTime? added}) {
+    final a = added ?? DateTime.now();
+    return WishItem(Rec.fresh({'Name': name, 'Price': cents / 100, 'Link': link, 'Added': isoDay(a), 'DecideOn': isoDay(DateTime(a.year, a.month, a.day + days)), 'Status': 'Waiting', 'Note': ''}));
+  }
+  WishItem copy() => WishItem(Rec.copyOf(j));
+  @override
+  String get collection => 'wishlist';
+
+  String get name => str('Name');
+  set name(String v) => j['Name'] = v;
+  int get cents => money('Price');
+  set cents(int v) => setMoney('Price', v);
+  String get link => str('Link');
+  set link(String v) => j['Link'] = v;
+  DateTime get added => day('Added');
+  DateTime get decideOn => day('DecideOn');
+  set decideOn(DateTime v) => setDay('DecideOn', v);
+
+  /// "Waiting", "Bought" or "Skipped".
+  String get status => str('Status').isEmpty ? 'Waiting' : str('Status');
+  set status(String v) => j['Status'] = v;
+  bool get waiting => status == 'Waiting';
+  String get note => str('Note');
+  set note(String v) => j['Note'] = v;
+}
+
+// ----- Gift planner -----
+
+class GiftItem {
+  const GiftItem(this.name, this.cents, this.bought);
+  final String name;
+  final int cents;
+  final bool bought;
+  Map<String, dynamic> toJson() => {'Name': name, 'Amount': cents / 100, 'Bought': bought};
+  static GiftItem fromJson(Object? j) {
+    final m = j is Map ? j : const {};
+    return GiftItem('${m['Name'] ?? ''}', toCents(m['Amount']), m['Bought'] == true);
+  }
+}
+
+/// Gifts for one person for an occasion ("Holidays 2026"): a budget and the gift ideas or what you bought.
+class GiftPlan extends Rec {
+  GiftPlan(super.j);
+  factory GiftPlan.create({required String occasion, required String person, int budgetCents = 0}) =>
+      GiftPlan(Rec.fresh({'Occasion': occasion, 'Person': person, 'Budget': budgetCents / 100, 'Items': <dynamic>[]}));
+  GiftPlan copy() => GiftPlan(Rec.copyOf(j));
+  @override
+  String get collection => 'gift-plans';
+
+  String get occasion => str('Occasion');
+  set occasion(String v) => j['Occasion'] = v;
+  String get person => str('Person');
+  set person(String v) => j['Person'] = v;
+  int get budgetCents => money('Budget');
+  set budgetCents(int v) => setMoney('Budget', v);
+  List<GiftItem> get items => [for (final i in (j['Items'] as List? ?? const [])) GiftItem.fromJson(i)];
+  set items(List<GiftItem> v) => j['Items'] = [for (final i in v) i.toJson()];
+  int get boughtCents => items.where((i) => i.bought).fold(0, (s, i) => s + i.cents);
+  int get plannedCents => items.fold(0, (s, i) => s + i.cents);
 }
 
 // ----- Synced settings -----
@@ -489,6 +662,21 @@ class Prefs extends Rec {
   List<String> get dismissedAlerts => strings('DismissedAlerts');
   set dismissedAlerts(List<String> v) => j['DismissedAlerts'] = v;
   bool get forecastCountSavings => j['ForecastCountSavings'] != false;
+
+  /// Cents per mile for each kind of trip (unset kinds use the standard rates).
+  Map<String, double> get mileageRates => {
+        for (final e in ((j['MileageRates'] as Map?) ?? const {}).entries)
+          if (e.value is num) '${e.key}': (e.value as num).toDouble(),
+      };
+  set mileageRates(Map<String, double> v) => j['MileageRates'] = v;
+
+  /// No-spend challenge: how many no-spend days to aim for each month (0 = off).
+  int get noSpendGoal => whole('NoSpendGoal');
+  set noSpendGoal(int v) => j['NoSpendGoal'] = v;
+
+  /// Searches pinned on Transactions.
+  List<String> get savedSearches => strings('SavedSearches');
+  set savedSearches(List<String> v) => j['SavedSearches'] = v;
   set forecastCountSavings(bool v) => j['ForecastCountSavings'] = v;
 }
 

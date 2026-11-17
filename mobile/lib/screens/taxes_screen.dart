@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import '../form.dart';
 
 import '../dates.dart';
+import '../extras.dart';
 import '../kit.dart';
+import '../money.dart';
 import '../platform.dart';
 import '../records.dart';
 import '../store.dart';
@@ -69,6 +71,8 @@ class _TaxesScreenState extends State<TaxesScreen> {
           ),
         ),
         const SizedBox(height: 6),
+        TaxDeductions(year: year),
+        const SectionTitle('Documents'),
         if (inYear.isEmpty) ...[
           const SizedBox(height: 8),
           EmptyState(
@@ -265,4 +269,146 @@ class _TaxDocSheetState extends State<TaxDocSheet> {
       ],
     );
   }
+}
+
+/// Tax-deductible spending (marked on transactions) and the mileage log for a tax year.
+class TaxDeductions extends StatelessWidget {
+  const TaxDeductions({super.key, required this.year});
+  final int year;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = StoreScope.of(context);
+    final p = context.pal;
+    final deductible = store.deductibleTotals(year);
+    final miles = store.mileageTotals(year);
+    final trips = store.mileage.where((t) => t.date.year == year).toList()..sort((a, b) => b.date.compareTo(a.date));
+    final mileageCents = miles.values.fold<int>(0, (s, m) => s + m.$2);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SectionTitle('Deductions'),
+        Panel(
+          key: const Key('tax-deductions'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (deductible.isEmpty)
+                Text('Mark spending as tax deductible (charity, medical, business…) when you add it, and it adds up here.', style: TextStyle(color: p.muted, height: 1.35))
+              else
+                for (final e in deductible.entries)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(children: [Expanded(child: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600))), Text(Money.format(e.value))]),
+                  ),
+              if (mileageCents > 0)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(children: [
+                    const Expanded(child: Text('Mileage', style: TextStyle(fontWeight: FontWeight.w600))),
+                    Text(Money.format(mileageCents)),
+                  ]),
+                ),
+            ],
+          ),
+        ),
+        SectionTitle('Mileage log', action: 'Log a trip', onAction: () => showSheet<void>(context, MileageSheet(year: year))),
+        if (trips.isEmpty)
+          Text('Driving for work, to the doctor or for a charity can be deductible. Log the miles as you go.', style: TextStyle(color: p.muted, height: 1.35))
+        else ...[
+          ListPanel(children: [
+            for (final t in trips.take(12))
+              RowTile(
+                leading: const IconBox(Icons.directions_car_outlined, size: 38),
+                title: t.purpose.isEmpty ? t.kind : t.purpose,
+                subtitle: '${shortDate(t.date)} · ${t.kind}',
+                trailing: '${t.miles.toStringAsFixed(t.miles == t.miles.roundToDouble() ? 0 : 1)} mi',
+                trailingSub: Money.format((t.miles * store.mileageRate(t.kind)).round()),
+                onTap: () => showSheet<void>(context, MileageSheet(year: year, existing: t)),
+              ),
+          ]),
+          const SizedBox(height: 6),
+          Text(
+            [for (final e in miles.entries) '${e.key}: ${e.value.$1.toStringAsFixed(0)} mi at ${store.mileageRate(e.key).toStringAsFixed(1)}¢'].join(' · '),
+            style: TextStyle(fontSize: 12.5, color: p.muted),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(onPressed: () => showSheet<void>(context, const _RatesSheet()), child: const Text('Mileage rates')),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class MileageSheet extends StatefulWidget {
+  const MileageSheet({super.key, required this.year, this.existing});
+  final int year;
+  final MileageTrip? existing;
+
+  @override
+  State<MileageSheet> createState() => _MileageSheetState();
+}
+
+class _MileageSheetState extends State<MileageSheet> {
+  late final MileageTrip _t = widget.existing?.copy() ??
+      MileageTrip.create(date: DateTime.now().year == widget.year ? dayOnly(DateTime.now()) : DateTime(widget.year, 12, 31), miles: 0);
+  late final _miles = TextEditingController(text: _t.miles == 0 ? '' : '${_t.miles}');
+  late final _purpose = TextEditingController(text: _t.purpose);
+  String? _error;
+
+  @override
+  Widget build(BuildContext context) => SheetFrame(
+        title: widget.existing == null ? 'Log a trip' : 'Edit trip',
+        error: _error,
+        onDelete: widget.existing == null
+            ? null
+            : () {
+                StoreScope.read(context).remove(widget.existing!);
+                Navigator.pop(context);
+              },
+        primary: 'Save',
+        onPrimary: () {
+          final m = double.tryParse(_miles.text.trim().replaceAll(',', '.'));
+          if (m == null || m <= 0) return setState(() => _error = 'Enter the miles, like 24.5.');
+          _t
+            ..miles = m
+            ..purpose = _purpose.text.trim();
+          StoreScope.read(context).put(_t);
+          Navigator.pop(context);
+        },
+        children: [
+          LabeledField(label: 'Miles', controller: _miles, hint: '24.5', keyboard: const TextInputType.numberWithOptions(decimal: true), autofocus: widget.existing == null),
+          LabeledField(label: 'What for', controller: _purpose, hint: 'Client visit, doctor, food bank'),
+          const FieldLabel('Kind'),
+          Choices(options: MileageKinds.all, selected: _t.kind, onChanged: (v) => setState(() => _t.kind = v)),
+          const FieldLabel('Date'),
+          DateTile(date: _t.date, onChanged: (d) => setState(() => _t.date = d ?? _t.date)),
+        ],
+      );
+}
+
+class _RatesSheet extends StatefulWidget {
+  const _RatesSheet();
+
+  @override
+  State<_RatesSheet> createState() => _RatesSheetState();
+}
+
+class _RatesSheetState extends State<_RatesSheet> {
+  late final store = StoreScope.read(context);
+  late final _c = {for (final k in MileageKinds.all) k: TextEditingController(text: store.mileageRate(k).toString())};
+
+  @override
+  Widget build(BuildContext context) => SheetFrame(
+        title: 'Mileage rates',
+        subtitle: 'Cents per mile. They start at the IRS standard rates; check the rate for your tax year at irs.gov.',
+        primary: 'Save',
+        onPrimary: () {
+          store.updatePrefs((p) => p.mileageRates = {for (final e in _c.entries) e.key: double.tryParse(e.value.text) ?? MileageKinds.defaultRates[e.key]!});
+          Navigator.pop(context);
+        },
+        children: [for (final e in _c.entries) LabeledField(label: e.key, controller: e.value, keyboard: const TextInputType.numberWithOptions(decimal: true))],
+      );
 }
