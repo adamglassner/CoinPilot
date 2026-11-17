@@ -87,6 +87,8 @@ public sealed class CalculatorFlyout : Border
         bool eq = k == "=";
         var text = new TextBlock { Text = k, FontSize = 18, FontWeight = op || eq ? FontWeights.SemiBold : FontWeights.Normal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         text.SetResourceReference(TextBlock.ForegroundProperty, eq ? "Brush.AccentText" : op ? "Brush.Accent" : "Brush.Text");
+        if (k == "⌫") { text.Style = (Style)Application.Current.FindResource("Icon"); text.Text = "\uE750"; text.FontSize = 17; }
+        if (k == "±") text.Text = "+/−";
         var face = new Border { CornerRadius = new CornerRadius(10), Height = 46, Margin = new Thickness(3), Child = text };
         face.SetResourceReference(Border.BackgroundProperty, eq ? "Brush.Accent" : op ? "Brush.AccentSoft" : "Brush.SurfaceAlt");
         var b = new Button { Content = face, Style = (Style)Application.Current.FindResource("CardButton"), Focusable = false, Cursor = Cursors.Hand };

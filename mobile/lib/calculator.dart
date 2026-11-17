@@ -165,7 +165,7 @@ class _CalculatorPanelState extends State<CalculatorPanel> {
   @override
   Widget build(BuildContext context) {
     final p = context.pal;
-    Widget key(String label, VoidCallback onTap, {bool accent = false, bool op = false}) => Expanded(
+    Widget key(String label, VoidCallback onTap, {bool accent = false, bool op = false, IconData? icon}) => Expanded(
           child: Padding(
             padding: const EdgeInsets.all(3),
             child: Material(
@@ -177,7 +177,9 @@ class _CalculatorPanelState extends State<CalculatorPanel> {
                 child: SizedBox(
                   height: 46,
                   child: Center(
-                    child: Text(label,
+                    child: icon != null
+                        ? Icon(icon, size: 20, color: p.text, semanticLabel: label)
+                        : Text(label,
                         style: TextStyle(fontSize: 18, fontWeight: op || accent ? FontWeight.w700 : FontWeight.w500, color: accent ? p.onAccent : (op ? p.accent : p.text))),
                   ),
                 ),
@@ -239,11 +241,11 @@ class _CalculatorPanelState extends State<CalculatorPanel> {
                   ],
                 ),
               ),
-              row([key('C', calc.clear, op: true), key('±', calc.negate, op: true), key('%', calc.percent, op: true), key('÷', () => calc.op('÷'), op: true)]),
+              row([key('C', calc.clear, op: true), key('+/−', calc.negate, op: true), key('%', calc.percent, op: true), key('÷', () => calc.op('÷'), op: true)]),
               row([key('7', () => calc.digit('7')), key('8', () => calc.digit('8')), key('9', () => calc.digit('9')), key('×', () => calc.op('×'), op: true)]),
               row([key('4', () => calc.digit('4')), key('5', () => calc.digit('5')), key('6', () => calc.digit('6')), key('−', () => calc.op('−'), op: true)]),
               row([key('1', () => calc.digit('1')), key('2', () => calc.digit('2')), key('3', () => calc.digit('3')), key('+', () => calc.op('+'), op: true)]),
-              row([key('⌫', calc.back), key('0', () => calc.digit('0')), key('.', () => calc.digit('.')), key('=', calc.equals, accent: true)]),
+              row([key('Backspace', calc.back, icon: Icons.backspace_outlined), key('0', () => calc.digit('0')), key('.', () => calc.digit('.')), key('=', calc.equals, accent: true)]),
             ],
           ),
         ),
