@@ -6,7 +6,7 @@ name: Mac and Linux
 # (all the apps share one version number).
 on:
   push:
-    branches: [main]
+    branches: [main, hello-mac-linux]
     paths: ['mobile/**', '.github/workflows/desktop.yml']
   workflow_dispatch:
 
