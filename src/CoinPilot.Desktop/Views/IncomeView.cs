@@ -105,14 +105,14 @@ public sealed class IncomeView : DataPage
         string when = days < 0 ? $"Due {-days} day{(days == -1 ? "" : "s")} ago" : days == 0 ? "Payday today" : days == 1 ? "Tomorrow" : $"In {days} days";
         var how = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         how.Children.Add(Ui.Text(when, weight: FontWeights.SemiBold, size: 12.5, brushKey: days <= 0 ? "Brush.Accent" : null));
-        how.Children.Add(Ui.Text(s.Varies ? "Asks how much" : s.AutoAdd ? "Added automatically" : "Asks to confirm", muted: true, size: 12));
+        how.Children.Add(Ui.Text(s.Varies ? "Asks how much" : s.AutoAdd ? "Automatic" : "Asks to confirm", muted: true, size: 12));
         g.Children.Add(how.At(2, cell));
 
         decimal typical = s.Amount > 0 ? s.Amount : IncomeSchedule.Typical(s);
         var amount = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
         amount.Children.Add(Ui.Text(s.Varies ? (typical > 0 ? $"≈ {Money.Format(typical)}" : "Varies") : Money.Format(s.Amount), weight: FontWeights.SemiBold, size: 14.5).Also(t => t.HorizontalAlignment = HorizontalAlignment.Right));
         decimal perMonth = IncomeSchedule.MonthlyAmount(s);
-        amount.Children.Add(Ui.Text(perMonth > 0 ? $"{Money.Format(perMonth, cents: false)}/mo" : s.Repeats == IncomeSchedule.Once ? "once" : "no amount yet", muted: true, size: 12).Also(t => t.HorizontalAlignment = HorizontalAlignment.Right));
+        amount.Children.Add(Ui.Text(perMonth > 0 ? $"{Money.Format(perMonth, cents: false)}/mo" : s.Repeats == IncomeSchedule.Once ? "once" : "per payday", muted: true, size: 12).Also(t => t.HorizontalAlignment = HorizontalAlignment.Right));
         g.Children.Add(amount.At(3, cell));
 
         var action = days <= 0 && s.NeedsAsking
