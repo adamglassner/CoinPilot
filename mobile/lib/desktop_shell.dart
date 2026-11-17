@@ -8,6 +8,7 @@ import 'screens/accounts_screen.dart';
 import 'screens/bills_screen.dart';
 import 'screens/budgets_screen.dart';
 import 'screens/debts_screen.dart';
+import 'auto_backup.dart';
 import 'calculator.dart';
 import 'screens/forecast_screen.dart';
 import 'screens/documents_screen.dart';
@@ -115,6 +116,7 @@ class DesktopShellState extends State<DesktopShell> {
     final asking = store.askingPaydays(today);
     if (asking.isNotEmpty && mounted && !_needsSetup(store)) await showPaydaySheet(context, asking);
     if (mounted) UpdaterScope.read(context).check();
+    if (mounted) AutoBackup.run(StoreScope.read(context));
   }
 
   bool _needsSetup(Store store) => _inSetup ??= widget.showSetup && store.isEmpty && !store.prefs.setupDone;

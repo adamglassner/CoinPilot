@@ -21,6 +21,7 @@ import 'store.dart';
 import 'sync/engine.dart';
 import 'sync/scope.dart';
 import 'theme.dart';
+import 'auto_backup.dart';
 import 'updater.dart';
 import 'widget_sync.dart';
 import 'version.dart';
@@ -201,6 +202,7 @@ class AppShellState extends State<AppShell> {
     if (mounted && !_needsSetup(store)) await showWhatsNewAfterUpdate(context);
     if (asking.isNotEmpty && mounted && !_needsSetup(store)) await showPaydaySheet(context, asking);
     if (mounted) UpdaterScope.read(context).check();
+    if (mounted) AutoBackup.run(store);
     // Opened from the widget's + or "Spent anything today?": add a transaction
     Reminders.onQuickAdd = (input) => quickAdd(input);
     HomeScreenWidget.clicks().listen((host) => host == 'add' ? quickAdd('') : null);

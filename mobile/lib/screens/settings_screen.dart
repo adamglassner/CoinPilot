@@ -9,7 +9,9 @@ import '../dates.dart';
 import '../form.dart';
 import '../reminders.dart';
 import '../startup.dart';
+import '../auto_backup.dart';
 import '../kit.dart';
+import 'history_screen.dart';
 import '../nav_bar.dart';
 import '../lock.dart';
 import '../money.dart';
@@ -228,6 +230,30 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: 'From this $deviceWord or from WillowWallet for Windows (Settings → Back up on the PC)',
                 onTap: () => restoreBackup(context),
               ),
+              const Divider(indent: 64),
+              SwitchRow(
+                title: 'Automatic backups',
+                subtitle: !s.autoBackup
+                    ? 'Off. Turn on for a backup every week, keeping the last ${s.backupKeep}.'
+                    : isDesktop
+                        ? 'Every week to ${s.backupFolder}, keeping the last ${s.backupKeep}.${s.lastAutoBackup.isEmpty ? '' : ' Last one ${shortDate(DateTime.parse(s.lastAutoBackup))}.'}'
+                        : 'Every week to WillowWallet\'s Backups folder on this phone, keeping the last ${s.backupKeep}.${s.lastAutoBackup.isEmpty ? '' : ' Last one ${shortDate(DateTime.parse(s.lastAutoBackup))}.'}',
+                value: s.autoBackup,
+                onChanged: (v) async {
+                  if (v && isDesktop) {
+                    final folder = await AutoBackup.chooseFolder();
+                    if (folder == null) return;
+                    store.updateSettings((x) => x.backupFolder = folder);
+                  }
+                  store.updateSettings((x) => x.autoBackup = v);
+                  if (v) {
+                    final f = await AutoBackup.run(store, force: true);
+                    if (context.mounted) toast(context, f == null ? 'Couldn\'t save a backup there.' : 'Backed up. The next one is in a week.');
+                  }
+                },
+              ),
+              const Divider(indent: 64),
+              _Tile(icon: Icons.history_rounded, title: 'Change history', subtitle: 'What changed recently, here or on other devices, with Undo', onTap: () => pushPage(context, const HistoryScreen())),
               const Divider(indent: 64),
               _Tile(icon: Icons.table_view_outlined, title: 'Export transactions', subtitle: 'Every transaction as a CSV spreadsheet', onTap: () => _exportCsv(context, store)),
               const Divider(indent: 64),

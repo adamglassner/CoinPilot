@@ -78,7 +78,7 @@ jobs:
           echo "WW_TEST_ADMIN_PASSWORD=android-test-admin" >> "$GITHUB_ENV"
 
       - name: Tests
-        run: flutter test test/logic_test.dart test/finance_test.dart test/forecast_test.dart test/insights_test.dart test/receipt_test.dart test/widget_test.dart test/sync_test.dart
+        run: flutter test test/logic_test.dart test/finance_test.dart test/forecast_test.dart test/insights_test.dart test/receipt_test.dart test/extras_test.dart test/widget_test.dart test/sync_test.dart
 
       - name: Screenshots
         run: |

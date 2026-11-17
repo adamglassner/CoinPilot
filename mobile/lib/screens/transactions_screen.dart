@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../dates.dart';
 import '../models.dart';
 import '../money.dart';
+import '../search.dart';
 import '../store.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -37,14 +38,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     if (_filter == 2 && !t.isIncome) return false;
     if (_filter == 3 && !t.isTransfer) return false;
     if (_account.isNotEmpty && t.account != _account && t.transferAccount != _account) return false;
-    final q = _search.text.trim().toLowerCase();
-    if (q.isEmpty) return true;
-    return t.payee.toLowerCase().contains(q) ||
-        t.category.toLowerCase().contains(q) ||
-        t.account.toLowerCase().contains(q) ||
-        t.note.toLowerCase().contains(q) ||
-        t.tags.any((x) => x.toLowerCase().contains(q)) ||
-        Money.editable(t.cents).contains(q);
+    if (_search.text.trim().isEmpty) return true;
+    return TxnQuery.parse(_search.text).matches(t);
+  }
+
+  void _pin(Store store) {
+    final q = _search.text.trim();
+    final saved = store.prefs.savedSearches;
+    store.updatePrefs((p) => p.savedSearches = saved.contains(q) ? [for (final x in saved) if (x != q) x] : [...saved, q]);
+    toast(context, saved.contains(q) ? 'Unpinned "$q".' : 'Pinned "$q". Tap it any time to search again.');
   }
 
   void _delete(Txn t) {
@@ -59,7 +61,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final p = context.pal;
     final month = _month ?? store.budgetMonth(DateTime.now());
     final all = store.inMonth(month);
-    final list = all.where(_matches).toList();
+    // "dining over $50 in october" or "2025" reaches past this month
+    final query = _search.text.trim().isEmpty ? null : TxnQuery.parse(_search.text);
+    final wide = query?.acrossMonths ?? false;
+    final list = (wide ? (store.transactions..sort((a, b) => b.date.compareTo(a.date))) : all).where(_matches).toList();
+    final saved = store.prefs.savedSearches;
     final spent = store.spentIn(month);
     final income = store.incomeIn(month);
     final accounts = {for (final t in all) t.account, for (final t in all) if (t.isTransfer) t.transferAccount}.where((a) => a.isNotEmpty).toList()..sort();
@@ -112,18 +118,50 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   onChanged: (_) => setState(() {}),
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    hintText: 'Search payee, category or amount',
+                    hintText: 'Search: "dining over \$50 in october"',
                     prefixIcon: Icon(Icons.search_rounded, color: p.muted),
                     suffixIcon: _search.text.isEmpty
                         ? null
-                        : IconButton(
-                            tooltip: 'Clear search',
-                            icon: const Icon(Icons.close_rounded),
-                            onPressed: () => setState(_search.clear),
-                          ),
+                        : Row(mainAxisSize: MainAxisSize.min, children: [
+                            IconButton(
+                              tooltip: saved.contains(_search.text.trim()) ? 'Unpin this search' : 'Pin this search',
+                              icon: Icon(saved.contains(_search.text.trim()) ? Icons.push_pin_rounded : Icons.push_pin_outlined, color: p.accent),
+                              onPressed: () => _pin(store),
+                            ),
+                            IconButton(
+                              tooltip: 'Clear search',
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () => setState(_search.clear),
+                            ),
+                          ]),
                     contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
+                if (saved.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 36,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        for (final q in saved)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ActionChip(
+                              avatar: Icon(Icons.push_pin_rounded, size: 15, color: p.accent),
+                              label: Text(q),
+                              onPressed: () => setState(() => _search.text = q),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (wide) ...[
+                  const SizedBox(height: 8),
+                  Text('${list.length} match${list.length == 1 ? '' : 'es'} in all months · ${Money.format(list.fold<int>(0, (s, t) => s + t.cents), signed: true)}',
+                      style: TextStyle(fontSize: 13, color: p.muted, fontWeight: FontWeight.w600)),
+                ],
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 40,

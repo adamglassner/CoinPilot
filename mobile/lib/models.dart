@@ -241,6 +241,12 @@ class AppSettings {
   /// Shared household: who usually pays on this device (picked first in Add transaction).
   String lastPaidBy = '';
 
+  /// Automatic backups (off until turned on): where (a computer's folder), how many to keep, and the last one.
+  bool autoBackup = false;
+  String backupFolder = '';
+  int backupKeep = 4;
+  String lastAutoBackup = '';
+
   /// Spending alerts already sent as notifications on this device (their keys).
   List<String> alertsNotified = [];
   String lastReminderDay = '';
@@ -273,6 +279,10 @@ class AppSettings {
         'DailyNudge': dailyNudge,
         'NudgeHour': nudgeHour,
         'LastPaidBy': lastPaidBy,
+        'AutoBackup': autoBackup,
+        'BackupFolder': backupFolder,
+        'BackupKeep': backupKeep,
+        'LastAutoBackup': lastAutoBackup,
         'LastReminderDay': lastReminderDay,
         'LastSeenVersion': lastSeenVersion,
         'StartAtLogin': startAtLogin,
@@ -295,6 +305,10 @@ class AppSettings {
     ..dailyNudge = j['DailyNudge'] == true
     ..nudgeHour = j['NudgeHour'] is int ? j['NudgeHour'] as int : 20
     ..lastPaidBy = j['LastPaidBy'] as String? ?? ''
+    ..autoBackup = j['AutoBackup'] == true
+    ..backupFolder = j['BackupFolder'] as String? ?? ''
+    ..backupKeep = j['BackupKeep'] is int ? j['BackupKeep'] as int : 4
+    ..lastAutoBackup = j['LastAutoBackup'] as String? ?? ''
     ..lastReminderDay = j['LastReminderDay'] as String? ?? ''
     ..lastSeenVersion = j['LastSeenVersion'] as String? ?? ''
     ..startAtLogin = j['StartAtLogin'] == true

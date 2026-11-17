@@ -109,6 +109,7 @@ class Store extends ChangeNotifier {
         'Budgets': [for (final b in _budgets) b.toJson()],
         'Raw': _raw,
         'Sync': syncState,
+        'History': history,
       };
 
   void fromJson(Map<String, dynamic> j) {
@@ -128,6 +129,7 @@ class Store extends ChangeNotifier {
       };
     }
     syncState = j['Sync'] is Map<String, dynamic> ? j['Sync'] as Map<String, dynamic> : {};
+    history = [for (final h in (j['History'] as List? ?? const [])) if (h is Map) Map<String, dynamic>.from(h)];
     Money.currency = currencyFor(settings.currency);
   }
 
@@ -169,10 +171,89 @@ class Store extends ChangeNotifier {
   /// Waits for pending saves (used by tests).
   Future<void> flush() => _writing;
 
+  // ----- Change history (on this device only, the last 300 changes) -----
+
+  /// Newest last: {At, Collection, Id, Label, Action, Before, After, Remote}.
+  List<Map<String, dynamic>> history = [];
+
+  static const _historyKinds = {
+    'transactions': 'Transactions', 'budgets': 'Budgets', 'accounts': 'Accounts', 'debts': 'Debts', 'bills': 'Bills', 'goals': 'Goals',
+    'categories': 'Categories', 'rules': 'Rules', 'income': 'Income', 'tax-documents': 'Taxes', 'ious': 'IOUs', 'mileage': 'Mileage',
+    'documents': 'Documents', 'wishlist': 'Wishlist', 'gift-plans': 'Gifts',
+  };
+
+  static String _label(String collection, Map<String, dynamic>? j) {
+    if (j == null) return '';
+    if (collection == 'transactions') {
+      final cents = j['Amount'] is num ? ((j['Amount'] as num) * 100).round() : 0;
+      return '${j['Payee'] ?? ''} ${Money.format(cents, signed: true)}'.trim();
+    }
+    for (final k in ['Name', 'Title', 'Person', 'Category', 'Payee', 'Pattern', 'Purpose']) {
+      final v = j[k];
+      if (v is String && v.isNotEmpty) return v;
+    }
+    return '';
+  }
+
+  void _log(String collection, String id, Map<String, dynamic>? before, Map<String, dynamic>? after, {bool remote = false}) {
+    if (!_historyKinds.containsKey(collection) || _undoing) return;
+    if (before != null && after != null && jsonEncode(_strip(before)) == jsonEncode(_strip(after))) return;
+    history.add({
+      'At': DateTime.now().toIso8601String(),
+      'Collection': collection,
+      'Id': id,
+      'Label': _label(collection, after ?? before),
+      'Action': before == null ? 'Added' : after == null ? 'Deleted' : 'Changed',
+      'Before': before,
+      'After': after,
+      'Remote': remote,
+    });
+    if (history.length > 300) history.removeRange(0, history.length - 300);
+  }
+
+  static Map<String, dynamic> _strip(Map<String, dynamic> j) => {for (final e in j.entries) if (e.key != 'UpdatedAt') e.key: e.value};
+
+  bool _undoing = false;
+
+  /// Puts a record back the way it was before a change (deleting it again if the change added it).
+  void undo(Map<String, dynamic> h) {
+    final c = h['Collection'] as String, id = h['Id'] as String;
+    final before = h['Before'] is Map ? Map<String, dynamic>.from(h['Before'] as Map) : null;
+    final now = (c == 'transactions'
+            ? _txns.where((t) => t.id == id).map((t) => t.toJson()).firstOrNull
+            : c == 'budgets'
+                ? _budgets.where((b) => b.id == id).map((b) => b.toJson()).firstOrNull
+                : _raw[c]?[id]);
+    batch(() {
+      _undoing = true;
+      switch ((c, before)) {
+        case ('transactions', null):
+          deleteTxn(id);
+        case ('transactions', final b?):
+          saveTxn(Txn.fromJson(b).touched());
+        case ('budgets', null):
+          deleteBudget(id);
+        case ('budgets', final b?):
+          saveBudget(Budget.fromJson(b));
+        case (_, null):
+          if (_raw[c]?.remove(id) != null) _changed();
+        case (_, final b?):
+          _raw[c]![id] = b..['UpdatedAt'] = stamp();
+          _changed();
+      }
+      history.add({
+        'At': DateTime.now().toIso8601String(), 'Collection': c, 'Id': id, 'Label': _label(c, before ?? now), 'Action': 'Undid ${(h['Action'] as String).toLowerCase()}',
+        'Before': now, 'After': before, 'Remote': false,
+      });
+      _undoing = false;
+    });
+  }
+
   // ----- Changes -----
 
   void saveTxn(Txn t) {
     final i = _txns.indexWhere((x) => x.id == t.id);
+    _log('transactions', t.id, i >= 0 ? _txns[i].toJson() : null, t.toJson());
     if (i >= 0) {
       _txns[i] = t;
     } else {
@@ -191,12 +272,14 @@ class Store extends ChangeNotifier {
     final i = _txns.indexWhere((x) => x.id == id);
     if (i < 0) return null;
     final t = _txns.removeAt(i);
+    _log('transactions', id, t.toJson(), null);
     _changed();
     return t;
   }
 
   void saveBudget(Budget b) {
     final i = _budgets.indexWhere((x) => x.id == b.id || x.category == b.category);
+    _log('budgets', b.id, i >= 0 ? _budgets[i].toJson() : null, b.toJson());
     if (i >= 0) {
       _budgets[i] = b;
     } else {
@@ -206,6 +289,9 @@ class Store extends ChangeNotifier {
   }
 
   void deleteBudget(String id) {
+    for (final b in _budgets.where((b) => b.id == id)) {
+      _log('budgets', id, b.toJson(), null);
+    }
     _budgets.removeWhere((b) => b.id == id);
     _changed();
   }
@@ -214,12 +300,18 @@ class Store extends ChangeNotifier {
   void put(Rec r) {
     r.j['UpdatedAt'] = stamp();
     if (r.collection != 'settings') r.j['CreatedAt'] ??= stamp();
+    final old = _raw[r.collection]![r.id];
+    _log(r.collection, r.id, old == null ? null : Map<String, dynamic>.from(jsonDecode(jsonEncode(old)) as Map), Map<String, dynamic>.from(jsonDecode(jsonEncode(r.j)) as Map));
     _raw[r.collection]![r.id] = r.j;
     _changed();
   }
 
   void remove(Rec r) {
-    if (_raw[r.collection]!.remove(r.id) != null) _changed();
+    final old = _raw[r.collection]!.remove(r.id);
+    if (old != null) {
+      _log(r.collection, r.id, old, null);
+      _changed();
+    }
   }
 
   void updateSettings(void Function(AppSettings s) change) {
@@ -361,14 +453,17 @@ class Store extends ChangeNotifier {
         case 'transactions':
           final t = Txn.fromJson(j);
           final i = _txns.indexWhere((x) => x.id == id);
+          _log(collection, id, i >= 0 ? _txns[i].toJson() : null, t.toJson(), remote: true);
           i >= 0 ? _txns[i] = t : _txns.add(t);
         case 'budgets':
           final b = Budget.fromJson(j);
           final i = _budgets.indexWhere((x) => x.id == id);
+          _log(collection, id, i >= 0 ? _budgets[i].toJson() : null, b.toJson(), remote: true);
           i >= 0 ? _budgets[i] = b : _budgets.add(b);
         case 'settings':
           if (id == 'preferences' || id == 'debt-plan') _raw['settings']![id] = j;
         default:
+          _log(collection, id, _raw[collection]?[id], j, remote: true);
           _raw[collection]?[id] = j;
       }
     }
