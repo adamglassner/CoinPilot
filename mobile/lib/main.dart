@@ -247,6 +247,7 @@ class AppShellState extends State<AppShell> {
           ],
         ),
         floatingActionButton: FloatingActionButton(
+          heroTag: 'add-transaction',
           tooltip: 'Add transaction',
           onPressed: () => showTransactionSheet(context),
           backgroundColor: p.accent,

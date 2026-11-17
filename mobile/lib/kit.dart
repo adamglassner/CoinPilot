@@ -41,6 +41,8 @@ class SubPage extends StatelessWidget {
       floatingActionButton: fab == null
           ? null
           : FloatingActionButton.extended(
+              // No page-to-page animation: with this page in the bottom bar, two add buttons would share it and crash
+              heroTag: null,
               onPressed: fab,
               backgroundColor: p.accent,
               foregroundColor: p.onAccent,
