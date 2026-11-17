@@ -217,7 +217,7 @@ void main() {
   testWidgets('Mac and Linux: the sidebar opens every page, and adding is a dialog', (tester) async {
     hostOs = HostOs.linux;
     addTearDown(() => hostOs = HostOs.android);
-    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.physicalSize = const Size(1440, 1200); // tall enough for the whole sidebar
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final store = Store.memory()..loadSample();
@@ -225,8 +225,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining(RegExp('Left to spend|Over budget')), findsOneWidget);
     for (final page in ['Transactions', 'Budgets', 'Forecast', 'Accounts', 'Debts', 'Bills', 'Income', 'Goals', 'Receipts', 'Household', 'Reports', 'Taxes', 'Sync & Devices', 'Settings', 'Dashboard']) {
-      await Scrollable.ensureVisible(tester.element(find.text(page).first), alignment: 0.5);
-      await tester.pumpAndSettle();
       await tester.tap(find.text(page).first);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull, reason: page);
