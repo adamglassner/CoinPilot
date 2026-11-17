@@ -64,6 +64,13 @@ def android():
 
     home_widget_android()
 
+    # Text recognition only uses the Latin model; the other scripts' classes are optional
+    write("android/app/proguard-rules.pro", """-dontwarn com.google.mlkit.vision.text.chinese.**
+-dontwarn com.google.mlkit.vision.text.devanagari.**
+-dontwarn com.google.mlkit.vision.text.japanese.**
+-dontwarn com.google.mlkit.vision.text.korean.**
+""")
+
     # local_auth shows the system fingerprint/face prompt, which needs a FragmentActivity
     for p in glob.glob("android/app/src/main/kotlin/**/MainActivity.kt", recursive=True):
         s = read(p)
