@@ -286,7 +286,12 @@ void main() {
     expect(find.text('Bills'), findsWidgets);
     await tester.tap(tab('More'));
     await tester.pumpAndSettle();
-    await tester.tap(find.descendant(of: find.byType(MoreScreen), matching: find.text('Budgets')));
+    final moreList = find.descendant(of: find.byType(MoreScreen), matching: find.byType(Scrollable)).first;
+    final budgetsTile = find.descendant(of: find.byType(MoreScreen), matching: find.text('Budgets'));
+    await tester.scrollUntilVisible(budgetsTile, 200, scrollable: moreList);
+    await tester.drag(moreList, const Offset(0, -200));
+    await tester.pumpAndSettle();
+    await tester.tap(budgetsTile);
     await tester.pumpAndSettle();
     expect(find.byType(BudgetsScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
