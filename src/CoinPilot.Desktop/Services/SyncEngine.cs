@@ -478,7 +478,7 @@ public static class SyncEngine
         foreach (var name in s.Files.Where(f => !keep.Contains(f)).ToList())
         {
             try { await _api!.DeleteFileAsync(name); }
-            catch (SyncApiException e) when (e.Status == 404) { }
+            catch (SyncApiException e) when (e.Status == System.Net.HttpStatusCode.NotFound) { }
             s.Files.Remove(name);
             Save();
         }

@@ -376,6 +376,7 @@ public sealed class GetStarted : UserControl
         Title("Where's your money?",
             "Add the accounts you use: checking, savings, credit cards, cash. Use today's balance; the transactions you add or import from now on keep it up to date.");
 
+        var list = new StackPanel();
         var form = new StackPanel();
         string[] types = [AccountTypes.Checking, AccountTypes.Savings, AccountTypes.CreditCard, AccountTypes.Cash, AccountTypes.Investment];
         var balanceLabel = Label("Balance today");
@@ -411,7 +412,6 @@ public sealed class GetStarted : UserControl
         form.Children.Add(_error);
         _body.Children.Add(Card(form));
 
-        var list = new StackPanel();
         _body.Children.Add(list);
         void RefreshList()
         {
@@ -728,6 +728,7 @@ public sealed class GetStarted : UserControl
         Title("Loans and cards you're paying off",
             "Student loans, car loans, credit card balances, medical bills, a mortgage. Each one's monthly payment becomes a recurring bill, so marking it paid lowers what you owe, and WillowWallet shows when you'll be debt-free.");
 
+        var list = new StackPanel();
         var form = new StackPanel();
         var typeChips = Chips(DebtTypes.All, "Student loan");
         form.Children.Add(Label("Type", 0));
@@ -757,7 +758,6 @@ public sealed class GetStarted : UserControl
         form.Children.Add(_error);
         _body.Children.Add(Card(form));
 
-        var list = new StackPanel();
         _body.Children.Add(list);
         void RefreshList()
         {

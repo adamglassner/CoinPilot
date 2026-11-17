@@ -547,12 +547,12 @@ public static class SelfTest
         await Step("Welcome → accounts", () => gs.Advance());
         await Step("Type a checking account and a credit card", () =>
         {
-            Named<TextBox>(gs, "Account name")!.Text = "Everyday checking";
-            Named<TextBox>(gs, "Bank")!.Text = "Chase";
-            Named<TextBox>(gs, "Balance")!.Text = "1,250.00";
-            Named<Button>(gs, "Add account")!.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-            Named<RadioButton>(gs, AccountTypes.CreditCard)!.IsChecked = true;
-            Named<TextBox>(gs, "Balance")!.Text = "430";
+            Named<System.Windows.Controls.TextBox>(gs, "Account name")!.Text = "Everyday checking";
+            Named<System.Windows.Controls.TextBox>(gs, "Bank")!.Text = "Chase";
+            Named<System.Windows.Controls.TextBox>(gs, "Balance")!.Text = "1,250.00";
+            Named<System.Windows.Controls.Button>(gs, "Add account")!.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Named<System.Windows.Controls.RadioButton>(gs, AccountTypes.CreditCard)!.IsChecked = true;
+            Named<System.Windows.Controls.TextBox>(gs, "Balance")!.Text = "430";
         });
         await Step("Next adds the card left in the form", () => gs.Advance());
         var checking = DataStore.Accounts.Items.FirstOrDefault(a => a.Name == "Everyday checking");
@@ -572,9 +572,9 @@ public static class SelfTest
 
         await Step("Type a student loan with its monthly payment", () =>
         {
-            Named<TextBox>(gs, "Amount owed")!.Text = "18420";
-            Named<TextBox>(gs, "Monthly payment")!.Text = "300";
-            Named<TextBox>(gs, "Payment due day")!.Text = "15";
+            Named<System.Windows.Controls.TextBox>(gs, "Amount owed")!.Text = "18420";
+            Named<System.Windows.Controls.TextBox>(gs, "Monthly payment")!.Text = "300";
+            Named<System.Windows.Controls.TextBox>(gs, "Payment due day")!.Text = "15";
             gs.Advance();
         });
         var loan = DataStore.Debts.Items.FirstOrDefault(d => d.Name == "Student loan");
