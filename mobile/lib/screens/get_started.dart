@@ -258,7 +258,7 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
         await restoreBackup(context);
         if (mounted && !store.isEmpty) _finish();
       }),
-      choice(Icons.auto_awesome_outlined, 'Explore with sample data', 'Three months of example money. Delete it any time in Settings.', () {
+      choice(Icons.auto_awesome_outlined, 'Explore with sample data', 'Four months of example money. Delete it any time in Settings.', () {
         store.loadSample();
         _finish();
       }),

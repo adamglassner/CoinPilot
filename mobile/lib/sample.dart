@@ -15,7 +15,7 @@ class SampleData {
 SampleData sampleData(DateTime now) {
   final rng = Random(42);
   final today = DateTime(now.year, now.month, now.day);
-  final start = DateTime(today.year, today.month - 2, 1);
+  final start = DateTime(today.year, today.month - 3, 1);
   final tx = <Txn>[];
   int r(double lo, double hi) => ((lo + rng.nextDouble() * (hi - lo)) * 100).round();
   void t(DateTime d, String payee, String cat, String acct, int cents) {
@@ -47,6 +47,11 @@ SampleData sampleData(DateTime now) {
     if (d.day == 21) t(d, 'Hulu', 'Subscriptions', 'Credit card', -1799);
     if (d.day == 26) t(d, 'DISNEY PLUS 8842', 'Subscriptions', 'Credit card', d.isBefore(DateTime(today.year, today.month - 1, 1)) ? -1099 : -1399);
     if (d.day == 3) t(d, 'Navient Student Loan', 'Debt payments', 'Checking', -30000);
+    if (d.weekday == DateTime.saturday) t(d, 'DoorDash', 'Side income', 'Checking', r(95, 160));
+    if (d.day == 25) {
+      tx.add(Txn(payee: 'Credit card payment', category: 'Transfer', account: 'Checking', date: d, cents: -110000,
+          createdAt: d, updatedAt: d, extra: {'TransferAccount': 'Credit card'}));
+    }
     if (d.day == 20) {
       tx.add(Txn(payee: 'Monthly savings', category: 'Transfer', account: 'Checking', date: d, cents: -40000,
           createdAt: d, updatedAt: d, extra: {'TransferAccount': 'High-Yield Savings'}));
@@ -77,9 +82,9 @@ SampleData sampleData(DateTime now) {
     return d.isAfter(today) ? d : DateTime(today.year, today.month + 1, day);
   }
 
-  final loan = Debt.create(name: 'Student loan', type: 'Student loan', balanceCents: 1842000, rate: 5.5, minimumCents: 30000)
-    ..originalCents = 2400000;
-  final card = Debt.create(name: 'Visa Signature', type: DebtTypes.creditCard, balanceCents: 214000, rate: 22.99, minimumCents: 6500);
+  final loan = Debt.create(name: 'Student loan', type: 'Student loan', balanceCents: 842000, rate: 5.5, minimumCents: 30000)
+    ..originalCents = 1400000;
+  final card = Debt.create(name: 'Best Buy card', type: DebtTypes.creditCard, balanceCents: 214000, rate: 26.99, minimumCents: 6500);
   final records = <Rec>[
     Account.create(name: 'Checking', type: AccountTypes.checking, institution: 'Chase', startingCents: 284512, balanceDate: start.subtract(const Duration(days: 1))),
     Account.create(name: 'High-Yield Savings', type: AccountTypes.savings, institution: 'Ally', startingCents: 640000, balanceDate: start.subtract(const Duration(days: 1))),
@@ -87,7 +92,7 @@ SampleData sampleData(DateTime now) {
     Account.create(name: 'Venmo', type: AccountTypes.paymentApp, institution: 'PayPal', startingCents: 4200, balanceDate: start),
     loan,
     card,
-    Bill.create(name: 'Rent', amountCents: 145000, nextDue: next(1), category: 'Housing', account: 'Checking'),
+    Bill.create(name: 'Maple Court Apartments', amountCents: 145000, nextDue: next(1), category: 'Housing', account: 'Checking'),
     Bill.create(name: 'Duke Energy', amountCents: 13000, nextDue: next(18), category: 'Utilities', account: 'Checking'),
     Bill.create(name: 'Comcast Xfinity', amountCents: 7999, nextDue: next(22), category: 'Utilities', account: 'Checking', autoPay: true),
     Bill.create(name: 'Netflix', amountCents: 1549, nextDue: next(9), category: 'Subscriptions', account: 'Credit card', autoPay: true),

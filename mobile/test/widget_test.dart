@@ -1,4 +1,5 @@
 import 'package:coinpilot/main.dart';
+import 'package:coinpilot/dates.dart';
 import 'package:coinpilot/kit.dart';
 import 'package:coinpilot/screens/budgets_screen.dart';
 import 'package:coinpilot/screens/more_screen.dart';
@@ -169,13 +170,13 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    // Bills: pay Rent
+    // Bills: pay Duke Energy
     await tester.tap(find.descendant(of: more, matching: find.text('Bills')).first);
     await tester.pumpAndSettle();
-    final rent = store.bills.firstWhere((b) => b.name == 'Rent');
-    await tester.scrollUntilVisible(find.text('Rent'), 200, scrollable: find.descendant(of: find.byType(SubPage), matching: find.byType(Scrollable)).first);
+    final rent = store.bills.firstWhere((b) => b.name == 'Duke Energy');
+    await tester.scrollUntilVisible(find.text('Duke Energy'), 200, scrollable: find.descendant(of: find.byType(SubPage), matching: find.byType(Scrollable)).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Rent'));
+    await tester.tap(find.text('Duke Energy'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Mark paid'));
     await tester.pumpAndSettle();
@@ -183,7 +184,7 @@ void main() {
     await tester.pumpAndSettle();
     final after = store.bills.firstWhere((b) => b.id == rent.id);
     expect(after.nextDue.isAfter(rent.nextDue), isTrue);
-    expect(store.transactions.any((t) => t.payee == 'Rent' && t.cents == -145000), isTrue);
+    expect(store.transactions.any((t) => t.payee == 'Duke Energy' && t.cents == -13000 && t.date == dayOnly(DateTime.now())), isTrue);
     await settle(tester);
   });
 

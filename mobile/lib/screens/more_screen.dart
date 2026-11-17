@@ -36,21 +36,21 @@ class MoreScreen extends StatelessWidget {
     final goals = store.goals;
 
     final tiles = [
-      _Feature('Accounts', Icons.account_balance_outlined, store.accountRecords.isEmpty ? 'Add yours' : Money.format(store.netWorth, whole: true), 'net worth',
+      _Feature('Accounts', Icons.account_balance_outlined, store.accountRecords.isEmpty ? 'Add yours' : Money.format(store.netWorth, whole: true), store.accountRecords.isEmpty ? '' : 'net worth',
           () => pushPage(context, const AccountsScreen())),
-      _Feature('Bills', Icons.event_note_outlined, store.openBills.isEmpty ? 'None yet' : '${due.length} due', due.isEmpty ? 'this week' : 'in 7 days',
+      _Feature('Bills', Icons.event_note_outlined, store.openBills.isEmpty ? 'None yet' : (due.isEmpty ? 'Nothing due' : '${due.length} due'), store.openBills.isEmpty ? '' : 'next 7 days',
           () => pushPage(context, const BillsScreen()),
           badge: due.any((b) => Bills.status(b, today) == BillStatus.overdue)),
-      _Feature('Income', Icons.payments_outlined, store.incomeSources.isEmpty ? 'Add paycheck' : Money.format(store.expectedMonthlyIncome(), whole: true), 'a month',
+      _Feature('Income', Icons.payments_outlined, store.incomeSources.isEmpty ? 'Add your paycheck' : '${Money.format(store.expectedMonthlyIncome(), whole: true)} a month', '',
           () => pushPage(context, const IncomeScreen()),
           badge: asking.isNotEmpty),
       _Feature('Debts', Icons.credit_card_rounded, store.debts.isEmpty ? 'None' : Money.format(store.debtTotalCents, whole: true), activeDebts == 0 ? '' : '$activeDebts to pay off',
           () => pushPage(context, const DebtsScreen())),
       _Feature('Goals', Icons.flag_outlined, goals.isEmpty ? 'Set one' : '${goals.length} goal${goals.length == 1 ? '' : 's'}',
           goals.isEmpty ? '' : '${(goals.fold<double>(0, (s, g) => s + store.fraction(g)) / goals.length * 100).round()}% on average', () => pushPage(context, const GoalsScreen())),
-      _Feature('Reports', Icons.insights_rounded, 'Trends', 'and year in review', () => pushPage(context, const ReportsScreen())),
+      _Feature('Reports', Icons.insights_rounded, 'Trends', 'year in review', () => pushPage(context, const ReportsScreen())),
       _Feature('Taxes', Icons.folder_copy_outlined, '${store.taxDocs.length} document${store.taxDocs.length == 1 ? '' : 's'}', 'by tax year', () => pushPage(context, const TaxesScreen())),
-      _Feature('Import', Icons.file_download_outlined, 'Statements', 'CSV, OFX, PayPal…', () => pushPage(context, const ImportScreen())),
+      _Feature('Import', Icons.file_download_outlined, 'Bank statements', 'CSV, OFX, PayPal', () => pushPage(context, const ImportScreen())),
     ];
 
     return SafeArea(
@@ -78,7 +78,7 @@ class MoreScreen extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 10,
             crossAxisSpacing: 10,
-            childAspectRatio: 1.32,
+            childAspectRatio: 1.25,
             padding: EdgeInsets.zero,
             children: tiles,
           ),
@@ -131,7 +131,7 @@ class _Feature extends StatelessWidget {
           const Spacer(),
           Text(title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
           const SizedBox(height: 2),
-          Text(note.isEmpty ? value : '$value $note', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: p.muted)),
+          Text(note.isEmpty ? value : '$value · $note', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: p.muted, height: 1.25)),
         ],
       ),
     );

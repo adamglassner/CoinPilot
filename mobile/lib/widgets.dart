@@ -93,7 +93,7 @@ class SectionTitle extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                child: Text(action!, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: p.accent)),
+                child: Text(action!, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: onAction == null ? p.muted : p.accent)),
               ),
             ),
         ],

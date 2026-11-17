@@ -138,7 +138,7 @@ class SettingsScreen extends StatelessWidget {
               _Tile(
                 icon: Icons.auto_awesome_outlined,
                 title: 'Add sample data',
-                subtitle: 'Three months of example money to try things out',
+                subtitle: 'Four months of example money to try things out',
                 onTap: () {
                   store.loadSample();
                   toast(context, 'Sample data added');
