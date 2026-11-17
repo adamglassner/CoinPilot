@@ -26,7 +26,7 @@ void main() {
   setUp(() => Money.currency = currencies.first);
   final today = DateTime(2026, 11, 10);
 
-  test('forecast: the example ends the month $2,250 over, lowest on Nov 13', () {
+  test('forecast: the example ends the month 2,250 dollars over, lowest on Nov 13', () {
     final f = example().forecast(today);
     expect(f.end, DateTime(2026, 11, 30));
     expect(f.startCents, 90000);

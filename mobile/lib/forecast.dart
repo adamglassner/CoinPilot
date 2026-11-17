@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'dates.dart';
 import 'finance.dart';
+import 'models.dart';
 import 'records.dart';
 import 'store.dart';
 
