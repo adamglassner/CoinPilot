@@ -330,7 +330,7 @@ void main() {
 
     final list = find.descendant(of: find.byType(ForecastScreen), matching: find.byType(Scrollable)).first;
     await tester.scrollUntilVisible(find.text('One-time expense'), 200, scrollable: list);
-    await tester.drag(list, const Offset(0, -150));
+    await tester.ensureVisible(find.text('One-time expense'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('One-time expense'));
     await tester.pumpAndSettle();
