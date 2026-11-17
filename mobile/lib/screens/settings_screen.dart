@@ -127,6 +127,30 @@ class SettingsScreen extends StatelessWidget {
                   onChanged: (v) => store.updatePrefs((x) => x.reminderDays = switch (v) { 'On the day' => 0, '1 day before' => 1, '3 days before' => 3, _ => 7 }),
                 ),
               ],
+              if (hostOs == HostOs.android) ...[
+                const SizedBox(height: 6),
+                SwitchRow(
+                  title: 'Daily check-in',
+                  subtitle: 'Each evening: "Spent anything today?" Type it right in the notification, like "12.50 coffee".',
+                  value: s.dailyNudge,
+                  onChanged: (v) async {
+                    if (v && !await Reminders.requestPermission() && context.mounted) {
+                      toast(context, 'Notifications are off for WillowWallet. Turn them on in your phone\'s settings.');
+                    }
+                    store.updateSettings((x) => x.dailyNudge = v);
+                    Reminders.refresh(store);
+                  },
+                ),
+                if (s.dailyNudge)
+                  Choices(
+                    options: const ['7 PM', '8 PM', '9 PM', '10 PM'],
+                    selected: '${s.nudgeHour - 12} PM',
+                    onChanged: (v) {
+                      store.updateSettings((x) => x.nudgeHour = int.parse(v.split(' ').first) + 12);
+                      Reminders.refresh(store);
+                    },
+                  ),
+              ],
               const SizedBox(height: 6),
               SwitchRow(
                 title: 'Spending alerts',

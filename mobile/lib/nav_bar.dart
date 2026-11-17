@@ -10,6 +10,7 @@ import 'screens/forecast_screen.dart';
 import 'screens/goals_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/income_screen.dart';
+import 'screens/receipts_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/taxes_screen.dart';
 import 'screens/transactions_screen.dart';
@@ -28,6 +29,7 @@ class BarPage {
         'transactions' => const TransactionsScreen(),
         'budgets' => const BudgetsScreen(),
         'forecast' => const ForecastScreen(),
+        'receipts' => const ReceiptsScreen(),
         'accounts' => const AccountsScreen(),
         'bills' => const BillsScreen(),
         'income' => const IncomeScreen(),
@@ -48,6 +50,7 @@ const barPages = [
   BarPage('income', 'Income', Icons.payments_outlined, Icons.payments_rounded, 'Paychecks and paydays'),
   BarPage('debts', 'Debts', Icons.credit_card_outlined, Icons.credit_card_rounded, 'Your plan to pay them off'),
   BarPage('goals', 'Goals', Icons.flag_outlined, Icons.flag_rounded, 'What you\'re saving for'),
+  BarPage('receipts', 'Receipts', Icons.receipt_outlined, Icons.receipt_rounded, 'Scan and keep receipts'),
   BarPage('reports', 'Reports', Icons.insights_outlined, Icons.insights_rounded, 'Trends and year in review'),
   BarPage('taxes', 'Taxes', Icons.folder_copy_outlined, Icons.folder_copy_rounded, 'Documents by tax year'),
 ];

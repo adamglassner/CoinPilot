@@ -22,6 +22,7 @@ import 'sync/engine.dart';
 import 'sync/scope.dart';
 import 'theme.dart';
 import 'updater.dart';
+import 'widget_sync.dart';
 import 'version.dart';
 import 'widgets.dart';
 
@@ -37,8 +38,12 @@ Future<void> main() async {
   final sync = SyncEngine(store, appVersion: appVersion)..start();
   await Reminders.init();
   Reminders.start(store);
+  HomeScreenWidget.start(store);
   runApp(CoinPilotApp(store: store, sync: sync, startupTasks: true));
 }
+
+/// The app's navigator (notifications and the home screen widget open sheets with it).
+final appNavigator = GlobalKey<NavigatorState>();
 
 class CoinPilotApp extends StatefulWidget {
   const CoinPilotApp(
@@ -108,6 +113,7 @@ class _CoinPilotAppState extends State<CoinPilotApp> with WidgetsBindingObserver
               builder: (context, _) {
                 final s = store.settings;
                 return MaterialApp(
+                  navigatorKey: appNavigator,
                   title: 'WillowWallet',
                   debugShowCheckedModeBanner: false,
                   theme: buildTheme(Palette.build(s.colorTheme, false)),
@@ -195,6 +201,23 @@ class AppShellState extends State<AppShell> {
     if (mounted && !_needsSetup(store)) await showWhatsNewAfterUpdate(context);
     if (asking.isNotEmpty && mounted && !_needsSetup(store)) await showPaydaySheet(context, asking);
     if (mounted) UpdaterScope.read(context).check();
+    // Opened from the widget's + or "Spent anything today?": add a transaction
+    Reminders.onQuickAdd = (input) => quickAdd(input);
+    HomeScreenWidget.clicks().listen((host) => host == 'add' ? quickAdd('') : null);
+    final typed = await Reminders.launchQuickAdd();
+    if (typed != null) {
+      quickAdd(typed);
+    } else if (await HomeScreenWidget.launchedWith() == 'add') {
+      quickAdd('');
+    }
+  }
+
+  /// Opens Add transaction, filled in from what was typed into the notification ("12.50 coffee").
+  void quickAdd(String input) {
+    final c = appNavigator.currentState?.overlay?.context;
+    if (c == null) return;
+    final (cents, payee) = Reminders.parseQuickAdd(input);
+    showTransactionSheet(c, prefill: cents == null && payee == null ? null : TxnPrefill(cents: cents == null ? null : -cents, payee: payee));
   }
 
   /// Decided once when the app opens, so adding the first account doesn't end Get started halfway.

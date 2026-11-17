@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../categories.dart';
 import '../dates.dart';
 import '../kit.dart';
+import '../receipt_reader.dart';
 import '../models.dart';
 import '../money.dart';
 import '../platform.dart';
@@ -12,18 +13,30 @@ import '../store.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
-Future<void> showTransactionSheet(BuildContext context, {Txn? existing, bool income = false, bool transfer = false}) => showAdaptiveSheet<void>(
+Future<void> showTransactionSheet(BuildContext context, {Txn? existing, bool income = false, bool transfer = false, TxnPrefill? prefill}) => showAdaptiveSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => TransactionSheet(existing: existing, income: income, transfer: transfer),
+      builder: (_) => TransactionSheet(existing: existing, income: income, transfer: transfer, prefill: prefill),
     );
+
+/// A new transaction filled in from somewhere else (a scanned receipt, quick add): any of these can be missing.
+class TxnPrefill {
+  const TxnPrefill({this.payee, this.cents, this.date, this.receipt});
+  final String? payee;
+  final int? cents;
+  final DateTime? date;
+
+  /// A receipt file already kept in the receipts folder.
+  final String? receipt;
+}
 
 /// Add or edit a transaction: spending, income or a transfer between accounts, optionally split across categories,
 /// with a receipt photo.
 class TransactionSheet extends StatefulWidget {
-  const TransactionSheet({super.key, this.existing, this.income = false, this.transfer = false});
+  const TransactionSheet({super.key, this.existing, this.income = false, this.transfer = false, this.prefill});
   final Txn? existing;
+  final TxnPrefill? prefill;
   final bool income;
   final bool transfer;
 
@@ -41,15 +54,15 @@ class _TransactionSheetState extends State<TransactionSheet> {
   late final Txn? _old = widget.existing;
   // 0 spending, 1 income, 2 transfer
   late int _kind = _old == null ? (widget.transfer ? 2 : widget.income ? 1 : 0) : (_old!.isTransfer ? 2 : _old!.isIncome ? 1 : 0);
-  late final _amount = TextEditingController(text: _old == null ? '' : Money.editable(_old!.cents));
-  late final _payee = TextEditingController(text: _old?.payee ?? '');
+  late final _amount = TextEditingController(text: _old == null ? (widget.prefill?.cents == null ? '' : Money.editable(widget.prefill!.cents!)) : Money.editable(_old!.cents));
+  late final _payee = TextEditingController(text: _old?.payee ?? widget.prefill?.payee ?? '');
   late final _note = TextEditingController(text: _old?.note ?? '');
   late final _tags = TextEditingController(text: _old?.tags.join(', ') ?? '');
   late String _category = _old?.category ?? '';
   late String _account = _old?.account ?? '';
   late String _to = _old?.transferAccount ?? '';
-  late DateTime _date = _old?.date ?? dayOnly(DateTime.now());
-  late String _receipt = _old?.receipt ?? '';
+  late DateTime _date = _old?.date ?? widget.prefill?.date ?? dayOnly(DateTime.now());
+  late String _receipt = _old?.receipt ?? widget.prefill?.receipt ?? '';
   late final List<_SplitLine> _splits = [for (final (c, cents) in _old?.splits ?? const <(String, int)>[]) _SplitLine(c, cents)];
   bool _categoryChosen = false;
   bool _more = false;
@@ -62,6 +75,9 @@ class _TransactionSheetState extends State<TransactionSheet> {
   void initState() {
     super.initState();
     _more = (_old?.note.isNotEmpty ?? false) || (_old?.tags.isNotEmpty ?? false);
+    // A scanned store name picks its usual category, like typing it
+    final payee = widget.prefill?.payee;
+    if (_old == null && payee != null) WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? _payeeChanged(payee) : null);
   }
 
   @override
@@ -91,6 +107,19 @@ class _TransactionSheetState extends State<TransactionSheet> {
       if (photo == null) return;
       final name = await store.keepFile(photo.bytes, photo.extension.isEmpty ? '.jpg' : photo.extension, folder: 'receipts');
       setState(() => _receipt = name);
+      // A new transaction with nothing typed yet: read the receipt and fill in what it says
+      final path = store.receiptPath(name);
+      if (_old == null && _amount.text.trim().isEmpty && path != null && !name.endsWith('.pdf')) {
+        final g = await ReceiptReader.read(path);
+        if (!mounted || g.isEmpty) return;
+        setState(() {
+          if (g.cents != null) _amount.text = Money.editable(g.cents!);
+          if (g.payee != null && _payee.text.trim().isEmpty) _payee.text = g.payee!;
+          if (g.date != null) _date = g.date!;
+        });
+        if (g.payee != null) _payeeChanged(_payee.text);
+        if (mounted) toast(context, 'Filled in from the receipt. Check it looks right.');
+      }
     } catch (e) {
       if (mounted) toast(context, 'Couldn\'t add the receipt: $e');
     }

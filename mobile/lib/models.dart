@@ -210,6 +210,10 @@ class AppSettings {
   /// Reminders already shown on Mac and Linux ("billId|due|today"), and the last day Android showed overdue bills.
   List<String> remindersShown = [];
 
+  /// The daily "Spent anything today?" notification (Android) and its hour (20 = 8 PM).
+  bool dailyNudge = false;
+  int nudgeHour = 20;
+
   /// Spending alerts already sent as notifications on this device (their keys).
   List<String> alertsNotified = [];
   String lastReminderDay = '';
@@ -239,6 +243,8 @@ class AppSettings {
         'BiometricUnlock': biometricUnlock,
         'RemindersShown': remindersShown,
         'AlertsNotified': alertsNotified,
+        'DailyNudge': dailyNudge,
+        'NudgeHour': nudgeHour,
         'LastReminderDay': lastReminderDay,
         'LastSeenVersion': lastSeenVersion,
         'StartAtLogin': startAtLogin,
@@ -258,6 +264,8 @@ class AppSettings {
     ..biometricUnlock = j['BiometricUnlock'] == true
     ..remindersShown = [for (final x in (j['RemindersShown'] as List? ?? const [])) '$x']
     ..alertsNotified = [for (final x in (j['AlertsNotified'] as List? ?? const [])) '$x']
+    ..dailyNudge = j['DailyNudge'] == true
+    ..nudgeHour = j['NudgeHour'] is int ? j['NudgeHour'] as int : 20
     ..lastReminderDay = j['LastReminderDay'] as String? ?? ''
     ..lastSeenVersion = j['LastSeenVersion'] as String? ?? ''
     ..startAtLogin = j['StartAtLogin'] == true

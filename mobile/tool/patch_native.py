@@ -6,6 +6,7 @@
   python3 tool/patch_native.py linux     window size and title
 """
 import glob
+import os
 import re
 import sys
 
@@ -61,12 +62,143 @@ def android():
         s += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
     write(g, s)
 
+    home_widget_android()
+
     # local_auth shows the system fingerprint/face prompt, which needs a FragmentActivity
     for p in glob.glob("android/app/src/main/kotlin/**/MainActivity.kt", recursive=True):
         s = read(p)
         s = s.replace("import io.flutter.embedding.android.FlutterActivity", "import io.flutter.embedding.android.FlutterFragmentActivity")
         s = s.replace(": FlutterActivity()", ": FlutterFragmentActivity()")
         write(p, s)
+
+
+def home_widget_android():
+    """The home screen widget: safe to spend, left to spend this month, and a + to add a transaction."""
+    m = "android/app/src/main/AndroidManifest.xml"
+    s = read(m)
+    if "SpendWidget" not in s:
+        s = s.replace("</application>", """    <receiver android:name=".SpendWidget" android:exported="false" android:label="WillowWallet">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/spend_widget_info" />
+        </receiver>
+    </application>""", 1)
+        # Tapping the widget opens the app (home_widget's launch action)
+        s = s.replace("</activity>", """    <intent-filter>
+                <action android:name="es.antonborri.home_widget.action.LAUNCH" />
+            </intent-filter>
+        </activity>""", 1)
+    write(m, s)
+
+    res = "android/app/src/main/res"
+    os.makedirs(f"{res}/layout", exist_ok=True)
+    os.makedirs(f"{res}/xml", exist_ok=True)
+    os.makedirs(f"{res}/drawable", exist_ok=True)
+    write(f"{res}/drawable/spend_widget_bg.xml", """<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#14211B" />
+    <corners android:radius="24dp" />
+</shape>
+""")
+    write(f"{res}/drawable/spend_widget_add.xml", """<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#5DD39E" />
+</shape>
+""")
+    write(f"{res}/layout/spend_widget.xml", """<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/spend_widget_bg"
+    android:orientation="horizontal"
+    android:padding="16dp">
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/widget_safe_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Safe to spend"
+            android:textColor="#9FB8AC"
+            android:textSize="13sp" />
+        <TextView
+            android:id="@+id/widget_safe"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="—"
+            android:textColor="#FFFFFF"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/widget_left"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:text="Open WillowWallet to set up"
+            android:textColor="#5DD39E"
+            android:textSize="12.5sp" />
+    </LinearLayout>
+    <TextView
+        android:id="@+id/widget_add"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center_vertical"
+        android:background="@drawable/spend_widget_add"
+        android:contentDescription="Add transaction"
+        android:gravity="center"
+        android:text="+"
+        android:textColor="#0B120F"
+        android:textSize="28sp" />
+</LinearLayout>
+""")
+    write(f"{res}/xml/spend_widget_info.xml", """<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="80dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/spend_widget"
+    android:previewLayout="@layout/spend_widget"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen" />
+""")
+    for main in glob.glob("android/app/src/main/kotlin/**/MainActivity.kt", recursive=True):
+        folder = os.path.dirname(main)
+        package = re.search(r"^package\s+([\w.]+)", read(main), re.M).group(1)
+        write(os.path.join(folder, "SpendWidget.kt"), f"""package {package}
+
+import android.appwidget.AppWidgetManager
+import android.content.Context
+import android.content.SharedPreferences
+import android.net.Uri
+import android.widget.RemoteViews
+import es.antonborri.home_widget.HomeWidgetLaunchIntent
+import es.antonborri.home_widget.HomeWidgetProvider
+
+/** The home screen widget. WillowWallet saves the numbers (home_widget) whenever your data changes. */
+class SpendWidget : HomeWidgetProvider() {{
+    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray, widgetData: SharedPreferences) {{
+        appWidgetIds.forEach {{ id ->
+            val views = RemoteViews(context.packageName, R.layout.spend_widget).apply {{
+                setTextViewText(R.id.widget_safe_label, widgetData.getString("safeLabel", "Safe to spend"))
+                setTextViewText(R.id.widget_safe, widgetData.getString("safe", "—"))
+                setTextViewText(R.id.widget_left, widgetData.getString("left", "Open WillowWallet to set up"))
+                setOnClickPendingIntent(R.id.widget_root, HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java, Uri.parse("willowwallet://open")))
+                setOnClickPendingIntent(R.id.widget_add, HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java, Uri.parse("willowwallet://add")))
+            }}
+            appWidgetManager.updateAppWidget(id, views)
+        }}
+    }}
+}}
+""")
+        print("wrote", os.path.join(folder, "SpendWidget.kt"))
 
 
 def macos():

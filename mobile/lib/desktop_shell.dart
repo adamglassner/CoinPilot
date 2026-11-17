@@ -10,6 +10,7 @@ import 'screens/budgets_screen.dart';
 import 'screens/debts_screen.dart';
 import 'calculator.dart';
 import 'screens/forecast_screen.dart';
+import 'screens/receipts_screen.dart';
 import 'screens/get_started.dart';
 import 'screens/goals_screen.dart';
 import 'screens/home_screen.dart';
@@ -56,6 +57,7 @@ class DesktopShellState extends State<DesktopShell> {
     _Section('bills', 'Bills', Icons.event_note_outlined, Icons.event_note_rounded),
     _Section('income', 'Income', Icons.payments_outlined, Icons.payments_rounded),
     _Section('goals', 'Goals', Icons.flag_outlined, Icons.flag_rounded),
+    _Section('receipts', 'Receipts', Icons.receipt_outlined, Icons.receipt_rounded),
     _Section('reports', 'Reports', Icons.insights_outlined, Icons.insights_rounded),
     _Section('taxes', 'Taxes', Icons.folder_copy_outlined, Icons.folder_copy_rounded),
     _Section('sync', 'Sync & Devices', Icons.sync_rounded, Icons.sync_rounded),
@@ -117,6 +119,7 @@ class DesktopShellState extends State<DesktopShell> {
         'bills' => const BillsScreen(),
         'income' => const IncomeScreen(),
         'goals' => const GoalsScreen(),
+        'receipts' => const ReceiptsScreen(),
         'reports' => const ReportsScreen(),
         'taxes' => const TaxesScreen(),
         'sync' => const SyncScreen(),

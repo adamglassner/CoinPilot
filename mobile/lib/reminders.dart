@@ -24,6 +24,9 @@ class Reminders {
   static bool _ready = false;
   static Timer? _timer, _soon;
 
+  /// Called with what was typed into "Spent anything today?" (empty when the notification was just tapped).
+  static void Function(String input)? onQuickAdd;
+
   static Future<void> init() async {
     try {
       tzdata.initializeTimeZones();
@@ -32,10 +35,60 @@ class Reminders {
         macOS: DarwinInitializationSettings(requestAlertPermission: false, requestBadgePermission: false, requestSoundPermission: false),
         linux: LinuxInitializationSettings(defaultActionName: 'Open WillowWallet'),
       );
-      _ready = await _n.initialize(settings) ?? false;
+      _ready = await _n.initialize(settings, onDidReceiveNotificationResponse: _tapped) ?? false;
     } catch (_) {
       _ready = false;
     }
+  }
+
+  static void _tapped(NotificationResponse r) {
+    if (r.payload == quickAddPayload) onQuickAdd?.call(r.input ?? '');
+  }
+
+  /// What the app was opened with from "Spent anything today?" (typed text, or empty), else null.
+  static Future<String?> launchQuickAdd() async {
+    if (!_ready) return null;
+    try {
+      final d = await _n.getNotificationAppLaunchDetails();
+      final r = d?.notificationResponse;
+      if (d?.didNotificationLaunchApp != true || r?.payload != quickAddPayload) return null;
+      return r!.input ?? '';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static const quickAddPayload = 'quick-add';
+
+  /// "12.50 coffee" or "Coffee 12.50" → (cents, payee).
+  static (int?, String?) parseQuickAdd(String text) {
+    final m = RegExp(r'\$?(\d+(?:[.,]\d{1,2})?)').firstMatch(text);
+    final cents = m == null ? null : Money.parse(m.group(1)!.replaceAll(',', '.'));
+    final rest = (m == null ? text : text.replaceRange(m.start, m.end, '')).trim();
+    return (cents, rest.isEmpty ? null : rest[0].toUpperCase() + rest.substring(1));
+  }
+
+  /// The daily "Spent anything today?" notification (Android), at the hour chosen in Settings.
+  static Future<void> _scheduleNudge(Store store) async {
+    if (!store.settings.dailyNudge) return;
+    final now = DateTime.now();
+    var at = DateTime(now.year, now.month, now.day, store.settings.nudgeHour);
+    if (!at.isAfter(now)) at = at.add(const Duration(days: 1));
+    await _n.zonedSchedule(
+      7000,
+      'Spent anything today?',
+      'Add it now so your budgets stay right. Type it here, like "12.50 coffee".',
+      tz.TZDateTime.from(at, tz.UTC),
+      NotificationDetails(
+        android: AndroidNotificationDetails('quick-add', 'Daily check-in',
+            channelDescription: 'A reminder each evening to add what you spent', importance: Importance.defaultImportance, actions: [
+          AndroidNotificationAction('quick-add', 'Add', inputs: [AndroidNotificationActionInput(label: '12.50 coffee')], showsUserInterface: true),
+        ]),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+      payload: quickAddPayload,
+    );
   }
 
   /// Asks Android 13+ and macOS for permission to show notifications. True when allowed.
@@ -136,6 +189,7 @@ class Reminders {
 
   static Future<void> _schedule(Store store) async {
     await _n.cancelAllPendingNotifications(); // (alerts already shown stay)
+    await _scheduleNudge(store);
     final p = store.prefs;
     if (!p.remindersOn) return;
     final now = DateTime.now();
