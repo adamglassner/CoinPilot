@@ -357,6 +357,43 @@ public static class SelfTest
         Check("Restore brings back the backed-up data", DataStore.Transactions.Items.Count == countAtBackup && !DataStore.Transactions.Items.Any(t => t.Payee == "After backup")
             && DataStore.TaxDocuments.Items.Count == 1 && File.Exists(FileVault.ReceiptPath(receipt)));
         try { File.Delete(zip); File.Delete(tempFile); Directory.Delete(kept, recursive: true); } catch { /* ignore */ }
+
+        // A backup made on the phone (WillowWallet for Android writes the same files, with UTC timestamps and an Id in the settings)
+        string phoneZip = Path.Combine(Path.GetTempPath(), $"ww-phone-backup-{Guid.NewGuid():N}.zip");
+        using (var z = System.IO.Compression.ZipFile.Open(phoneZip, System.IO.Compression.ZipArchiveMode.Create))
+        {
+            void Entry(string name, string text)
+            {
+                using var w = new StreamWriter(z.CreateEntry(name).Open());
+                w.Write(text);
+            }
+            Entry("transactions.json", "[{\"Id\":\"ph1\",\"Payee\":\"Corner Cafe\",\"Category\":\"Dining out\",\"Account\":\"Checking\",\"Date\":\"2026-11-10T00:00:00\",\"Amount\":-12.5,\"Note\":\"\",\"CreatedAt\":\"2026-11-10T14:00:00.000Z\",\"UpdatedAt\":\"2026-11-10T14:00:00.000Z\",\"Splits\":[],\"Tags\":[\"phone\"],\"Receipt\":\"\",\"TransferAccount\":\"\"}]");
+            Entry("budgets.json", "[{\"Rollover\":true,\"Id\":\"phb\",\"Category\":\"Dining out\",\"MonthlyLimit\":150.0,\"CreatedAt\":\"2026-11-01T00:00:00.000Z\",\"UpdatedAt\":\"2026-11-01T00:00:00.000Z\"}]");
+            Entry("bills.json", "[{\"Id\":\"phbill\",\"CreatedAt\":\"2026-11-01T00:00:00.000Z\",\"UpdatedAt\":\"2026-11-01T00:00:00.000Z\",\"Name\":\"Phone\",\"Amount\":65.0,\"NextDue\":\"2026-12-12T00:00:00\",\"DueDay\":12,\"Repeats\":\"Monthly\",\"Category\":\"Utilities\",\"Account\":\"Checking\",\"AutoPay\":false,\"LastPaid\":null,\"Note\":\"\",\"DebtId\":\"\"}]");
+            Entry("accounts.json", "[{\"Id\":\"pha\",\"CreatedAt\":\"2026-11-01T00:00:00.000Z\",\"UpdatedAt\":\"2026-11-01T00:00:00.000Z\",\"Name\":\"Checking\",\"Type\":\"Checking\",\"Institution\":\"\",\"StartingBalance\":1000.0,\"BalanceDate\":\"2026-11-01T00:00:00\",\"IsClosed\":false}]");
+            Entry("preferences.json", "{\"Currency\":\"en-US\",\"MonthStartDay\":1,\"SkippedCuts\":[\"hulu|forever\"],\"SetupDone\":true,\"UpdatedAt\":\"2026-11-10T14:00:00.000Z\"}");
+            Entry("debt-plan.json", "{\"Strategy\":\"Snowball\",\"ExtraPayment\":50.0,\"UpdatedAt\":\"2026-11-10T14:00:00.000Z\"}");
+        }
+        Check("A phone backup looks valid", Backup.Check(phoneZip) == null);
+        string keptPhone = "";
+        await Step("Restore a backup made on the phone", () => { keptPhone = Backup.Restore(phoneZip); window.GoTo("dashboard"); window.GoTo("budgets"); });
+        Check("Phone backup restored", DataStore.Transactions.Items.SingleOrDefault()?.Amount == -12.5m && DataStore.Transactions.Items.Single().Tags.SequenceEqual(["phone"])
+            && DataStore.Budgets.Items.Single().Rollover && DataStore.Bills.Items.Single().Amount == 65m && DataStore.Accounts.Items.Single().StartingBalance == 1000m
+            && DataStore.Prefs.SkippedCuts.Contains("hulu|forever") && DataStore.DebtPlan.Strategy == DebtPlanner.Snowball && DataStore.DebtPlan.ExtraPayment == 50m,
+            $"{DataStore.Transactions.Items.Count} transactions, {DataStore.Budgets.Items.Count} budgets");
+        // Put the data from before back for the tests that follow
+        await Step("Restore the data from before", () =>
+        {
+            string folder = DataStore.Folder;
+            FileVault.CleanUpOpenedFiles();
+            Directory.Delete(folder, recursive: true);
+            Directory.Move(keptPhone, folder);
+            DataLock.Forget();
+            DataStore.Reload();
+            window.GoTo("dashboard");
+        });
+        Check("Data from before is back", DataStore.Transactions.Items.Count == countAtBackup);
+        try { File.Delete(phoneZip); } catch { /* ignore */ }
     }
 
     // ======================================================================

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.1 — 2026-11-16
+
+- **Fixed:** "Skip ▾" on Subscriptions you could cut didn't open its menu. It now offers "Skip for this month" and
+  "Don't suggest it again".
+- **Backups move between the PC and the phone.** A backup made in WillowWallet for Android (0.3.0 and later) restores
+  here with Settings → Restore, and a backup made here restores on the phone (protected ones too, with the same PIN,
+  password or recovery key).
+
 ## 1.5.0 — 2026-11-16
 
 - **Subscriptions you could cut.** The Budgets page now suggests subscriptions to cancel, with how much each would
