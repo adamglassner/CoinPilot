@@ -10,6 +10,16 @@ namespace CoinPilot.Data;
 /// <summary>Something worth knowing now. Kind: over, budget, bill-price, unusual or dip.</summary>
 public sealed record MoneyAlert(string Key, string Kind, string Title, string Body, string? BillId = null, decimal? NewAmount = null);
 
+/// <summary>One month on a page: in and out, budgets, where it went, bills, savings and net worth.</summary>
+public sealed record MonthlyReport(DateTime Month, DateTime End, decimal Income, decimal Spent, decimal IncomeBefore, decimal SpentBefore,
+    List<BudgetStatus> Budgets, List<(string Category, decimal Spent)> TopCategories, Transaction? Biggest, int BillsPaid,
+    decimal SavedToGoals, decimal DebtPaid, decimal NetWorthStart, decimal NetWorthEnd, int Transactions)
+{
+    public decimal Saved => Income - Spent;
+    public double? SavingsRate => Income <= 0 ? null : (double)(Saved / Income);
+    public int BudgetsOver => Budgets.Count(b => b.IsOver);
+}
+
 public sealed record PlanLine(string Kind, string Label, decimal Amount, DateTime Date, string Category = "");
 
 public sealed record PaycheckPlan(IncomeSource Source, DateTime Payday, DateTime Next, decimal Amount, List<PlanLine> Lines, decimal Leftover)
@@ -182,6 +192,30 @@ public static class Insights
         var last = DataStore.Transactions.Items.Where(t => t.IsIncome && string.Equals(t.Payee, s.Name, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(t => t.Date).Take(4).Select(t => t.Amount).ToList();
         return last.Count == 0 ? s.Amount : last.Average();
+    }
+
+    // ----- Monthly report -----
+
+    public static decimal NetWorthAt(DateTime date)
+    {
+        var tx = DataStore.Transactions.Items;
+        return DataStore.Accounts.Items.Sum(a => AccountMath.BalanceAt(a, date, tx)) - DataStore.Debts.Items.Sum(d => AccountMath.DebtAt(d, date));
+    }
+
+    public static MonthlyReport Monthly(DateTime anyDay)
+    {
+        var month = Budgeting.MonthStart(anyDay);
+        var end = Budgeting.MonthEnd(month);
+        var s = Budgeting.Summarize(month);
+        var prev = Budgeting.Summarize(month.AddMonths(-1));
+        return new MonthlyReport(month, end, s.Income, s.Spent, prev.Income, prev.Spent,
+            s.Budgets.ToList(),
+            Reports.ByCategory(month, end, DataStore.Transactions.Items).Take(5).ToList(),
+            s.Transactions.Where(t => t.IsSpending).OrderBy(t => t.Amount).FirstOrDefault(),
+            DataStore.Bills.Items.Count(b => b.LastPaid is DateTime d && Budgeting.InMonth(d, month)),
+            DataStore.Goals.Items.SelectMany(g => g.History).Where(h => Budgeting.InMonth(h.Date, month)).Sum(h => h.Amount),
+            DataStore.Debts.Items.SelectMany(d => d.Payments).Where(p => Budgeting.InMonth(p.Date, month)).Sum(p => p.Amount),
+            NetWorthAt(month.AddDays(-1)), NetWorthAt(end), s.Transactions.Count);
     }
 
     // ----- This year vs last -----

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dates.dart';
 import 'finance.dart';
 import 'forecast.dart';
+import 'models.dart';
 import 'money.dart';
 import 'records.dart';
 import 'store.dart';
@@ -178,6 +179,70 @@ extension Insights on Store {
     return PaycheckPlan(source: s, payday: from, next: next, amountCents: amount, lines: lines, leftoverCents: amount - planned);
   }
 
+  // ----- Monthly report -----
+
+  int netWorthAt(DateTime date) =>
+      accountRecords.fold<int>(0, (s, a) => s + balanceAt(a, date)) - debts.fold<int>(0, (s, d) => s + AccountMath.debtAt(d, date));
+
+  MonthlyReport monthlyReport(DateTime anyDay) {
+    final month = budgetMonth(anyDay);
+    final end = monthEnd(month);
+    final prev = DateTime(month.year, month.month - 1, month.day);
+    final inMonthList = inMonth(month);
+    final spending = inMonthList.where((t) => t.isSpending).toList()..sort((a, b) => a.cents.compareTo(b.cents));
+    return MonthlyReport(
+      month: month,
+      end: end,
+      income: incomeIn(month),
+      spent: spentIn(month),
+      incomeBefore: incomeIn(prev),
+      spentBefore: spentIn(prev),
+      budgets: [for (final b in budgets) (b.category, spentIn(month, category: b.category), availableFor(b, month))],
+      topCategories: spendingByCategory(month, end).take(5).toList(),
+      biggest: spending.isEmpty ? null : spending.first,
+      billsPaid: bills.where((b) => b.lastPaid != null && inBudgetMonth(b.lastPaid!, month)).length,
+      savedToGoals: goals.expand((g) => g.history).where((h) => inBudgetMonth(h.date, month)).fold(0, (s, h) => s + h.cents),
+      debtPaid: debts.expand((d) => d.payments).where((p) => inBudgetMonth(p.date, month)).fold(0, (s, p) => s + p.cents),
+      netWorthStart: netWorthAt(month.subtract(const Duration(days: 1))),
+      netWorthEnd: netWorthAt(end),
+      transactions: inMonthList.length,
+    );
+  }
+
+  // ----- Shared household -----
+
+  /// Shared spending in a budget month (transactions with a "Paid by"), split by the household's shares.
+  HouseholdMonth householdMonth(DateTime anyDay) {
+    final people = prefs.householdPeople;
+    final month = budgetMonth(anyDay);
+    final shares = people.length == 2 ? [prefs.householdShare, 100 - prefs.householdShare] : [for (final _ in people) 100 / max(1, people.length)];
+    final list = [for (final t in inMonth(month)) if (t.isSpending && people.contains(t.paidBy)) t];
+    final total = list.fold<int>(0, (s, t) => s - t.cents);
+    final paid = {for (final p in people) p: list.where((t) => t.paidBy == p).fold<int>(0, (s, t) => s - t.cents)};
+    final fair = <String, int>{};
+    var given = 0;
+    for (final (i, p) in people.indexed) {
+      final f = i == people.length - 1 ? total - given : (total * shares[i] / 100).round();
+      fair[p] = f;
+      given += f;
+    }
+    // Whoever paid more than their share gets paid back by those who paid less
+    final owed = [for (final p in people) (p, paid[p]! - fair[p]!)];
+    final givers = [for (final o in owed) if (o.$2 < 0) [o.$1, -o.$2]];
+    final takers = [for (final o in owed) if (o.$2 > 0) [o.$1, o.$2]];
+    final settle = <(String, String, int)>[];
+    var gi = 0, ti = 0;
+    while (gi < givers.length && ti < takers.length) {
+      final amount = min(givers[gi][1] as int, takers[ti][1] as int);
+      if (amount > 0) settle.add((givers[gi][0] as String, takers[ti][0] as String, amount));
+      givers[gi][1] = (givers[gi][1] as int) - amount;
+      takers[ti][1] = (takers[ti][1] as int) - amount;
+      if (givers[gi][1] == 0) gi++;
+      if (takers[ti][1] == 0) ti++;
+    }
+    return HouseholdMonth(people: people, paid: paid, fair: fair, total: total, settle: settle, transactions: list);
+  }
+
   // ----- This year vs last -----
 
   /// Spending by category for [from]–[to] this year and the same days a year earlier, biggest changes first.
@@ -201,6 +266,50 @@ extension Insights on Store {
       categories: cats,
     );
   }
+}
+
+/// One month on a page: in and out, budgets, where it went, bills, savings and net worth.
+class MonthlyReport {
+  const MonthlyReport({
+    required this.month,
+    required this.end,
+    required this.income,
+    required this.spent,
+    required this.incomeBefore,
+    required this.spentBefore,
+    required this.budgets,
+    required this.topCategories,
+    required this.biggest,
+    required this.billsPaid,
+    required this.savedToGoals,
+    required this.debtPaid,
+    required this.netWorthStart,
+    required this.netWorthEnd,
+    required this.transactions,
+  });
+  final DateTime month, end;
+  final int income, spent, incomeBefore, spentBefore, billsPaid, savedToGoals, debtPaid, netWorthStart, netWorthEnd, transactions;
+
+  /// (category, spent, available) for each budget.
+  final List<(String, int, int)> budgets;
+  final List<MapEntry<String, int>> topCategories;
+  final Txn? biggest;
+
+  int get saved => income - spent;
+  double? get savingsRate => income <= 0 ? null : saved / income;
+  int get budgetsOver => budgets.where((b) => b.$2 > b.$3).length;
+}
+
+/// Shared household spending for a month: who paid what, each person's fair share, and how to settle up.
+class HouseholdMonth {
+  const HouseholdMonth({required this.people, required this.paid, required this.fair, required this.total, required this.settle, required this.transactions});
+  final List<String> people;
+  final Map<String, int> paid, fair;
+  final int total;
+
+  /// (who pays, who gets paid, how much) to even things up.
+  final List<(String, String, int)> settle;
+  final List<Txn> transactions;
 }
 
 class PlanLine {

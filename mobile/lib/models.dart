@@ -60,6 +60,9 @@ class Txn {
   List<String> get tags => [for (final t in (extra['Tags'] as List? ?? const [])) '$t'];
   /// File name of an attached receipt photo (kept in the app's receipts folder, synced like on the PC).
   String get receipt => extra['Receipt'] as String? ?? '';
+
+  /// Shared household: who paid ("" when it isn't shared).
+  String get paidBy => extra['PaidBy'] as String? ?? '';
   String get importId => extra['ImportId'] as String? ?? '';
   /// The split pieces as (category, cents), always positive.
   List<(String, int)> get splits => [
@@ -214,6 +217,9 @@ class AppSettings {
   bool dailyNudge = false;
   int nudgeHour = 20;
 
+  /// Shared household: who usually pays on this device (picked first in Add transaction).
+  String lastPaidBy = '';
+
   /// Spending alerts already sent as notifications on this device (their keys).
   List<String> alertsNotified = [];
   String lastReminderDay = '';
@@ -245,6 +251,7 @@ class AppSettings {
         'AlertsNotified': alertsNotified,
         'DailyNudge': dailyNudge,
         'NudgeHour': nudgeHour,
+        'LastPaidBy': lastPaidBy,
         'LastReminderDay': lastReminderDay,
         'LastSeenVersion': lastSeenVersion,
         'StartAtLogin': startAtLogin,
@@ -266,6 +273,7 @@ class AppSettings {
     ..alertsNotified = [for (final x in (j['AlertsNotified'] as List? ?? const [])) '$x']
     ..dailyNudge = j['DailyNudge'] == true
     ..nudgeHour = j['NudgeHour'] is int ? j['NudgeHour'] as int : 20
+    ..lastPaidBy = j['LastPaidBy'] as String? ?? ''
     ..lastReminderDay = j['LastReminderDay'] as String? ?? ''
     ..lastSeenVersion = j['LastSeenVersion'] as String? ?? ''
     ..startAtLogin = j['StartAtLogin'] == true

@@ -474,6 +474,13 @@ class Prefs extends Rec {
   set forecastTargetCents(int v) => setMoney('ForecastTarget', v);
   bool get forecastIncludeSavings => flag('ForecastIncludeSavings');
   set forecastIncludeSavings(bool v) => j['ForecastIncludeSavings'] = v;
+  /// Shared household: the people (two or more turns it on) and the first person's share of shared spending (50 = half).
+  List<String> get householdPeople => strings('HouseholdPeople');
+  set householdPeople(List<String> v) => j['HouseholdPeople'] = v;
+  int get householdShare => whole('HouseholdShare', 50).clamp(1, 99);
+  set householdShare(int v) => j['HouseholdShare'] = v;
+  bool get household => householdPeople.length >= 2;
+
   /// Spending alerts: on or off, the budget warning level (80 = at 80% used), and alerts dismissed on any device.
   bool get alertsOn => j['AlertsOn'] != false;
   set alertsOn(bool v) => j['AlertsOn'] = v;

@@ -63,6 +63,7 @@ class _TransactionSheetState extends State<TransactionSheet> {
   late String _to = _old?.transferAccount ?? '';
   late DateTime _date = _old?.date ?? widget.prefill?.date ?? dayOnly(DateTime.now());
   late String _receipt = _old?.receipt ?? widget.prefill?.receipt ?? '';
+  late String _paidBy = _old?.paidBy ?? '';
   late final List<_SplitLine> _splits = [for (final (c, cents) in _old?.splits ?? const <(String, int)>[]) _SplitLine(c, cents)];
   bool _categoryChosen = false;
   bool _more = false;
@@ -162,7 +163,9 @@ class _TransactionSheetState extends State<TransactionSheet> {
       'Splits': _transfer ? <dynamic>[] : [for (final s in _splits) {'Category': s.category, 'Amount': (Money.parse(s.amount.text) ?? 0) / 100}],
       'Tags': tags,
       'Receipt': _receipt,
+      'PaidBy': _transfer ? '' : _paidBy,
     };
+    if (_paidBy.isNotEmpty && _paidBy != store.settings.lastPaidBy) store.updateSettings((s) => s.lastPaidBy = _paidBy);
     final t = Txn(
       id: _old?.id,
       payee: _transfer ? (payee.isEmpty || payee.startsWith('Transfer to') ? 'Transfer to $_to' : payee) : payee,
@@ -317,6 +320,16 @@ class _TransactionSheetState extends State<TransactionSheet> {
         if (_transfer) ...[
           const FieldLabel('To'),
           Choices(options: [for (final a in accounts) if (a != account) a, if (_to.isNotEmpty && !accounts.contains(_to)) _to], selected: _to, onChanged: (a) => setState(() => _to = a)),
+        ],
+        if (!_transfer && store.prefs.household) ...[
+          const FieldLabel('Paid by'),
+          Builder(builder: (context) {
+            final people = store.prefs.householdPeople;
+            if (_old == null && _paidBy.isEmpty) {
+              _paidBy = people.contains(store.settings.lastPaidBy) ? store.settings.lastPaidBy : people.first;
+            }
+            return Choices(options: [...people, 'Not shared'], selected: _paidBy.isEmpty ? 'Not shared' : _paidBy, onChanged: (v) => setState(() => _paidBy = v == 'Not shared' ? '' : v));
+          }),
         ],
         const FieldLabel('Date'),
         DateTile(date: _date, last: DateTime(DateTime.now().year + 1, 12, 31), onChanged: (d) => setState(() => _date = d ?? _date)),

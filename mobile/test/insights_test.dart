@@ -85,4 +85,29 @@ void main() {
     expect(YearOverYear.change(45000, 30000), 50);
     expect(YearOverYear.change(100, 0), isNull);
   });
+
+  test('household: who paid what and who owes whom', () {
+    final s = Store.memory();
+    s.updatePrefs((p) => p.householdPeople = ['Alex', 'Sam']);
+    Txn t(String who, int cents) => Txn(payee: 'Shop', category: 'Groceries', account: 'Checking', date: DateTime(2026, 11, 10), cents: cents, extra: {'PaidBy': who});
+    s.saveTxns([t('Alex', -10000), t('Sam', -4000), Txn(payee: 'Mine', category: 'Fun', account: 'Checking', date: DateTime(2026, 11, 11), cents: -9900)]);
+    var h = s.householdMonth(today);
+    expect(h.total, 14000);
+    expect(h.paid, {'Alex': 10000, 'Sam': 4000});
+    expect(h.settle, [('Sam', 'Alex', 3000)]);
+    s.updatePrefs((p) => p.householdShare = 60);
+    h = s.householdMonth(today);
+    expect(h.fair, {'Alex': 8400, 'Sam': 5600});
+    expect(h.settle, [('Sam', 'Alex', 1600)]);
+  });
+
+  test('monthly report', () {
+    final r = example().monthlyReport(today);
+    expect(r.month, DateTime(2026, 11, 1));
+    expect(r.spent, 21000 + 45000 + 1799 + 18200);
+    expect(r.budgetsOver, 1);
+    expect(r.topCategories.first.key, 'Groceries');
+    expect(r.biggest!.payee, 'Kroger');
+    expect(r.netWorthEnd - r.netWorthStart, -r.spent);
+  });
 }

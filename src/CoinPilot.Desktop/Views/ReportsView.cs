@@ -13,8 +13,11 @@ namespace CoinPilot.Views;
 /// </summary>
 public sealed class ReportsView : DataPage
 {
-    public const string ThreeMonths = "3 months", SixMonths = "6 months", TwelveMonths = "12 months", ThisYear = "This year", YearInReview = "Year in review";
-    public static readonly string[] Ranges = [ThreeMonths, SixMonths, TwelveMonths, ThisYear, YearInReview];
+    public const string ThreeMonths = "3 months", SixMonths = "6 months", TwelveMonths = "12 months", ThisYear = "This year", YearInReview = "Year in review", MonthlyReport = "Monthly report";
+    public static readonly string[] Ranges = [ThreeMonths, SixMonths, TwelveMonths, ThisYear, MonthlyReport, YearInReview];
+
+    /// <summary>The month shown in Monthly report.</summary>
+    public static DateTime ReportMonth { get; set; } = Budgeting.MonthStart(DateTime.Today);
 
     /// <summary>The period shown; remembered while the app is open.</summary>
     public static string Range { get; set; } = SixMonths;
@@ -39,8 +42,71 @@ public sealed class ReportsView : DataPage
         bar.Children.Add(PageKit.ChoiceChips(Ranges, Range, pick => { Range = pick; Rebuild(); }));
         Add(bar);
 
-        foreach (var section in Range == YearInReview ? ReviewSections(forPrint: false) : PeriodSections(forPrint: false))
+        foreach (var section in Sections(forPrint: false))
             Add(section);
+    }
+
+    private List<UIElement> Sections(bool forPrint) => Range switch
+    {
+        YearInReview => ReviewSections(forPrint),
+        MonthlyReport => MonthSections(forPrint),
+        _ => PeriodSections(forPrint),
+    };
+
+    // ----- Monthly report: one month on a page -----
+
+    private List<UIElement> MonthSections(bool forPrint)
+    {
+        var r = Insights.Monthly(ReportMonth);
+        var list = new List<UIElement>();
+        string name = Money.MonthName(r.Month);
+        if (forPrint) list.Add(PrintTitle($"WillowWallet monthly report · {name}"));
+        else
+        {
+            var nav = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 14) };
+            var current = Budgeting.MonthStart(DateTime.Today);
+            nav.Children.Add(PageKit.Link("‹ Previous", () => { ReportMonth = ReportMonth.AddMonths(-1); Rebuild(); }));
+            nav.Children.Add(Ui.Text(name, size: 16, weight: FontWeights.SemiBold).Also(t => { t.Margin = new Thickness(16, 0, 16, 0); t.VerticalAlignment = VerticalAlignment.Center; }));
+            if (r.Month < current) nav.Children.Add(PageKit.Link("Next ›", () => { ReportMonth = ReportMonth.AddMonths(1); Rebuild(); }));
+            list.Add(nav);
+        }
+        string Vs(decimal now, decimal before) => before <= 0 ? "" : $"{(now >= before ? "+" : "")}{Math.Round((now - before) * 100 / before):0}% vs last month";
+        list.Add(PageKit.KpiRow(
+            PageKit.Kpi("Came in", Money.Format(r.Income, cents: false), Vs(r.Income, r.IncomeBefore), valueBrush: "Brush.Positive"),
+            PageKit.Kpi("Spent", Money.Format(r.Spent, cents: false), Vs(r.Spent, r.SpentBefore)),
+            PageKit.Kpi(r.Saved >= 0 ? "Saved" : "Overspent", Money.Format(Math.Abs(r.Saved), cents: false), r.SavingsRate is double rate ? $"{rate * 100:0}% of income" : null,
+                valueBrush: r.Saved < 0 ? "Brush.Danger" : null),
+            PageKit.Kpi("Net worth", Money.Format(r.NetWorthEnd, cents: false), $"{Money.Signed(r.NetWorthEnd - r.NetWorthStart)} this month")));
+        if (r.Budgets.Count > 0)
+        {
+            var b = new StackPanel();
+            foreach (var s in r.Budgets)
+            {
+                var row = new DockPanel { Margin = new Thickness(0, 6, 0, 2) };
+                row.Children.Add(Ui.Text($"{Money.Format(s.Spent, cents: false)} of {Money.Format(s.Available, cents: false)}", muted: !s.IsOver, brushKey: s.IsOver ? "Brush.Danger" : null)
+                    .Also(t => DockPanel.SetDock(t, Dock.Right)));
+                row.Children.Add(Ui.Text(s.Budget.Category, weight: FontWeights.SemiBold));
+                b.Children.Add(row);
+                b.Children.Add(Ui.ProgressBar(s.Fraction, s.BrushKey, height: 6));
+            }
+            list.Add(PageKit.Card(b, r.BudgetsOver == 0 ? "Budgets · all on track" : $"Budgets · {r.BudgetsOver} over"));
+        }
+        if (r.TopCategories.Count > 0) list.Add(PageKit.Card(CategoryBars(r.TopCategories, r.Spent), "Where it went"));
+        var also = new StackPanel();
+        void Line(string label, string value)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 5, 0, 5) };
+            row.Children.Add(Ui.Text(value, weight: FontWeights.SemiBold).Also(t => DockPanel.SetDock(t, Dock.Right)));
+            row.Children.Add(Ui.Text(label));
+            also.Children.Add(row);
+        }
+        if (r.Biggest is Transaction big) Line("Biggest purchase", $"{big.Payee}, {Money.Format(-big.Amount)} on {big.Date:MMM d}");
+        Line("Bills paid", r.BillsPaid.ToString());
+        Line("Put toward goals", Money.Format(r.SavedToGoals, cents: false));
+        Line("Paid on debts", Money.Format(r.DebtPaid, cents: false));
+        Line("Transactions", r.Transactions.ToString());
+        list.Add(PageKit.Card(also, "Also this month"));
+        return list;
     }
 
     // ----- Period reports -----
@@ -349,7 +415,7 @@ public sealed class ReportsView : DataPage
         try
         {
             var size = new Size(dialog.PrintableAreaWidth, dialog.PrintableAreaHeight);
-            var doc = BuildDocument(size, Range == YearInReview ? ReviewSections(forPrint: true) : PeriodSections(forPrint: true));
+            var doc = BuildDocument(size, Sections(forPrint: true));
             dialog.PrintDocument(doc.DocumentPaginator, "WillowWallet report");
             Toaster.Show("Report sent to the printer.");
         }

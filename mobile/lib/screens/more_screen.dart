@@ -52,6 +52,7 @@ class MoreScreen extends StatelessWidget {
       'goals': () => _Feature('Goals', Icons.flag_outlined, goals.isEmpty ? 'Set one' : '${goals.length} goal${goals.length == 1 ? '' : 's'}',
           goals.isEmpty ? '' : '${(goals.fold<double>(0, (s, g) => s + store.fraction(g)) / goals.length * 100).round()}% on average', () => open('goals')),
       'receipts': () => _Feature('Receipts', Icons.receipt_rounded, '${store.transactions.where((t) => t.receipt.isNotEmpty).length} kept', 'scan to add', () => open('receipts')),
+      'household': () => _Feature('Household', Icons.people_outline_rounded, store.prefs.household ? store.prefs.householdPeople.join(' & ') : 'Share expenses', store.prefs.household ? 'who owes whom' : '', () => open('household')),
       'reports': () => _Feature('Reports', Icons.insights_rounded, 'Trends', 'year in review', () => open('reports')),
       'taxes': () => _Feature('Taxes', Icons.folder_copy_outlined, '${store.taxDocs.length} document${store.taxDocs.length == 1 ? '' : 's'}', 'by tax year', () => open('taxes')),
     };

@@ -10,6 +10,7 @@ import '../money.dart';
 import '../store.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'monthly_report.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -43,6 +44,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       title: 'Reports',
       subtitle: 'Where your money went, month by month.',
       actions: [
+        IconButton(tooltip: 'Monthly report', onPressed: () => pushPage(context, const MonthlyReportScreen()), icon: const Icon(Icons.summarize_outlined)),
         IconButton(tooltip: 'Year in review', onPressed: () => pushPage(context, YearReviewScreen(year: now.year)), icon: const Icon(Icons.auto_awesome_outlined)),
       ],
       children: [
@@ -77,6 +79,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ],
             ),
           ),
+        const SizedBox(height: 14),
+        FilledButton.tonalIcon(
+          onPressed: () => pushPage(context, const MonthlyReportScreen()),
+          icon: const Icon(Icons.summarize_outlined, size: 19),
+          label: const Text('Monthly report'),
+        ),
         const SectionTitle('Compared with last year'),
         _YearOverYearPanel(now: now),
         const SizedBox(height: 14),
