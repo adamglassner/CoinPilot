@@ -336,7 +336,7 @@ class DebtPlan {
     }
     if (active.isEmpty) return r;
     final balance = {for (final d in active) d.id: d.balanceCents.toDouble()};
-    final monthly = active.fold<int>(0, (s, d) => s + d.minimumCents) + max(0, extraCents);
+    final int monthly = active.fold<int>(0, (s, d) => s + d.minimumCents) + max<int>(0, extraCents);
     r.monthlyPayment = monthly;
     var interestTotal = 0.0;
     var month = 0;
