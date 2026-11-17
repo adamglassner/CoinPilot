@@ -277,14 +277,18 @@ public sealed class ForecastChart : FrameworkElement
         dc.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, w, h));
         var days = _f.Days;
         if (days.Count == 0 || w <= 0) return;
-        double lo = (double)Math.Min(0, Math.Min(days.Min(d => d.Low), _f.Target));
-        double hi = (double)Math.Max(days.Max(d => d.High), _f.Target);
+        double lo = (double)days.Min(d => d.Low), hi = (double)days.Max(d => d.High);
+        if (_f.Target != 0) { lo = Math.Min(lo, (double)_f.Target); hi = Math.Max(hi, (double)_f.Target); }
+        // Zoom in on the balances (zero only shows when the balance gets near it), with a little room above and below
+        double pad = Math.Max((hi - lo) * 0.15, 10);
+        lo = lo > pad * 2 ? lo - pad : Math.Min(lo, 0) - pad * 0.3;
+        hi += pad;
         double span = hi - lo == 0 ? 1 : hi - lo;
         double X(int i) => days.Count == 1 ? w / 2 : i * w / (days.Count - 1);
         double Y(decimal v) => h - 4 - ((double)v - lo) / span * (h - 8);
 
-        double zeroY = Y(0);
-        dc.DrawLine(new Pen(B("Brush.Border"), 1), new Point(0, zeroY), new Point(w, zeroY));
+        double zeroY = Math.Clamp(Y(0), 0, h);
+        if (lo < 0) dc.DrawLine(new Pen(B("Brush.Border"), 1), new Point(0, zeroY), new Point(w, zeroY));
         if (_f.Target != 0)
         {
             var dash = new Pen(B("Brush.TextMuted"), 1) { DashStyle = new DashStyle([4, 4], 0) };

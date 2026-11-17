@@ -505,18 +505,25 @@ class _ForecastPainter extends CustomPainter {
     if (days.isEmpty) return;
     var lo = days.map((d) => d.low).reduce(min).toDouble();
     var hi = days.map((d) => d.high).reduce(max).toDouble();
-    lo = min(lo, f.targetCents.toDouble());
-    hi = max(hi, f.targetCents.toDouble());
-    lo = min(lo, 0);
+    if (f.targetCents != 0) {
+      lo = min(lo, f.targetCents.toDouble());
+      hi = max(hi, f.targetCents.toDouble());
+    }
+    // Zoom in on the balances (zero only shows when the balance gets near it), with a little room above and below
+    final pad = max((hi - lo) * 0.15, 1000.0);
+    lo = lo > pad * 2 ? lo - pad : min(lo, 0) - pad * 0.3;
+    hi += pad;
     final span = hi - lo == 0 ? 1.0 : hi - lo;
     double x(int i) => days.length == 1 ? size.width / 2 : i * size.width / (days.length - 1);
     double y(num v) => size.height - 4 - (v - lo) / span * (size.height - 8);
 
     // Zero and the target
-    final zeroY = y(0);
-    canvas.drawLine(Offset(0, zeroY), Offset(size.width, zeroY), Paint()
-      ..color = p.border
-      ..strokeWidth = 1);
+    final zeroY = y(0).clamp(0.0, size.height);
+    if (lo < 0) {
+      canvas.drawLine(Offset(0, zeroY), Offset(size.width, zeroY), Paint()
+        ..color = p.border
+        ..strokeWidth = 1);
+    }
     if (f.targetCents != 0) {
       final ty = y(f.targetCents);
       for (var dx = 0.0; dx < size.width; dx += 8) {
