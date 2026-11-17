@@ -516,7 +516,7 @@ public sealed class GetStarted : UserControl
         var amountLabel = Label("");
         var amountBox = MoneyBox(_payAmount, "Paycheck amount");
         var often = Chips(IncomeSchedule.All.Where(r => r != IncomeSchedule.Once), _payRepeats);
-        var nextBox = new DatePicker { SelectedDate = _payNext, Width = 270, HorizontalAlignment = HorizontalAlignment.Left };
+        var nextBox = new DatePicker { SelectedDate = _payNext, HorizontalAlignment = HorizontalAlignment.Stretch };
         AutomationProperties.SetName(nextBox, "Next payday");
         var day2Box = Box(_payDay2.ToString(), 90, "Second payday of the month").Also(b => b.TextAlignment = TextAlignment.Center);
         var day2Panel = new StackPanel().Also(p => { p.Children.Add(Label("And on day")); p.Children.Add(day2Box); });

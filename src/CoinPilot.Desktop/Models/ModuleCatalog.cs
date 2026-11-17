@@ -57,7 +57,7 @@ public static class ModuleCatalog
         new()
         {
             Key = "accounts", Title = "Accounts", Glyph = "", IsComingSoon = false,
-            Tagline = "Checking, savings, credit cards and cash, together.",
+            Tagline = "Checking, savings, cards, cash and payment apps, together.",
             Description = "Keep track of every account's balance and see your net worth. Add accounts manually, or import statements to keep balances up to date.",
             PrimaryAction = "Add account",
             Kpis = ["Net worth", "Cash", "Credit card balances", "Accounts"],
