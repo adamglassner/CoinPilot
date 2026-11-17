@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.6.0 — 2026-11-17
+## 1.6.0 — 2026-11-16
 
 - **Unlock with Windows Hello.** With a PIN or password on, Settings → Security → **Use Windows Hello** lets you unlock
   with your fingerprint, face or Windows PIN. WillowWallet asks for it as soon as the lock screen opens; your PIN or

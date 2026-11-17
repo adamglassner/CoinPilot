@@ -1,6 +1,6 @@
 # WillowWallet for Mac and Linux — changelog
 
-## 1.6.0 — 2026-11-17
+## 1.6.0 — 2026-11-16
 
 The first version of WillowWallet for Mac and Linux, with everything WillowWallet for Windows does and a sidebar like
 it: Dashboard, Transactions, Budgets, Accounts, Debts, Bills, Income, Goals, Reports, Taxes, Sync & Devices and

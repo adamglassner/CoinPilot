@@ -1,6 +1,6 @@
 # WillowWallet for Android — changelog
 
-## 1.6.0 — 2026-11-17
+## 1.6.0 — 2026-11-16
 
 - **Unlock with your fingerprint or face.** With a PIN or password on, Settings → Privacy → **Unlock with
   fingerprint** (or face unlock). WillowWallet asks as soon as it opens; your PIN or password still works.
