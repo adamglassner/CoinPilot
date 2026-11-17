@@ -75,7 +75,10 @@ public static class SubscriptionCuts
     /// <summary>"NETFLIX.COM" → "Netflix.com" for display.</summary>
     private static string Pretty(string payee)
     {
-        string p = payee.Trim();
+        // Without trailing reference numbers: "DISNEY PLUS 8842" → "Disney Plus"
+        var words = payee.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+        while (words.Count > 1 && words[^1].TrimStart('#', '*').Any(char.IsDigit)) words.RemoveAt(words.Count - 1);
+        string p = string.Join(' ', words);
         return p.Any(char.IsLower) ? p : CultureInfo.GetCultureInfo("en-US").TextInfo.ToTitleCase(p.ToLowerInvariant());
     }
 
@@ -130,7 +133,7 @@ public static class SubscriptionCuts
             var ordered = group.OrderByDescending(s => s.Monthly).ToList();
             string names = string.Join(", ", ordered.Select(s => s.Name));
             foreach (var s in ordered.Skip(1))
-                Offer(s, $"You pay for {ordered.Count} {label.Plural} ({names}). Keeping one and switching between them when there's something to watch saves money.", 40);
+                Offer(s, $"You pay for {ordered.Count} {label.Plural} ({names}). You probably only need one: keep the one you use most.", 40);
         }
 
         // 2. The price went up
@@ -141,7 +144,10 @@ public static class SubscriptionCuts
                 .OrderBy(t => t.Date).Select(t => -t.Amount).ToList();
             if (charges.Count < 2) continue;
             decimal first = charges[0], last = charges[^1];
-            if (last - first >= 1m && last >= first * 1.10m)
+            if (last - first < 1m || last < first * 1.10m) continue;
+            if (found.TryGetValue(s.Key, out var already) && already.Priority > 35)
+                found[s.Key] = already with { Reason = $"{already.Reason} Its price also went up, from {Money.Format(first)} to {Money.Format(last)}." };
+            else
                 Offer(s, $"The price went up from {Money.Format(first)} to {Money.Format(last)}. A good moment to ask whether it's still worth it, or to look for a cheaper plan.", 35);
         }
 
