@@ -1,5 +1,28 @@
 # WillowWallet for Mac and Linux — changelog
 
+## 1.7.0 — 2026-11-17
+
+- **Forecast.** Where your money is headed: your expected balance every day to the end of the month (or 30, 60 or 90
+  days), from your paychecks, bills, budgets, debts and savings. It says whether you'll end over, short or right on
+  target, shows the likely range and the lowest point, and what moves the number most. Try **what-ifs** (a one-time
+  expense, extra money, skipping a bill, a different budget) without saving anything. Budgets you usually go over are
+  forecast at what you usually spend.
+- **Safe to spend**: how much you can spend beyond your budgets until the next payday, on the dashboard and Forecast.
+- **Bill calendar balances**: each day shows your expected balance, and paydays show up too.
+- **Sinking funds** (Goals): set aside a little each month for costs that come around every year, like car
+  registration or holidays. "I paid it" starts saving for next time.
+- **Spending alerts**, on the dashboard ("Heads up") and as notifications: a budget at 80% (or 70/90%), going over,
+  a bill whose price changed (one tap updates the bill), unusually big charges, and a forecast dip. Settings →
+  Reminders.
+- **Paycheck planner** (Income): what each paycheck needs to cover until the next one, and what's left over.
+- **This year vs last** and a **Monthly report** (your month on one page) on Reports.
+- **Receipts**: scan a receipt and WillowWallet reads the store, total and date on your device. Every receipt is kept
+  on the new Receipts page by year, and can be copied to Taxes.
+- **Household**: name who shares expenses and how they're split, pick who paid each transaction, and see who owes whom.
+- **Calculator**: Calculator in the sidebar (or ⌘K / Ctrl+K) opens a calculator beside it. Type on the keyboard;
+  copy the result. On Linux, receipts are read with Tesseract when it's installed; on a Mac you type what the photo
+  says.
+
 ## 1.6.1 — 2026-11-16
 
 - Keeps WillowWallet for Mac and Linux on the same version as the other apps. The phone app can now choose its bottom

@@ -1,7 +1,7 @@
 name: coinpilot
 description: WillowWallet for Android, Mac and Linux — budgets, bills, debts, goals and more. A Bytehawk Studio app.
 publish_to: none
-version: 1.6.1+6
+version: 1.7.0+7
 
 environment:
   sdk: ^3.5.0

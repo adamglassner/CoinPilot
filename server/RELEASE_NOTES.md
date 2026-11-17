@@ -9,6 +9,10 @@ Your own sync server for WillowWallet: keeps WillowWallet for Windows, Mac, Linu
 
 Then open `http://<server>:8484` to create the admin account, and make an invite for each person.
 
+**What's new in 1.7.0**
+
+- Version number in step with WillowWallet 1.7.0 (forecast, alerts, receipts, household and more). The server stores the new data with no changes needed.
+
 **What's new in 1.6.1**
 
 - Version number in step with WillowWallet 1.6.1 for Windows, Mac, Linux and Android. No changes to the server.
