@@ -33,6 +33,20 @@ public sealed class ImportDialog : DialogShell
         _account = AddField("Import into", Chips(accounts, accounts[0]), hint: "The account this statement is for. New transactions are added to it.", required: true);
         foreach (var chip in _account.Children.OfType<RadioButton>()) chip.Checked += (_, _) => Refresh();
 
+        if (statement.Format == "CSV" && _map.Source.Length > 0)
+        {
+            // A payment app's own download: pick its account if there is one, and say so
+            var match = _account.Children.OfType<RadioButton>().FirstOrDefault(c => string.Equals(c.Tag as string, _map.Source, StringComparison.OrdinalIgnoreCase));
+            if (match != null) match.IsChecked = true;
+            var note = new TextBlock
+            {
+                Text = $"Recognized a {_map.Source} activity download." + (match == null ? $" Add a \"{_map.Source}\" account (type Payment app) on the Accounts page to import it there." : "") +
+                       " Pending, failed and canceled payments are skipped. Money moved in from your bank shows as income; mark it as a transfer if it's already in your bank account.",
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, -6, 0, 14), FontSize = 12.5,
+            };
+            note.SetResourceReference(TextBlock.ForegroundProperty, "Brush.TextMuted");
+            Body.Children.Add(note);
+        }
         if (statement.Format == "CSV") BuildMappingFields();
 
         if (statement.LedgerBalance is decimal bal && statement.LedgerDate is DateTime asOf)

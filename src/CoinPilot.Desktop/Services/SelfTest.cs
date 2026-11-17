@@ -192,6 +192,37 @@ public static class SelfTest
         Importer.MarkDuplicates(again, "Checking");
         Check("Re-importing finds duplicates", again.All(r => r.IsDuplicate) && Importer.Commit(again, "Checking") == 0);
 
+        // Payment apps' own downloads
+        var paypal = Importer.ReadCsv("\"Date\",\"Time\",\"TimeZone\",\"Name\",\"Type\",\"Status\",\"Currency\",\"Gross\",\"Fee\",\"Net\",\"Transaction ID\"\n" +
+            "\"11/02/2026\",\"10:15:00\",\"EST\",\"Etsy Inc\",\"Express Checkout Payment\",\"Completed\",\"USD\",\"-24.99\",\"0.00\",\"-24.99\",\"1AB\"\n" +
+            "\"11/03/2026\",\"09:00:00\",\"EST\",\"Jamie Lee\",\"Mobile Payment\",\"Completed\",\"USD\",\"60.00\",\"-2.04\",\"57.96\",\"2CD\"\n" +
+            "\"11/04/2026\",\"09:00:00\",\"EST\",\"Old Navy\",\"Express Checkout Payment\",\"Denied\",\"USD\",\"-40.00\",\"0.00\",\"-40.00\",\"3EF\"\n");
+        var ppMap = Importer.GuessMapping(paypal.Headers);
+        var ppRows = Importer.Apply(paypal, ppMap, out int ppSkipped);
+        Check("PayPal download: net amounts, denied skipped", ppMap.Source == "PayPal" && ppRows.Count == 2 && ppSkipped == 1
+            && ppRows[0] is { Payee: "Etsy Inc", Amount: -24.99m } && ppRows[1] is { Payee: "Jamie Lee", Amount: 57.96m },
+            string.Join(", ", ppRows.Select(r => $"{r.Payee} {r.Amount}")));
+        var venmo = Importer.ReadCsv("Account Statement - (@alex-g) ,,,,,,,,,\nAccount Activity,,,,,,,,,\n" +
+            ",ID,Datetime,Type,Status,Note,From,To,Amount (total),Funding Source\n" +
+            ",,,,,,,,,\n" +
+            ",3912,2026-11-05T19:02:11,Payment,Complete,Pizza 🍕,Alex Glassner,Sam Ortiz,- $18.50,Venmo balance\n" +
+            ",3913,2026-11-06T08:30:00,Payment,Complete,Gas money,Chris Park,Alex Glassner,+ $25.00,\n");
+        var vmMap = Importer.GuessMapping(venmo.Headers);
+        var vmRows = Importer.Apply(venmo, vmMap, out _);
+        Check("Venmo download: who you paid or who paid you", vmMap.Source == "Venmo" && vmRows.Count == 2
+            && vmRows[0] is { Payee: "Sam Ortiz", Amount: -18.5m, Note: "Pizza 🍕" } && vmRows[1] is { Payee: "Chris Park", Amount: 25m } && vmRows[0].Date == new DateTime(2026, 11, 5),
+            string.Join(", ", vmRows.Select(r => $"{r.Payee} {r.Amount} {r.Date:d}")));
+        var cashApp = Importer.ReadCsv("Transaction ID,Date,Transaction Type,Currency,Amount,Fee,Net Amount,Asset Type,Asset Price,Asset Amount,Status,Notes,Name of sender/receiver,Account\n" +
+            "abc1,2026-11-07 14:22:05 EST,Cash Card Debit,USD,-$12.40,$0,-$12.40,,,,CARD CHARGED,,Chipotle,Visa Debit 1234\n" +
+            "abc2,2026-11-08 09:10:00 EST,P2P,USD,$40,$0,$40,,,,PAYMENT SENT,Rent share,Morgan,Cash Balance\n" +
+            "abc3,2026-11-08 10:00:00 EST,P2P,USD,-$15,$0,-$15,,,,FAILED,,Taylor,Cash Balance\n");
+        var caMap = Importer.GuessMapping(cashApp.Headers);
+        var caRows = Importer.Apply(cashApp, caMap, out int caSkipped);
+        Check("Cash App download: dates with time zones, failed skipped", caMap.Source == "Cash App" && caRows.Count == 2 && caSkipped == 1
+            && caRows[0] is { Payee: "Chipotle", Amount: -12.4m } && caRows[0].Date == new DateTime(2026, 11, 7) && caRows[1] is { Payee: "Morgan", Amount: 40m, Note: "Rent share" },
+            string.Join(", ", caRows.Select(r => $"{r.Payee} {r.Amount} {r.Date:d}")));
+        Check("Payment app account type", AccountTypes.All.Contains(AccountTypes.PaymentApp) && AccountTypes.PaymentApps.Select(p => p.Name).SequenceEqual(["PayPal", "Venmo", "Cash App", "Apple Cash"]));
+
         var debitCredit = Importer.ReadCsv("Posted Date;Payee;Debit;Credit\n2026-10-01;Rent;1500,00;\n2026-10-02;Refund;;25,50\n");
         var dcMap = Importer.GuessMapping(debitCredit.Headers);
         var dcRows = Importer.Apply(debitCredit, dcMap, out _);
@@ -561,7 +592,10 @@ public static class SelfTest
             string.Join(", ", DataStore.Accounts.Items.Select(a => $"{a.Name} {a.StartingBalance}")));
         Check("On the income step", gs.CurrentStep == "Income", gs.CurrentStep);
 
-        await Step("Income 4,000 with 50/30/20", () => { gs.SetIncome("4000", BudgetTemplateDialog.FiftyThirtyTwenty); gs.Advance(); });
+        await Step("Paycheck 4,000 a month with 50/30/20", () => { gs.SetPaycheck("4000", IncomeSchedule.Monthly, BudgetTemplateDialog.FiftyThirtyTwenty); gs.Advance(); });
+        var pay = DataStore.Income.Items.FirstOrDefault();
+        Check("Paycheck saved as repeating income", DataStore.Income.Count == 1 && pay is { Name: "Paycheck", Amount: 4000m, Repeats: IncomeSchedule.Monthly, Varies: false, AutoAdd: true } && pay.NextDate >= DateTime.Today,
+            pay == null ? "none" : $"{pay.Name} {pay.Amount} {pay.Repeats} {pay.NextDate:d}");
         decimal budgeted = DataStore.Budgets.Items.Sum(b => b.MonthlyLimit);
         Check("Budgets from the income", DataStore.Budgets.Count >= 6 && budgeted is > 3800m and <= 4100m && DataStore.Budgets.Items.Any(b => b.Category == "Savings"), $"{DataStore.Budgets.Count} budgets, {budgeted}");
 
@@ -597,6 +631,40 @@ public static class SelfTest
         await AllPages(window, "after deleting all data");
     }
 
+    /// <summary>Repeating income: schedules, paydays added automatically, and asking when the amount changes.</summary>
+    private static async Task IncomeFlow()
+    {
+        var today = DateTime.Today;
+        var nov1 = new DateTime(2026, 11, 1);
+        Check("Twice a month: 1st → 15th → 1st", IncomeSchedule.Next(nov1, IncomeSchedule.TwiceAMonth, 1, 15) == new DateTime(2026, 11, 15)
+            && IncomeSchedule.Next(new DateTime(2026, 11, 15), IncomeSchedule.TwiceAMonth, 1, 15) == new DateTime(2026, 12, 1));
+        Check("Monthly on the 31st keeps the day", IncomeSchedule.Next(new DateTime(2027, 1, 31), IncomeSchedule.Monthly, 31, 15) == new DateTime(2027, 2, 28)
+            && IncomeSchedule.Next(new DateTime(2027, 2, 28), IncomeSchedule.Monthly, 31, 15) == new DateTime(2027, 3, 31));
+        Check("Every 2 weeks is 26 paychecks a year", Math.Round(IncomeSchedule.MonthlyAmount(new IncomeSource { Amount = 2000m, Repeats = IncomeSchedule.EveryTwoWeeks }), 2) == 4333.33m);
+
+        IncomeSource? job = null, side = null;
+        List<Transaction> added = [];
+        await Step("Same-amount paycheck that started 4 weeks ago", () =>
+        {
+            job = new IncomeSource { Name = "Acme paycheck", Amount = 1850m, Repeats = IncomeSchedule.EveryTwoWeeks, NextDate = today.AddDays(-28), Account = "Checking" };
+            side = new IncomeSource { Name = "DoorDash", Varies = true, AutoAdd = false, Repeats = IncomeSchedule.Weekly, NextDate = today.AddDays(-1), Category = "Side income", Account = "Checking" };
+            DataStore.Income.Add(job);
+            DataStore.Income.Add(side);
+            added = Paydays.AddDue(today);
+        });
+        Check("Missed paydays are caught up automatically", added.Count == 3 && added.All(t => t.Amount == 1850m && t.Category == "Paycheck") && job!.NextDate == today.AddDays(14),
+            $"{added.Count} added, next {job?.NextDate:d}");
+        Check("Running it again adds nothing", Paydays.AddDue(today).Count == 0);
+        Check("Income that changes is asked about, not added", Paydays.Asking(today).SequenceEqual([side!]) && !DataStore.Transactions.Items.Any(t => t.Payee == "DoorDash"));
+        await Step("Enter what came in", () => Paydays.Receive(side!, 132.75m, side!.NextDate));
+        Check("Entered amount recorded on payday", DataStore.Transactions.Items.Any(t => t.Payee == "DoorDash" && t.Amount == 132.75m && t.Category == "Side income" && t.Date == today.AddDays(-1))
+            && side!.NextDate == today.AddDays(6) && Paydays.Asking(today).Count == 0);
+        Check("Typical amount comes from what came in", IncomeSchedule.Typical(side!) == 132.75m);
+        Check("Expected income per month", Math.Round(Paydays.ExpectedMonthly(), 2) == Math.Round(1850m * 26 / 12 + 132.75m * 52 / 12, 2), Paydays.ExpectedMonthly().ToString("0.00"));
+        Check("Next paydays this month are listed", IncomeSchedule.Paydays(job!, today, today.AddDays(30)).Count() is 2 or 3);
+        await Step("Clean up", () => DataStore.EraseAll(syncDeletes: false));
+    }
+
     public static async Task<int> RunAsync(MainWindow window)
     {
         Report.AppendLine($"WillowWallet {App.VersionText} self-test {DateTime.Now:u}");
@@ -618,6 +686,7 @@ public static class SelfTest
         await AllPages(window, "empty");
 
         await GetStartedFlow(window);
+        await IncomeFlow();
 
         // ----- Add data -----
         var month = Budgeting.MonthStart(DateTime.Today);

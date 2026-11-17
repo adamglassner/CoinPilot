@@ -39,7 +39,18 @@ public sealed class GetStarted : UserControl
     private readonly TextBlock _error = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 0), Visibility = Visibility.Collapsed };
 
     // Kept between steps so Back shows what was entered
-    private string _income = "";
+    private string _payName = "Paycheck", _payAmount = "", _payRepeats = IncomeSchedule.EveryTwoWeeks;
+    private bool _payVaries;
+    private DateTime _payNext = NextFriday();
+    private int _payDay2 = 15;
+    private IncomeSource? _createdIncome;
+
+    private static DateTime NextFriday()
+    {
+        var d = DateTime.Today;
+        int ahead = ((int)DayOfWeek.Friday - (int)d.DayOfWeek + 7) % 7;
+        return d.AddDays(ahead == 0 ? 7 : ahead);
+    }
     private string _budgetMethod = BudgetTemplateDialog.FiftyThirtyTwenty;
     private readonly List<BillRow> _billRows = [];
     private readonly HashSet<string> _createdBudgets = new(StringComparer.OrdinalIgnoreCase);
@@ -381,11 +392,11 @@ public sealed class GetStarted : UserControl
     private void BuildAccounts()
     {
         Title("Where's your money?",
-            "Add the accounts you use: checking, savings, credit cards, cash. Use today's balance; the transactions you add or import from now on keep it up to date.");
+            "Add the accounts you use: checking, savings, credit cards, cash, and payment apps like PayPal or Venmo. Use today's balance; the transactions you add or import from now on keep it up to date.");
 
         var list = new StackPanel();
         var form = new StackPanel();
-        string[] types = [AccountTypes.Checking, AccountTypes.Savings, AccountTypes.CreditCard, AccountTypes.Cash, AccountTypes.Investment];
+        string[] types = [AccountTypes.Checking, AccountTypes.Savings, AccountTypes.CreditCard, AccountTypes.Cash, AccountTypes.PaymentApp, AccountTypes.Investment];
         var balanceLabel = Label("Balance today");
         var nameBox = Box(automation: "Account name");
         var bankBox = Box(automation: "Bank");
@@ -396,6 +407,23 @@ public sealed class GetStarted : UserControl
         });
         form.Children.Add(Label("Type", 0));
         form.Children.Add(typeChips);
+        // Payment apps in one click
+        var apps = new WrapPanel { Margin = new Thickness(0, 2, 0, 0) };
+        apps.Children.Add(Ui.Text("Payment apps:", muted: true, size: 12.5).Also(t => { t.VerticalAlignment = VerticalAlignment.Center; t.Margin = new Thickness(0, 0, 10, 8); }));
+        foreach (var (app, company) in AccountTypes.PaymentApps)
+        {
+            var b = new Button { Content = app, Style = (Style)FindResource("GhostButton"), Margin = new Thickness(0, 0, 8, 8), Padding = new Thickness(12, 4, 12, 4), MinHeight = 30 };
+            AutomationProperties.SetName(b, $"Add {app}");
+            b.Click += (_, _) =>
+            {
+                foreach (var chip in typeChips.Children.OfType<RadioButton>()) chip.IsChecked = (chip.Tag as string) == AccountTypes.PaymentApp;
+                nameBox.Text = app;
+                bankBox.Text = company;
+                balanceBox.Focus();
+            };
+            apps.Children.Add(b);
+        }
+        form.Children.Add(apps);
         var cols = Ui.Columns(1, 0.06, 1);
         var nameCol = new StackPanel();
         nameCol.Children.Add(Label("Name"));
@@ -430,7 +458,7 @@ public sealed class GetStarted : UserControl
             for (int i = 0; i < accounts.Count; i++)
             {
                 var a = accounts[i];
-                string glyph = a.Type switch { AccountTypes.CreditCard => "", AccountTypes.Cash => "", AccountTypes.Investment => "", _ => "" };
+                string glyph = a.Type switch { AccountTypes.CreditCard => "", AccountTypes.Cash => "", AccountTypes.PaymentApp => "\uE8EA", AccountTypes.Investment => "", _ => "" };
                 rows.Children.Add(ItemRow(glyph, a.Name, a.Institution.Length > 0 ? $"{a.Type} · {a.Institution}" : a.Type,
                     a.IsLiability ? $"{Money.Format(-a.StartingBalance)} owed" : Money.Format(a.StartingBalance),
                     () => { DataStore.Accounts.Delete(a); RefreshList(); }, i == 0));
@@ -474,14 +502,36 @@ public sealed class GetStarted : UserControl
     private void BuildIncome()
     {
         Title("What do you bring home?",
-            "Your take-home pay each month, after taxes. WillowWallet uses it to suggest budgets for each category; you can fine-tune any of them on the Budgets page.");
+            "Your paycheck after taxes. WillowWallet adds it to Transactions on payday (or asks how much, if it changes) and suggests budgets from it.");
 
         var form = new StackPanel();
-        form.Children.Add(Label("Monthly take-home pay", 0));
-        var income = MoneyBox(_income, "Monthly take-home pay");
-        form.Children.Add(income);
-        form.Children.Add(Hint("Paid every two weeks? Multiply one paycheck by 26, then divide by 12."));
-        form.Children.Add(Label("Budgets", 18));
+        var row1 = Ui.Columns(1, 0.06, 1);
+        var nameBox = Box(_payName, automation: "Income name");
+        nameBox.TextChanged += (_, _) => _payName = nameBox.Text;
+        row1.Children.Add(new StackPanel().Also(p => { p.Children.Add(Label("Name", 0)); p.Children.Add(nameBox); p.Children.Add(Hint("Like \"Paycheck\" or \"Paycheck · Acme Corp\".")); }).At(0));
+        var kindChips = Chips(["Same amount every time", "Changes each time"], _payVaries ? "Changes each time" : "Same amount every time");
+        row1.Children.Add(new StackPanel().Also(p => { p.Children.Add(Label("Amount", 0)); p.Children.Add(kindChips); }).At(2));
+        form.Children.Add(row1);
+
+        var amountLabel = Label("");
+        var amountBox = MoneyBox(_payAmount, "Paycheck amount");
+        var often = Chips(IncomeSchedule.All.Where(r => r != IncomeSchedule.Once), _payRepeats, r => { _payRepeats = r; Refresh(); });
+        var nextBox = new DatePicker { SelectedDate = _payNext, Width = 270, HorizontalAlignment = HorizontalAlignment.Left };
+        AutomationProperties.SetName(nextBox, "Next payday");
+        var day2Box = Box(_payDay2.ToString(), 90, "Second payday of the month").Also(b => b.TextAlignment = TextAlignment.Center);
+        var day2Panel = new StackPanel().Also(p => { p.Children.Add(Label("And on day")); p.Children.Add(day2Box); });
+        var row2 = Ui.Columns(1, 0.06, 1, 0.06, 0.5);
+        row2.Children.Add(new StackPanel().Also(p => { p.Children.Add(amountLabel); p.Children.Add(amountBox); }).At(0));
+        row2.Children.Add(new StackPanel().Also(p => { p.Children.Add(Label("Next payday")); p.Children.Add(nextBox); }).At(2));
+        row2.Children.Add(day2Panel.At(4));
+        form.Children.Add(Label("How often"));
+        form.Children.Add(often);
+        form.Children.Add(row2);
+        var estimate = Hint("").Also(t => { t.FontSize = 13.5; t.Margin = new Thickness(0, 12, 0, 0); });
+        form.Children.Add(estimate);
+        form.Children.Add(Hint("Side jobs, benefits or other income? Add them on the Income page after setup."));
+
+        form.Children.Add(Label("Budgets", 22));
         string[] methods = [BudgetTemplateDialog.FiftyThirtyTwenty, BudgetTemplateDialog.Starter, "Not now"];
         var explain = Hint("");
         var preview = new StackPanel { Margin = new Thickness(0, 14, 0, 0) };
@@ -491,10 +541,19 @@ public sealed class GetStarted : UserControl
         form.Children.Add(preview);
         AddError(form);
         _body.Children.Add(Card(form));
-        income.TextChanged += (_, _) => { _income = income.Text; Refresh(); };
+
+        amountBox.TextChanged += (_, _) => { _payAmount = amountBox.Text; Refresh(); };
+        day2Box.TextChanged += (_, _) => { if (int.TryParse(day2Box.Text.Trim(), out var d)) _payDay2 = d; };
+        nextBox.SelectedDateChanged += (_, _) => { if (nextBox.SelectedDate is DateTime d) _payNext = d.Date; };
+        foreach (var chip in kindChips.Children.OfType<RadioButton>())
+            chip.Checked += (_, _) => { _payVaries = (chip.Tag as string) == "Changes each time"; Refresh(); };
 
         void Refresh()
         {
+            amountLabel.Text = _payVaries ? "Typical amount (after taxes)" : "Each paycheck (after taxes)";
+            day2Panel.Visibility = _payRepeats == IncomeSchedule.TwiceAMonth ? Visibility.Visible : Visibility.Collapsed;
+            decimal monthly = PayMonthly();
+            estimate.Text = monthly > 0 ? $"About {Money.Format(monthly, cents: false)} a month." + (_payVaries ? " On each payday WillowWallet asks how much came in." : " Added to Transactions on each payday.") : "";
             explain.Text = _budgetMethod switch
             {
                 BudgetTemplateDialog.FiftyThirtyTwenty => "50% for needs (housing, bills, groceries, getting around), 30% for wants (eating out, shopping, fun) and 20% for savings and extra debt payments.",
@@ -503,13 +562,12 @@ public sealed class GetStarted : UserControl
             };
             preview.Children.Clear();
             if (_budgetMethod == "Not now") return;
-            decimal pay = Money.TryParse(_income, out var p) ? p : 0;
-            if (_budgetMethod == BudgetTemplateDialog.FiftyThirtyTwenty && pay <= 0)
+            if (_budgetMethod == BudgetTemplateDialog.FiftyThirtyTwenty && monthly <= 0)
             {
-                preview.Children.Add(Ui.Text("Enter your take-home pay to see the budgets.", muted: true));
+                preview.Children.Add(Ui.Text("Enter your paycheck to see the budgets.", muted: true));
                 return;
             }
-            var plan = BudgetTemplateDialog.Plan(_budgetMethod, pay, new Dictionary<string, decimal>());
+            var plan = BudgetTemplateDialog.Plan(_budgetMethod, monthly, new Dictionary<string, decimal>());
             var grid = new System.Windows.Controls.Primitives.UniformGrid { Columns = 2 };
             foreach (var (category, amount) in plan.OrderByDescending(kv => kv.Value))
             {
@@ -521,28 +579,60 @@ public sealed class GetStarted : UserControl
                 grid.Children.Add(row);
             }
             preview.Children.Add(grid);
-            var total = Ui.Text(pay > 0 ? $"{Money.Format(plan.Values.Sum(), cents: false)} a month of {Money.Format(pay, cents: false)}" : $"{Money.Format(plan.Values.Sum(), cents: false)} a month", weight: FontWeights.SemiBold, brushKey: "Brush.Accent");
+            var total = Ui.Text(monthly > 0 ? $"{Money.Format(plan.Values.Sum(), cents: false)} a month of about {Money.Format(monthly, cents: false)}" : $"{Money.Format(plan.Values.Sum(), cents: false)} a month", weight: FontWeights.SemiBold, brushKey: "Brush.Accent");
             total.Margin = new Thickness(0, 10, 0, 0);
             preview.Children.Add(total);
         }
         Refresh();
-        Dispatcher.BeginInvoke(() => income.Focus(), System.Windows.Threading.DispatcherPriority.Input);
-
+        Dispatcher.BeginInvoke(() => amountBox.Focus(), System.Windows.Threading.DispatcherPriority.Input);
         Footer("Next", Next);
     }
 
+    private decimal PayMonthly() =>
+        Money.TryParse(_payAmount, out var each) && each > 0
+            ? IncomeSchedule.MonthlyAmount(new IncomeSource { Amount = each, Repeats = _payRepeats, Varies = _payVaries })
+            : 0;
+
+    /// <summary>Saves the paycheck (as repeating income) and the budgets.</summary>
     private bool SaveIncome()
     {
-        if (_income.Trim().Length > 0 && !Money.TryParse(_income, out _)) { ShowError("Enter your pay as a number, like 4200."); return false; }
-        if (_budgetMethod == "Not now") return true;
-        decimal pay = Money.TryParse(_income, out var p) ? p : 0;
-        if (_budgetMethod == BudgetTemplateDialog.FiftyThirtyTwenty && pay <= 0)
+        bool entered = _payAmount.Trim().Length > 0;
+        if (entered && (!Money.TryParse(_payAmount, out var each) || each <= 0)) { ShowError("Enter your paycheck as a number, like 1850."); return false; }
+        if (_payRepeats == IncomeSchedule.TwiceAMonth && (_payDay2 is < 1 or > 31 || _payDay2 == _payNext.Day))
         {
-            if (_income.Trim().Length == 0 && _createdBudgets.Count == 0) return true; // nothing entered: same as skipping
-            ShowError("Enter your take-home pay, or choose Starter amounts or Not now.");
+            ShowError("Enter the other day of the month you're paid (1 to 31), different from the next payday's day.");
             return false;
         }
-        ApplyBudgets(BudgetTemplateDialog.Plan(_budgetMethod, pay, new Dictionary<string, decimal>()));
+        if (entered || _payVaries)
+        {
+            Money.TryParse(_payAmount, out var amount);
+            var s = _createdIncome ?? new IncomeSource { Account = DataStore.AccountChoices()[0], Category = "Paycheck" };
+            s.Name = _payName.Trim().Length > 0 ? _payName.Trim() : "Paycheck";
+            s.Amount = amount;
+            s.Varies = _payVaries;
+            s.AutoAdd = !_payVaries;
+            s.Repeats = _payRepeats;
+            s.NextDate = _payNext.Date < DateTime.Today ? DateTime.Today : _payNext.Date;
+            s.Day1 = s.NextDate.Day;
+            s.Day2 = _payDay2;
+            if (_createdIncome == null) { DataStore.Income.Add(s); _createdIncome = s; }
+            else DataStore.Income.Update(s);
+        }
+        else if (_createdIncome != null)
+        {
+            DataStore.Income.Delete(_createdIncome);
+            _createdIncome = null;
+        }
+
+        if (_budgetMethod == "Not now") return true;
+        decimal monthly = PayMonthly();
+        if (_budgetMethod == BudgetTemplateDialog.FiftyThirtyTwenty && monthly <= 0)
+        {
+            if (!entered && _createdBudgets.Count == 0) return true; // nothing entered: same as skipping
+            ShowError(_payVaries ? "Enter a typical paycheck so budgets can be worked out, or choose Starter amounts or Not now." : "Enter your paycheck, or choose Starter amounts or Not now.");
+            return false;
+        }
+        ApplyBudgets(BudgetTemplateDialog.Plan(_budgetMethod, monthly, new Dictionary<string, decimal>()));
         return true;
     }
 
@@ -922,7 +1012,7 @@ public sealed class GetStarted : UserControl
     internal string CurrentStep => _step.ToString();
     internal void GoToStep(string step) => Show(Enum.Parse<Step>(step));
     internal bool Advance() { if (!Leave()) return false; if (_step < Step.Done) Show(_step + 1); return true; }
-    internal void SetIncome(string text, string method) { _income = text; _budgetMethod = method; }
+    internal void SetPaycheck(string amount, string repeats, string method, bool varies = false) { _payAmount = amount; _payRepeats = repeats; _budgetMethod = method; _payVaries = varies; }
     internal void TickBill(string name, string amount, string day)
     {
         if (_billRows.Count == 0)

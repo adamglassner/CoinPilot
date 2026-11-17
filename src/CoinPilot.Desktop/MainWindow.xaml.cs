@@ -81,6 +81,18 @@ public partial class MainWindow : Window
         // First run: nothing entered yet and not syncing → Get started
         if (!DataStore.Prefs.SetupDone && DataStore.IsEmpty && SyncEngine.Settings == null && !SelfTest.IsRunning && !Screenshots.IsRunning && App.StartPage == null)
             ShowGetStarted();
+        else if (!SelfTest.IsRunning && !Screenshots.IsRunning)
+            Dispatcher.BeginInvoke(CheckPaydays, DispatcherPriority.ApplicationIdle);
+    }
+
+    /// <summary>Records same-amount income that's come in, then asks about paydays that need an amount.</summary>
+    public void CheckPaydays()
+    {
+        if (!DataLock.IsOpen || SetupHost.Visibility == Visibility.Visible) return;
+        var added = Paydays.AddDue(DateTime.Today);
+        if (added.Count > 0)
+            ShowToast(added.Count == 1 ? $"Payday: added {Money.Format(added[0].Amount)} from {added[0].Payee}." : $"Payday: added {added.Count} paychecks to Transactions.");
+        if (IsVisible && WindowState != WindowState.Minimized) PaydayDialog.AskNow();
     }
 
     /// <summary>The Get started walkthrough, over the whole window.</summary>
@@ -128,6 +140,7 @@ public partial class MainWindow : Window
             "accounts" => new AccountsView(),
             "debts" => new DebtsView(),
             "bills" => new BillsView(),
+            "income" => new IncomeView(),
             "goals" => new GoalsView(),
             "reports" => new ReportsView(),
             "taxes" => new TaxesView(),

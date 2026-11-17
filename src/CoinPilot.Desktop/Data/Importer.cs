@@ -30,6 +30,12 @@ public sealed class CsvMapping
     public int Note { get; set; } = -1;
     /// <summary>The file shows spending as positive numbers (common for credit cards).</summary>
     public bool FlipSign { get; set; }
+    /// <summary>Who the money came from, when the file has separate columns for that (Venmo's From/To).</summary>
+    public int PayeeIncoming { get; set; } = -1;
+    /// <summary>A status column: rows that are pending, failed or canceled are skipped.</summary>
+    public int Status { get; set; } = -1;
+    /// <summary>The app the file came from, when recognized ("PayPal", "Venmo", "Cash App").</summary>
+    public string Source { get; set; } = "";
 
     public bool IsComplete => Date >= 0 && Payee >= 0 && (Amount >= 0 || Debit >= 0 || Credit >= 0);
 }
@@ -194,8 +200,46 @@ public static class Importer
         if (map.Amount >= 0) { map.Debit = -1; map.Credit = -1; }
         int memo = Find("memo", "note", "notes", "reference");
         if (memo >= 0 && memo != map.Payee) map.Note = memo;
-        return map;
+        return PaymentAppMapping(headers) ?? map;
     }
+
+    /// <summary>
+    /// Activity downloads from payment apps, which have their own layouts:
+    /// PayPal (Date, Name, Type, Status, Gross, Fee, Net…), Venmo (Datetime, Note, From, To, Amount (total)…) and
+    /// Cash App (Date, Transaction Type, Amount, Net Amount, Status, Notes, Name of sender/receiver…).
+    /// </summary>
+    public static CsvMapping? PaymentAppMapping(string[] headers)
+    {
+        int Exact(params string[] names)
+        {
+            for (int i = 0; i < headers.Length; i++)
+                if (names.Any(n => string.Equals(headers[i].Trim(), n, StringComparison.OrdinalIgnoreCase))) return i;
+            return -1;
+        }
+        bool Has(params string[] names) => names.All(n => Exact(n) >= 0);
+
+        if (Has("Datetime", "From", "To") && Exact("Amount (total)") >= 0)
+            return new CsvMapping
+            {
+                Source = "Venmo", Date = Exact("Datetime"), Amount = Exact("Amount (total)"),
+                Payee = Exact("To"), PayeeIncoming = Exact("From"), Note = Exact("Note"), Status = Exact("Status"),
+            };
+        if (Has("Date", "Name of sender/receiver") && (Exact("Net Amount") >= 0 || Exact("Amount") >= 0))
+            return new CsvMapping
+            {
+                Source = "Cash App", Date = Exact("Date"), Amount = Exact("Net Amount") >= 0 ? Exact("Net Amount") : Exact("Amount"),
+                Payee = Exact("Name of sender/receiver"), Note = Exact("Notes"), Status = Exact("Status"),
+            };
+        if (Has("Date", "Name", "Gross", "Net"))
+            return new CsvMapping
+            {
+                Source = "PayPal", Date = Exact("Date"), Amount = Exact("Net"),
+                Payee = Exact("Name"), Note = Exact("Type"), Status = Exact("Status"),
+            };
+        return null;
+    }
+
+    private static readonly string[] SkippedStatuses = ["pending", "denied", "declined", "failed", "canceled", "cancelled", "removed", "reversed", "refused", "expired"];
 
     /// <summary>Turns CSV cells into rows using the mapping. Rows without a readable date or amount are counted in <paramref name="skipped"/>.</summary>
     public static List<ImportedRow> Apply(Statement s, CsvMapping map, out int skipped)
@@ -218,14 +262,19 @@ public static class Importer
                 else amount = (credit is decimal c ? Math.Abs(c) : 0) - (debit is decimal d ? Math.Abs(d) : 0);
             }
             if (amount is not decimal a || a == 0) { skipped++; continue; }
+            string status = Cell(r, map.Status).ToLowerInvariant();
+            if (status.Length > 0 && SkippedStatuses.Any(status.StartsWith)) { skipped++; continue; }
             if (map.FlipSign) a = -a;
+            string payee = a > 0 && map.PayeeIncoming >= 0 ? Cell(r, map.PayeeIncoming) : Cell(r, map.Payee);
+            string note = Cell(r, map.Note);
+            if (payee.Length == 0 && note.Length > 0) (payee, note) = (note, "");
             rows.Add(new ImportedRow
             {
                 Date = date,
                 Amount = a,
-                Payee = Cell(r, map.Payee),
+                Payee = payee,
                 Category = Cell(r, map.Category),
-                Note = Cell(r, map.Note),
+                Note = note,
             });
         }
         return rows;
@@ -244,6 +293,8 @@ public static class Importer
     public static bool TryParseDate(string s, out DateTime date)
     {
         s = s.Trim().Trim('"');
+        // "2024-01-05 12:34:56 EST" (Cash App): drop the time zone
+        s = Regex.Replace(s, @"\s+[A-Z]{2,5}$", "");
         if (DateTime.TryParseExact(s, DateFormats, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out date)) { date = date.Date; return true; }
         if (DateTime.TryParseExact(s, DayFirstFormats, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out date)) { date = date.Date; return true; }
         return false;

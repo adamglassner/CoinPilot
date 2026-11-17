@@ -103,9 +103,20 @@ public static class AccountTypes
     public const string Savings = "Savings";
     public const string CreditCard = "Credit card";
     public const string Cash = "Cash";
+    /// <summary>A balance held in a payment app: PayPal, Venmo, Cash App, Apple Cash…</summary>
+    public const string PaymentApp = "Payment app";
     public const string Investment = "Investment";
     public const string Other = "Other";
-    public static readonly string[] All = [Checking, Savings, CreditCard, Cash, Investment, Other];
+    public static readonly string[] All = [Checking, Savings, CreditCard, Cash, PaymentApp, Investment, Other];
+
+    /// <summary>One-click payment apps: the account name and the company behind it.</summary>
+    public static readonly (string Name, string Company)[] PaymentApps =
+    [
+        ("PayPal", "PayPal"),
+        ("Venmo", "PayPal"),
+        ("Cash App", "Block"),
+        ("Apple Cash", "Apple"),
+    ];
 }
 
 /// <summary>Money owed on a loan or card, with its interest rate, minimum payment and payments made.</summary>

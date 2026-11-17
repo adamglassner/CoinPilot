@@ -137,10 +137,25 @@ public static class Reminders
     private static string Stamp(Bill b, DateTime today) => $"{b.Id}|{b.NextDue:yyyy-MM-dd}|{today:yyyy-MM-dd}";
 
     /// <summary>Shows a notification for newly due bills (tray balloon when in the background, otherwise a toast).</summary>
+    /// <summary>Payday: adds same-amount income, and asks (or notifies, when in the background) about the rest, once a day.</summary>
+    private static void CheckPaydays(DateTime today)
+    {
+        if (MainWindow.Instance is { } w && w.IsVisible) { w.CheckPaydays(); return; }
+        var added = Paydays.AddDue(today);
+        var asking = Paydays.Asking(today).Where(s => !App.Settings.RemindersShown.Contains($"income:{s.Id}:{today:yyyy-MM-dd}")).ToList();
+        if (_tray == null || (added.Count == 0 && asking.Count == 0)) return;
+        string title = asking.Count > 0 ? (asking.Count == 1 ? $"Payday: {asking[0].Name}" : $"{asking.Count} paydays") : "Payday";
+        string body = asking.Count > 0 ? "Open WillowWallet to enter how much came in." : $"Added {string.Join(", ", added.Select(t => $"{Money.Format(t.Amount)} from {t.Payee}"))}.";
+        _tray.ShowBalloonTip(8000, title, body, Forms.ToolTipIcon.Info);
+        App.Settings.RemindersShown.AddRange(asking.Select(s => $"income:{s.Id}:{today:yyyy-MM-dd}"));
+        App.Settings.Save();
+    }
+
     public static void Check()
     {
         if (SelfTest.IsRunning || !DataLock.IsOpen) return;
         var today = DateTime.Today;
+        CheckPaydays(today);
         var due = Due(today, onlyNew: true);
         if (due.Count == 0) return;
 

@@ -20,6 +20,7 @@ public static class DataStore
     private static JsonStore<CategoryDef>? _categories;
     private static JsonStore<CategoryRule>? _rules;
     private static JsonStore<TaxDocument>? _taxDocuments;
+    private static JsonStore<IncomeSource>? _income;
     private static DebtPlanSettings? _debtPlan;
     private static Preferences? _prefs;
 
@@ -37,6 +38,7 @@ public static class DataStore
     public static JsonStore<CategoryDef> CategoryDefs => _categories ??= Hook(new JsonStore<CategoryDef>(Folder, "categories"));
     public static JsonStore<CategoryRule> Rules => _rules ??= Hook(new JsonStore<CategoryRule>(Folder, "rules"));
     public static JsonStore<TaxDocument> TaxDocuments => _taxDocuments ??= Hook(new JsonStore<TaxDocument>(Folder, "tax-documents"));
+    public static JsonStore<IncomeSource> Income => _income ??= Hook(new JsonStore<IncomeSource>(Folder, "income"));
 
     /// <summary>Snowball/avalanche choice and extra monthly payment for the Debts payoff plan.</summary>
     public static DebtPlanSettings DebtPlan => _debtPlan ??= DebtPlanSettings.Load(Folder);
@@ -80,7 +82,7 @@ public static class DataStore
 
     /// <summary>Every kind of record, for sync.</summary>
     public static IReadOnlyList<ISyncStore> SyncStores =>
-        [Transactions, Budgets, Accounts, Debts, Bills, Goals, CategoryDefs, Rules, TaxDocuments];
+        [Transactions, Budgets, Accounts, Debts, Bills, Goals, CategoryDefs, Rules, TaxDocuments, Income];
 
     public static ISyncStore? SyncStore(string name) => SyncStores.FirstOrDefault(s => s.Name == name);
 
@@ -101,7 +103,7 @@ public static class DataStore
 
     /// <summary>Nothing entered yet: no accounts, transactions, budgets, bills, debts, goals or tax documents.</summary>
     public static bool IsEmpty =>
-        Accounts.Count == 0 && Transactions.Count == 0 && Budgets.Count == 0 && Bills.Count == 0 && Debts.Count == 0 && Goals.Count == 0 && TaxDocuments.Count == 0;
+        Accounts.Count == 0 && Transactions.Count == 0 && Budgets.Count == 0 && Bills.Count == 0 && Debts.Count == 0 && Goals.Count == 0 && TaxDocuments.Count == 0 && Income.Count == 0;
 
     /// <summary>
     /// Deletes all data: every record, receipt and tax document file, and the per-data preferences (dismissed suggestions,
@@ -145,6 +147,7 @@ public static class DataStore
         _categories = null;
         _rules = null;
         _taxDocuments = null;
+        _income = null;
         _debtPlan = null;
         _prefs = null;
         Changed?.Invoke(null, EventArgs.Empty);

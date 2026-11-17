@@ -32,9 +32,30 @@ public sealed class AccountDialog : DialogShell
         if (existing == null && name != null)
             _target.Type = AccountTypes.All.FirstOrDefault(t => string.Equals(t, name, StringComparison.OrdinalIgnoreCase)) ?? AccountTypes.Checking;
 
-        _name = AddField("Name", new TextBox { Text = _target.Name }, hint: "Like \"Chase checking\" or \"Visa\". Transactions pick accounts by this name.", required: true);
+        _name = AddField("Name", new TextBox { Text = _target.Name }, hint: "Like \"Chase checking\", \"Visa\" or \"Venmo\". Transactions pick accounts by this name.", required: true);
         _type = AddField("Type", Chips(AccountTypes.All, _target.Type));
-        _institution = AddField("Bank or card company", new TextBox { Text = _target.Institution });
+        _institution = AddField("Bank or company", new TextBox { Text = _target.Institution });
+        if (existing == null)
+        {
+            // One click for the common payment apps
+            var apps = new WrapPanel();
+            foreach (var (app, company) in AccountTypes.PaymentApps.Where(p => !DataStore.Accounts.Items.Any(a => string.Equals(a.Name, p.Name, StringComparison.OrdinalIgnoreCase))))
+            {
+                var b = new Button { Content = app, Style = (Style)FindResource("GhostButton"), Margin = new Thickness(0, 0, 8, 8), Padding = new Thickness(14, 6, 14, 6), MinHeight = 32 };
+                System.Windows.Automation.AutomationProperties.SetName(b, $"Add {app}");
+                b.Click += (_, _) =>
+                {
+                    _name.Text = app;
+                    _institution.Text = company;
+                    foreach (var chip in _type.Children.OfType<RadioButton>())
+                        chip.IsChecked = (chip.Tag as string ?? chip.Content as string) == AccountTypes.PaymentApp;
+                    _balance.Focus();
+                };
+                apps.Children.Add(b);
+            }
+            if (apps.Children.Count > 0)
+                AddField("Payment apps", apps, hint: "Fills in the name and type. Then enter the balance you have in the app.");
+        }
         _balance = AddField("Balance", AmountBox(existing == null ? null : Math.Abs(existing.StartingBalance)),
             hint: "What's in the account on the date below. For a credit card, enter what you owe. Transactions after that date are added automatically.", required: true);
         _date = AddField("Balance as of", DateBox(_target.BalanceDate), required: true);

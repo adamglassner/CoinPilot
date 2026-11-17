@@ -400,9 +400,15 @@ public sealed class TransactionDialog : DialogShell
     }
 
     /// <summary>Opens the dialog and saves the result. Returns true if anything changed.</summary>
-    public static bool Edit(Transaction? existing, DateTime? defaultDate = null)
+    /// <summary>Adds income that doesn't repeat (a refund, a gift, a one-off job).</summary>
+    public static bool AddIncome() => Edit(null, kind: Income);
+
+    public static bool Edit(Transaction? existing, DateTime? defaultDate = null, string? kind = null)
     {
         var dialog = new TransactionDialog(existing, defaultDate);
+        if (kind != null)
+            foreach (var chip in dialog._kind.Children.OfType<RadioButton>())
+                if (chip.Tag as string == kind) chip.IsChecked = true;
         if (dialog.ShowDialog() != true) return false;
 
         if (existing == null)

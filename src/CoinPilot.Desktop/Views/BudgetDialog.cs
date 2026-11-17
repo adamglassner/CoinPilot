@@ -138,9 +138,11 @@ public sealed class BudgetTemplateDialog : DialogShell
         : base("Set up budgets from a template", "Pick a method; WillowWallet works out amounts for each category. You can change any of them afterwards.",
                allowDelete: false, saveText: "Create budgets", width: 640)
     {
-        decimal income = Budgeting.AverageIncome();
+        decimal expected = Math.Round(Paydays.ExpectedMonthly(), 2);
+        decimal income = expected > 0 ? expected : Budgeting.AverageIncome();
         _income = AddField("Monthly income (after tax)", AmountBox(income > 0 ? income : null), required: true,
-            hint: income > 0 ? "Your average income over the last few months. Change it if needed." : "What you take home each month.");
+            hint: expected > 0 ? "What your regular income (Income page) adds up to each month. Change it if needed."
+                : income > 0 ? "Your average income over the last few months. Change it if needed." : "What you take home each month.");
         _template = AddField("Method", Chips([FiftyThirtyTwenty, ZeroBased, Starter], FiftyThirtyTwenty));
         Body.Children.Add(_explain);
         _mode = AddField("Existing budgets", Chips(["Keep them, add the rest", "Replace them"], "Keep them, add the rest"));

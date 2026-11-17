@@ -98,6 +98,13 @@ public static class ModuleCatalog
         },
         new()
         {
+            Key = "income", Title = "Income", Glyph = "\uE896", IsComingSoon = false,
+            Tagline = "Paychecks and other money coming in.",
+            Description = "Your paycheck and other regular income. Same amount every time? It's added on payday. Changes each time? WillowWallet asks how much on payday.",
+            PrimaryAction = "Add income",
+        },
+        new()
+        {
             Key = "goals", Title = "Goals", Glyph = "", IsComingSoon = false,
             Tagline = "Save toward the things that matter.",
             Description = "Create savings goals like an emergency fund, a trip or a new car. Set a target and a date and WillowWallet works out how much to put away each month.",

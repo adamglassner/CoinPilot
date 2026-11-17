@@ -33,7 +33,7 @@ public static class Screenshots
         window.Width = Width; window.Height = Height;
         await Idle();
 
-        string[] pages = ["dashboard", "transactions", "budgets", "accounts", "debts", "bills", "goals", "reports", "taxes", "sync", "settings"];
+        string[] pages = ["dashboard", "transactions", "budgets", "accounts", "debts", "bills", "income", "goals", "reports", "taxes", "sync", "settings"];
         int n = 1;
         foreach (var mode in new[] { AppTheme.Light, AppTheme.Dark })
         {
@@ -82,7 +82,7 @@ public static class Screenshots
             gs.GoToStep("Accounts");
             await Idle();
             await Capture(window, $"{n++:00}-get-started-accounts-{m}");
-            gs.SetIncome("5200", BudgetTemplateDialog.FiftyThirtyTwenty);
+            gs.SetPaycheck("2186.40", IncomeSchedule.EveryTwoWeeks, BudgetTemplateDialog.FiftyThirtyTwenty);
             gs.GoToStep("Income");
             await Idle();
             await Capture(window, $"{n++:00}-get-started-income-{m}");
@@ -132,6 +132,8 @@ public static class Screenshots
             await CaptureDialog(window, new BillDialog(DataStore.Bills.Items.First(b => b.PaysDebt)), $"{n++:00}-dialog-bill-pays-debt-{m}", scrollToEnd: true);
             await CaptureDialog(window, new DebtDialog(null), $"{n++:00}-dialog-add-debt-{m}", scrollToEnd: true);
             await CaptureDialog(window, new DeleteAllDataDialog(), $"{n++:00}-dialog-delete-all-{m}");
+            await CaptureDialog(window, new PaydayDialog(Paydays.Asking(DateTime.Today)), $"{n++:00}-dialog-payday-{m}");
+            await CaptureDialog(window, new IncomeDialog(DataStore.Income.Items.First(i => i.Varies)), $"{n++:00}-dialog-income-{m}");
             await Show(window, "goals");
             await CaptureDialog(window, new GoalDialog(DataStore.Goals.Items[1]), $"{n++:00}-dialog-goal-{m}");
             await Show(window, "settings");
@@ -334,6 +336,8 @@ public static class DemoData
             new Account { Name = "High-Yield Savings", Type = AccountTypes.Savings, Institution = "Ally Bank", StartingBalance = 6900m, BalanceDate = start.AddDays(-1) },
             new Account { Name = "Visa Signature", Type = AccountTypes.CreditCard, Institution = "Chase", StartingBalance = -412m, BalanceDate = start.AddDays(-1) },
             new Account { Name = "Cash", Type = AccountTypes.Cash, StartingBalance = 140m, BalanceDate = start.AddDays(-1) },
+            new Account { Name = "PayPal", Type = AccountTypes.PaymentApp, Institution = "PayPal", StartingBalance = 212.35m, BalanceDate = start.AddDays(-1) },
+            new Account { Name = "Venmo", Type = AccountTypes.PaymentApp, Institution = "PayPal", StartingBalance = 48m, BalanceDate = start.AddDays(-1) },
             new Account { Name = "Fidelity 401(k)", Type = AccountTypes.Investment, Institution = "Fidelity", StartingBalance = 38450m, BalanceDate = start.AddDays(-1) },
         ]);
 
@@ -431,6 +435,12 @@ public static class DemoData
             new Debt { Name = "Car loan", Type = "Car loan", Balance = 9860m, OriginalBalance = 18500m, InterestRate = 6.9m, MinimumPayment = 325m },
             new Debt { Name = "Store card", Type = DebtTypes.CreditCard, Balance = 640m, OriginalBalance = 1100m, InterestRate = 26.99m, MinimumPayment = 35m },
         ]);
+        // Regular income: a same-amount paycheck added on payday, and freelance work that's asked about
+        DataStore.Income.Add(new IncomeSource { Name = "Paycheck · Acme Corp", Amount = 2186.40m, Repeats = IncomeSchedule.EveryTwoWeeks, NextDate = DateTime.Today.AddDays(4), Category = "Paycheck", Account = "Chase Checking" });
+        DataStore.Income.Add(new IncomeSource { Name = "Freelance design", Varies = true, AutoAdd = false, Repeats = IncomeSchedule.Monthly, NextDate = DateTime.Today, Day1 = DateTime.Today.Day, Category = "Side income", Account = "Chase Checking" });
+        DataStore.Income.Add(new IncomeSource { Name = "Etsy shop payout", Varies = true, AutoAdd = false, Repeats = IncomeSchedule.TwiceAMonth, NextDate = DateTime.Today.AddDays(9), Day1 = DateTime.Today.AddDays(9).Day, Day2 = DateTime.Today.AddDays(9).Day <= 15 ? 28 : 1, Category = "Side income", Account = "PayPal" });
+        foreach (var (ago, amount) in new[] { (31, 640m), (61, 485m) })
+            DataStore.Transactions.Add(new Transaction { Payee = "Freelance design", Category = "Side income", Account = "Chase Checking", Date = DateTime.Today.AddDays(-ago), Amount = amount });
         // Loan payments as recurring monthly bills (car insurance and subscriptions above are ordinary bills)
         DebtLink.CreateBill(DataStore.Debts.Items.First(d => d.Name == "Student loan"), Next(15), "Chase Checking", 300m);
         DebtLink.CreateBill(DataStore.Debts.Items.First(d => d.Name == "Car loan"), Next(3), "Chase Checking", autoPay: true);

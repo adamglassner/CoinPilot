@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.4.0 — 2026-11-16
+
+- **Income.** A new Income page for your paycheck and other money that comes in regularly (a side job, benefits,
+  child support): how much, how often (weekly, every 2 weeks, twice a month, monthly or once) and the next payday.
+  - **Same amount every time:** added to Transactions automatically on payday (or, if you prefer, you confirm it).
+  - **Changes each time:** on payday WillowWallet asks how much came in, and adds that.
+  - The page shows what came in this month, what's still coming, expected income per month and the next payday.
+    "Add one-time income" records a refund, a gift or a one-off job.
+  - Budget templates start from your expected income, and Get started now sets up your paycheck (amount, how often,
+    next payday) instead of asking for one monthly number.
+- **Payment apps.** A new account type, Payment app, with one click for **PayPal**, **Venmo**, **Cash App** and
+  **Apple Cash** (in Add account and Get started).
+- **Import from payment apps.** PayPal, Venmo and Cash App activity downloads (CSV) are recognized: the right
+  columns are picked, Venmo shows who you paid or who paid you, pending/failed/canceled payments are skipped, and the
+  matching account is chosen for you.
+
 ## 1.3.0 — 2026-11-16
 
 - **Get started.** The first time WillowWallet opens with no data, a full-window setup walks you through it, one
