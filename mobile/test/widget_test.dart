@@ -163,9 +163,9 @@ void main() {
     await tester.tap(tab('More'));
     await tester.pumpAndSettle();
     final more = find.byType(MoreScreen);
-    for (final title in ['Accounts', 'Bills', 'Income', 'Debts', 'Goals', 'Reports', 'Taxes', 'Import']) {
+    for (final title in ['Forecast', 'Accounts', 'Bills', 'Income', 'Debts', 'Goals', 'Receipts', 'Household', 'Reports', 'Taxes', 'Import']) {
       final tile = find.descendant(of: more, matching: find.text(title));
-      await tester.ensureVisible(tile.first);
+      await Scrollable.ensureVisible(tester.element(tile.first), alignment: 0.3);
       await tester.pumpAndSettle();
       await tester.tap(tile.first);
       await tester.pumpAndSettle();
@@ -175,6 +175,8 @@ void main() {
     }
 
     // Bills: pay Duke Energy
+    await Scrollable.ensureVisible(tester.element(find.descendant(of: more, matching: find.text('Bills')).first), alignment: 0.3);
+    await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: more, matching: find.text('Bills')).first);
     await tester.pumpAndSettle();
     final rent = store.bills.firstWhere((b) => b.name == 'Duke Energy');
@@ -222,7 +224,9 @@ void main() {
     await tester.pumpWidget(CoinPilotApp(store: store));
     await tester.pumpAndSettle();
     expect(find.textContaining(RegExp('Left to spend|Over budget')), findsOneWidget);
-    for (final page in ['Transactions', 'Budgets', 'Accounts', 'Debts', 'Bills', 'Income', 'Goals', 'Reports', 'Taxes', 'Sync & Devices', 'Settings', 'Dashboard']) {
+    for (final page in ['Transactions', 'Budgets', 'Forecast', 'Accounts', 'Debts', 'Bills', 'Income', 'Goals', 'Receipts', 'Household', 'Reports', 'Taxes', 'Sync & Devices', 'Settings', 'Dashboard']) {
+      await Scrollable.ensureVisible(tester.element(find.text(page).first), alignment: 0.5);
+      await tester.pumpAndSettle();
       await tester.tap(find.text(page).first);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull, reason: page);
