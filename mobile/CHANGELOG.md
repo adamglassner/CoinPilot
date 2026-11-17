@@ -1,5 +1,32 @@
 # WillowWallet for Android — changelog
 
+## 0.3.0 — 2026-11-16
+
+**Everything WillowWallet for Windows does, on the phone**, and it all syncs.
+
+- **More tab** with Accounts, Bills, Income, Debts, Goals, Reports, Taxes and Import, plus Sync and Settings.
+- **Accounts:** checking, savings, cards, cash, investments and payment apps (PayPal, Venmo, Cash App, Apple Cash),
+  balances kept up to date, net worth, transfers between accounts.
+- **Bills:** what's overdue and due this week, a calendar, mark paid (adds the payment), skip one, autopay, bills that
+  pay down a debt, and repeating charges found in your transactions ("Add as bill" / "Not a bill").
+- **Income:** paychecks added on payday when they're the same each time; when they change, WillowWallet asks how much.
+- **Debts:** avalanche or snowball payoff plan, extra monthly payment, debt-free date, payments, a monthly bill per debt.
+- **Goals:** targets and dates, add or take out money, or link a goal to a savings account.
+- **Reports:** income and spending by month, net worth over time, spending by category or payee, and year in review.
+- **Taxes:** W-2s, 1099s, receipts and returns by tax year, opened in your PDF or photo viewer.
+- **Budgets:** rollover, a different amount for one month, copy last month, templates (50/30/20, zero-based, starter),
+  budget months that start on your payday, and **subscriptions you could cut** with Skip ▾ (this month, or for good).
+- **Transactions:** transfers, splits across categories, receipt photos (camera or file), tags, and importing bank
+  statements (CSV, OFX, QFX; PayPal, Venmo and Cash App downloads recognized; duplicates skipped). Rules pick the
+  category from the payee.
+- **Settings:** categories and subcategories, rules, budget month, an app lock (PIN or password), export to CSV,
+  run Get started again, delete all data.
+- **Get started** the first time it opens: accounts, paycheck and budgets, bills, and loans and cards.
+- **Backups** in the same .zip as the Windows app: a phone backup restores on the PC and a PC backup restores here
+  (protected ones open with the same PIN, password or recovery key).
+- **Updates from GitHub:** it checks once a day and in Settings → Updates; "Download and install" hands the new version
+  to Android's installer.
+
 ## 0.2.0 — 2026-11-15
 
 **Sync with WillowWallet for Windows** through your own WillowWallet Server. Optional: without it, everything stays

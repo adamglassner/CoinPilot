@@ -45,10 +45,13 @@ Ctrl+Enter save in an add/edit window · Esc close a window.
 
 ## WillowWallet for Android
 
-A Flutter app in [`mobile/`](mobile): Home (left to spend, income and net, budgets, spending by week, recent),
-Transactions (by month, search, filters, swipe to delete), Budgets and Settings (light/dark, the same eight color themes,
-currency). Everything is saved on the phone, and since 0.2.0 it can **sync with the Windows app** through a WillowWallet
-Server (Settings → Sync). Get the APK from the newest `android-v…` release. See [mobile/README.md](mobile/README.md).
+A Flutter app in [`mobile/`](mobile) with everything the Windows app does, laid out for a phone: Home (left to spend,
+what's coming up, budgets, recent), Transactions (transfers, splits, receipt photos, statement import), Budgets
+(rollover, one-month amounts, templates, subscriptions you could cut) and More: Accounts and net worth, Bills (with a
+calendar), Income and paydays, Debts and a payoff plan, Goals, Reports and year in review, Taxes, Categories and rules,
+Get started, an app lock, backups that restore on either app, and **in-app updates from GitHub** (Settings → Updates).
+Everything syncs with the Windows app through a WillowWallet Server (Settings → Sync). Get the APK from the newest
+`android-v…` release; after that the app updates itself. See [mobile/README.md](mobile/README.md).
 
 ## WillowWallet Server
 
@@ -140,7 +143,7 @@ tools/                   icon and installer image generators (Python + Pillow)
 3. ~~Everything else on the desktop: import, rules, splits, transfers, rollover, templates, reminders, taxes, protection, themes~~ (1.0.0)
 4. ~~WillowWallet for Android: transactions and budgets~~ (android 0.1.0)
 5. ~~Sign-in and sync between devices, with a self-hosted server~~ (1.1.0, android 0.2.0, server 0.1.0)
-6. More of the desktop features on Android, iPhone
+6. ~~Every desktop feature on Android~~ (android 0.3.0), iPhone
 
 ## License
 

@@ -98,7 +98,7 @@ class IncomeScreen extends StatelessWidget {
                     leading: _DateBox(s.nextDate),
                     title: s.name,
                     subtitle: '${Paydays.describe(s)} · ${s.varies ? 'asks how much' : s.autoAdd ? 'automatic' : 'asks to confirm'}',
-                    trailing: s.varies ? (typical > 0 ? '≈ ${Money.format(typical)}' : 'Varies') : Money.format(s.amountCents),
+                    trailing: s.varies ? (typical > 0 ? 'about ${Money.format(typical)}' : 'Varies') : Money.format(s.amountCents),
                     trailingSub: when,
                     trailingSubColor: days <= 0 ? p.accent : null,
                     onTap: () => showIncomeActions(context, s),
