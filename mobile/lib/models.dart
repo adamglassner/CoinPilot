@@ -217,6 +217,10 @@ class AppSettings {
   /// Mac and Linux: start WillowWallet when you sign in (for bill reminders), like "Run in the background" on Windows.
   bool startAtLogin = false;
 
+  /// The phone's bottom bar: the three pages beside the + button (More is always last). Kept on this device only.
+  List<String> navTabs = [...defaultNavTabs];
+  static const defaultNavTabs = ['home', 'transactions', 'budgets'];
+
   bool get isLocked => lockKind.isNotEmpty && lockHash.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
@@ -234,6 +238,7 @@ class AppSettings {
         'LastReminderDay': lastReminderDay,
         'LastSeenVersion': lastSeenVersion,
         'StartAtLogin': startAtLogin,
+        'NavTabs': navTabs,
       };
 
   static AppSettings fromJson(Map<String, dynamic> j) => AppSettings()
@@ -250,5 +255,6 @@ class AppSettings {
     ..remindersShown = [for (final x in (j['RemindersShown'] as List? ?? const [])) '$x']
     ..lastReminderDay = j['LastReminderDay'] as String? ?? ''
     ..lastSeenVersion = j['LastSeenVersion'] as String? ?? ''
-    ..startAtLogin = j['StartAtLogin'] == true;
+    ..startAtLogin = j['StartAtLogin'] == true
+    ..navTabs = [for (final x in (j['NavTabs'] as List? ?? AppSettings.defaultNavTabs)) '$x'];
 }

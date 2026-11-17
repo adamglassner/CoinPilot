@@ -1,5 +1,10 @@
 # WillowWallet for Mac and Linux — changelog
 
+## 1.6.1 — 2026-11-16
+
+- Keeps WillowWallet for Mac and Linux on the same version as the other apps. The phone app can now choose its bottom
+  bar pages; nothing changes here.
+
 ## 1.6.0 — 2026-11-16
 
 The first version of WillowWallet for Mac and Linux, with everything WillowWallet for Windows does and a sidebar like

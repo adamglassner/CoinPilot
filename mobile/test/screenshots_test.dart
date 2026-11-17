@@ -38,6 +38,7 @@ void main() {
     String mode = 'light',
     String theme = 'Pine',
     int tab = 0,
+    double textScale = 1,
     bool sample = true,
     bool synced = false,
     bool setup = false,
@@ -51,6 +52,10 @@ void main() {
       tester.view.physicalSize = const Size(1170, 2532); // 390 × 844 at 3×
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
+      if (textScale != 1) {
+        tester.platformDispatcher.textScaleFactorTestValue = textScale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      }
       final store = Store.memory();
       store.settings
         ..themeMode = mode
@@ -328,6 +333,15 @@ void main() {
           await t.pumpAndSettle();
         }));
   }
+
+  // Big phone text (Android's largest font size): nothing wraps or gets cut off
+  testWidgets('big text more', (t) => shot(t, '40-big-text-more-dark', mode: 'dark', tab: 3, textScale: 1.6));
+  testWidgets('big text home', (t) => shot(t, '41-big-text-home-light', textScale: 1.6));
+  testWidgets('bottom bar sheet', (t) => shot(t, '42-bottom-bar-light', tab: 3, then: () async {
+        await t.longPress(find.descendant(of: find.byType(BottomAppBar), matching: find.text('More')));
+        await t.pumpAndSettle();
+      }));
+  testWidgets('custom bottom bar', (t) => shot(t, '43-custom-bar-dark', mode: 'dark', prepare: (s) => s.settings.navTabs = ['home', 'bills', 'accounts']));
 
   testWidgets('sync recovery key', (t) => shot(t, '34-sync-recovery-key-light', then: () async {
         await openSync(t);

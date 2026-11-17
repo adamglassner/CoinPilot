@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.1 — 2026-11-16
+
+- Keeps WillowWallet for Windows on the same version as the other apps. In WillowWallet for Android you can now choose
+  which pages are in the bottom bar, and its labels no longer get cut off with a large font size. Nothing changes
+  here.
+
 ## 1.6.0 — 2026-11-16
 
 - **Unlock with Windows Hello.** With a PIN or password on, Settings → Security → **Use Windows Hello** lets you unlock

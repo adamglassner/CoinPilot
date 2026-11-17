@@ -237,4 +237,61 @@ void main() {
     expect(store.transactions.any((t) => t.payee == 'Corner Cafe' && t.cents == -999), isTrue);
     await settle(tester);
   });
+
+  testWidgets('bottom bar: pick other pages, and labels stay on one line with big text', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2340); // a 360-wide phone, like most Androids
+    tester.view.devicePixelRatio = 3;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final store = Store.memory()..loadSample();
+    await tester.pumpWidget(CoinPilotApp(store: store));
+    await tester.pumpAndSettle();
+
+    // Every label is one line and fits its slot
+    for (final name in ['Home', 'Transactions', 'Budgets', 'More']) {
+      final box = tester.getRect(tab(name));
+      expect(box.height, lessThan(24), reason: '$name wrapped');
+      expect(box.width, lessThan(1080 / 3 / 4), reason: '$name too wide');
+    }
+    expect(tester.takeException(), isNull);
+
+    // More: tiles for pages not in the bar, and the Bottom bar setting
+    await tester.tap(tab('More'));
+    await tester.pumpAndSettle();
+    expect(find.text('Home'), findsOneWidget); // only the bar's
+    await tester.scrollUntilVisible(find.text('Bottom bar'), 200, scrollable: find.descendant(of: find.byType(MoreScreen), matching: find.byType(Scrollable)).first);
+    await tester.tap(find.text('Bottom bar'));
+    await tester.pumpAndSettle();
+
+    // Take Budgets out, put Bills in, save
+    await tester.tap(find.byTooltip('Take Budgets out of the bar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Pick 1 more'), findsOneWidget);
+    await tester.ensureVisible(find.byTooltip('Put Bills in the bar'));
+    await tester.tap(find.byTooltip('Put Bills in the bar'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(store.settings.navTabs, ['home', 'transactions', 'bills']);
+    expect(tab('Bills'), findsOneWidget);
+    expect(tab('Budgets'), findsNothing);
+
+    // Bills is a tab now; Budgets moved to More
+    await tester.tap(tab('Bills'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bills'), findsWidgets);
+    await tester.tap(tab('More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byType(MoreScreen), matching: find.text('Budgets')));
+    await tester.pumpAndSettle();
+    expect(find.byType(BudgetsScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // Settings that aren't three real pages fall back to the default bar
+    store.updateSettings((s) => s.navTabs = ['bills', 'goals', 'nonsense']);
+    await tester.pumpAndSettle();
+    expect(tab('Home'), findsOneWidget, reason: 'bad settings fall back to the default');
+  });
 }

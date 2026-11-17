@@ -10,6 +10,7 @@ import '../form.dart';
 import '../reminders.dart';
 import '../startup.dart';
 import '../kit.dart';
+import '../nav_bar.dart';
 import '../lock.dart';
 import '../money.dart';
 import '../platform.dart';
@@ -64,6 +65,18 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
         ),
+        if (!isDesktop) ...[
+          const SizedBox(height: 10),
+          Panel(
+            padding: EdgeInsets.zero,
+            child: _Tile(
+              icon: Icons.space_bar_rounded,
+              title: 'Bottom bar',
+              subtitle: barTabs(s).map((t) => t.label).join(', '),
+              onTap: () => showBottomBarSheet(context),
+            ),
+          ),
+        ],
         const _Heading('Money'),
         Panel(
           padding: EdgeInsets.zero,

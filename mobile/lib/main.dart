@@ -9,15 +9,14 @@ import 'form.dart';
 import 'reminders.dart';
 import 'screens/whats_new.dart';
 import 'finance.dart';
+import 'kit.dart';
 import 'lock.dart';
-import 'screens/budgets_screen.dart';
+import 'nav_bar.dart';
 import 'screens/get_started.dart';
-import 'screens/home_screen.dart';
 import 'screens/income_screen.dart';
 import 'screens/more_screen.dart';
 import 'screens/settings_screen.dart' show UpdaterScope;
 import 'screens/transaction_sheet.dart';
-import 'screens/transactions_screen.dart';
 import 'store.dart';
 import 'sync/engine.dart';
 import 'sync/scope.dart';
@@ -141,7 +140,7 @@ class _CoinPilotAppState extends State<CoinPilotApp> with WidgetsBindingObserver
   }
 }
 
-/// Bottom navigation (Home, Transactions, Budgets, More) around the add button.
+/// Bottom navigation: three pages you choose (Home, Transactions and Budgets to start) and More, around the add button.
 class AppShell extends StatefulWidget {
   const AppShell({super.key, this.initialTab = 0, this.startupTasks = false, this.showSetup = true});
   final int initialTab;
@@ -149,15 +148,31 @@ class AppShell extends StatefulWidget {
   final bool showSetup;
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  State<AppShell> createState() => AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class AppShellState extends State<AppShell> {
   late int _tab = widget.initialTab;
   bool? _inSetup;
   bool _started = false;
 
+  /// The nearest bottom-bar shell (null on a computer).
+  static AppShellState? of(BuildContext context) => context.findAncestorStateOfType<AppShellState>();
+
   void _go(int tab) => setState(() => _tab = tab);
+
+  /// Goes to a page: its tab when it's in the bar, or opens it over the current tab.
+  void openPage(String key) {
+    final tabs = barTabs(StoreScope.read(context).settings);
+    final i = tabs.indexWhere((t) => t.key == key);
+    if (i >= 0) {
+      Navigator.of(context).popUntil((r) => r.isFirst);
+      _go(i);
+      return;
+    }
+    final page = barPage(key);
+    if (page != null) pushPage(context, page.build(openPage));
+  }
 
   @override
   void didChangeDependencies() {
@@ -200,58 +215,34 @@ class _AppShellState extends State<AppShell> {
         child: GetStartedScreen(onDone: () => setState(() => _inSetup = false)),
       );
     }
-    final asking = store.askingPaydays(DateTime.now()).isNotEmpty;
-    final overdue = store.openBills.any((b) => Bills.status(b, DateTime.now()) == BillStatus.overdue);
+    final now = DateTime.now();
+    final tabs = barTabs(store.settings);
+    final tab = _tab.clamp(0, tabs.length);
+    final asking = store.askingPaydays(now).isNotEmpty;
+    final overdue = store.openBills.any((b) => Bills.status(b, now) == BillStatus.overdue);
+    bool dotFor(String key) => switch (key) { 'bills' => overdue, 'income' => asking, _ => false };
+    // More gets the dot for whatever isn't in the bar
+    final moreDot = (asking && !tabs.any((t) => t.key == 'income')) || (overdue && !tabs.any((t) => t.key == 'bills'));
 
-    Widget item(int i, IconData icon, IconData selectedIcon, String label, {bool dot = false}) {
-      final on = _tab == i;
-      return Expanded(
-        child: Semantics(
-          selected: on,
-          button: true,
-          label: label,
-          excludeSemantics: true,
-          child: InkResponse(
-            onTap: () => _go(i),
-            radius: 40,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(color: on ? p.accentSoft : Colors.transparent, borderRadius: BorderRadius.circular(99)),
-                      child: Icon(on ? selectedIcon : icon, size: 23, color: on ? p.accent : p.muted),
-                    ),
-                    if (dot)
-                      Positioned(
-                        right: 12,
-                        top: 2,
-                        child: Container(width: 8, height: 8, decoration: BoxDecoration(color: p.danger, shape: BoxShape.circle, border: Border.all(color: p.surface, width: 1.5))),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(label, style: TextStyle(fontSize: 11.5, fontWeight: on ? FontWeight.w700 : FontWeight.w500, color: on ? p.text : p.muted)),
-              ],
-            ),
-          ),
-        ),
-      );
+    Widget item(int i) {
+      if (i == tabs.length) {
+        return NavItem(
+            icon: Icons.grid_view_outlined, selectedIcon: Icons.grid_view_rounded, label: 'More', selected: tab == i, dot: moreDot,
+            onTap: () => _go(i), onLongPress: () => showBottomBarSheet(context));
+      }
+      final t = tabs[i];
+      return NavItem(
+          icon: t.icon, selectedIcon: t.selectedIcon, label: t.label, selected: tab == i, dot: dotFor(t.key),
+          onTap: () => _go(i), onLongPress: () => showBottomBarSheet(context));
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlay,
       child: Scaffold(
         body: IndexedStack(
-          index: _tab,
+          index: tab,
           children: [
-            HomeScreen(onNavigate: _go),
-            const TransactionsScreen(),
-            const BudgetsScreen(),
+            for (final t in tabs) KeyedSubtree(key: ValueKey('tab-${t.key}'), child: t.build(openPage)),
             const MoreScreen(),
           ],
         ),
@@ -266,23 +257,21 @@ class _AppShellState extends State<AppShell> {
           child: const Icon(Icons.add_rounded, size: 32),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        bottomNavigationBar: BottomAppBar(
-          color: p.surface,
-          surfaceTintColor: Colors.transparent,
-          shadowColor: Colors.black,
-          elevation: 10,
-          shape: const CircularNotchedRectangle(),
-          notchMargin: 7,
-          height: 74,
-          padding: EdgeInsets.zero,
-          child: Row(
-            children: [
-              item(0, Icons.home_outlined, Icons.home_rounded, 'Home'),
-              item(1, Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Transactions'),
-              const SizedBox(width: 76),
-              item(2, Icons.pie_chart_outline_rounded, Icons.pie_chart_rounded, 'Budgets'),
-              item(3, Icons.grid_view_outlined, Icons.grid_view_rounded, 'More', dot: asking || overdue),
-            ],
+        bottomNavigationBar: MediaQuery.withClampedTextScaling(
+          // Like Android's own bars: labels grow a little with the phone's text size, but never wrap or get cut off
+          maxScaleFactor: 1.15,
+          child: BottomAppBar(
+            color: p.surface,
+            surfaceTintColor: Colors.transparent,
+            shadowColor: Colors.black,
+            elevation: 10,
+            shape: const CircularNotchedRectangle(),
+            notchMargin: 7,
+            height: 74,
+            padding: EdgeInsets.zero,
+            child: Row(
+              children: [item(0), item(1), const SizedBox(width: 76), item(2), item(3)],
+            ),
           ),
         ),
       ),

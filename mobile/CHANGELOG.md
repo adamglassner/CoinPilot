@@ -1,5 +1,13 @@
 # WillowWallet for Android — changelog
 
+## 1.6.1 — 2026-11-16
+
+- **Choose your bottom bar.** Pick the three pages beside the + button (Home, Transactions, Budgets, Accounts, Bills,
+  Income, Debts, Goals, Reports or Taxes) and their order: More → **Bottom bar**, Settings → Appearance, or
+  long-press any button in the bar. Pages that aren't in the bar are under More.
+- **Fixed:** with a large font size on your phone, bottom bar labels like "Transactions" wrapped onto two lines and
+  were cut off. They now stay on one line, and the tiles on More grow so their text fits.
+
 ## 1.6.0 — 2026-11-16
 
 - **Unlock with your fingerprint or face.** With a PIN or password on, Settings → Privacy → **Unlock with

@@ -3,23 +3,18 @@ import 'package:flutter/material.dart';
 import '../dates.dart';
 import '../finance.dart';
 import '../kit.dart';
+import '../main.dart' show AppShellState;
+import '../nav_bar.dart';
 import '../money.dart';
 import '../store.dart';
 import '../sync/scope.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import 'accounts_screen.dart';
-import 'bills_screen.dart';
-import 'debts_screen.dart';
-import 'goals_screen.dart';
 import 'import_screen.dart';
-import 'income_screen.dart';
-import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'sync_screen.dart';
-import 'taxes_screen.dart';
 
-/// Everything that isn't a tab: accounts, bills, income, debts, goals, reports, taxes, sync and settings.
+/// Every page that isn't in the bottom bar, plus import, sync and settings.
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
 
@@ -35,23 +30,36 @@ class MoreScreen extends StatelessWidget {
     final activeDebts = store.debts.where((d) => !d.isPaidOff).length;
     final goals = store.goals;
 
-    final tiles = [
-      _Feature('Accounts', Icons.account_balance_outlined, store.accountRecords.isEmpty ? 'Add yours' : Money.format(store.netWorth, whole: true), store.accountRecords.isEmpty ? '' : 'net worth',
-          () => pushPage(context, const AccountsScreen())),
-      _Feature('Bills', Icons.event_note_outlined, store.openBills.isEmpty ? 'None yet' : (due.isEmpty ? 'Nothing due' : '${due.length} due'), store.openBills.isEmpty ? '' : 'next 7 days',
-          () => pushPage(context, const BillsScreen()),
+    final shell = AppShellState.of(context);
+    void open(String key) => shell != null ? shell.openPage(key) : pushPage(context, barPage(key)!.build((_) {}));
+    final inBar = {for (final t in barTabs(store.settings)) t.key};
+
+    final all = <String, _Feature Function()>{
+      'home': () => _Feature('Home', Icons.home_outlined, 'Overview', 'this month', () => open('home')),
+      'transactions': () => _Feature('Transactions', Icons.receipt_long_outlined, 'Search and edit', 'all accounts', () => open('transactions')),
+      'budgets': () => _Feature('Budgets', Icons.pie_chart_outline_rounded, store.budgets.isEmpty ? 'Set one up' : '${store.budgets.length} budgets', 'this month', () => open('budgets')),
+      'accounts': () => _Feature('Accounts', Icons.account_balance_outlined, store.accountRecords.isEmpty ? 'Add yours' : Money.format(store.netWorth, whole: true),
+          store.accountRecords.isEmpty ? '' : 'net worth', () => open('accounts')),
+      'bills': () => _Feature('Bills', Icons.event_note_outlined, store.openBills.isEmpty ? 'None yet' : (due.isEmpty ? 'Nothing due' : '${due.length} due'),
+          store.openBills.isEmpty ? '' : 'next 7 days', () => open('bills'),
           badge: due.any((b) => Bills.status(b, today) == BillStatus.overdue)),
-      _Feature('Income', Icons.payments_outlined, store.incomeSources.isEmpty ? 'Add your paycheck' : '${Money.format(store.expectedMonthlyIncome(), whole: true)} a month', '',
-          () => pushPage(context, const IncomeScreen()),
+      'income': () => _Feature('Income', Icons.payments_outlined, store.incomeSources.isEmpty ? 'Add your paycheck' : '${Money.format(store.expectedMonthlyIncome(), whole: true)} a month', '',
+          () => open('income'),
           badge: asking.isNotEmpty),
-      _Feature('Debts', Icons.credit_card_rounded, store.debts.isEmpty ? 'None' : Money.format(store.debtTotalCents, whole: true), activeDebts == 0 ? '' : '$activeDebts to pay off',
-          () => pushPage(context, const DebtsScreen())),
-      _Feature('Goals', Icons.flag_outlined, goals.isEmpty ? 'Set one' : '${goals.length} goal${goals.length == 1 ? '' : 's'}',
-          goals.isEmpty ? '' : '${(goals.fold<double>(0, (s, g) => s + store.fraction(g)) / goals.length * 100).round()}% on average', () => pushPage(context, const GoalsScreen())),
-      _Feature('Reports', Icons.insights_rounded, 'Trends', 'year in review', () => pushPage(context, const ReportsScreen())),
-      _Feature('Taxes', Icons.folder_copy_outlined, '${store.taxDocs.length} document${store.taxDocs.length == 1 ? '' : 's'}', 'by tax year', () => pushPage(context, const TaxesScreen())),
+      'debts': () => _Feature('Debts', Icons.credit_card_rounded, store.debts.isEmpty ? 'None' : Money.format(store.debtTotalCents, whole: true), activeDebts == 0 ? '' : '$activeDebts to pay off',
+          () => open('debts')),
+      'goals': () => _Feature('Goals', Icons.flag_outlined, goals.isEmpty ? 'Set one' : '${goals.length} goal${goals.length == 1 ? '' : 's'}',
+          goals.isEmpty ? '' : '${(goals.fold<double>(0, (s, g) => s + store.fraction(g)) / goals.length * 100).round()}% on average', () => open('goals')),
+      'reports': () => _Feature('Reports', Icons.insights_rounded, 'Trends', 'year in review', () => open('reports')),
+      'taxes': () => _Feature('Taxes', Icons.folder_copy_outlined, '${store.taxDocs.length} document${store.taxDocs.length == 1 ? '' : 's'}', 'by tax year', () => open('taxes')),
+    };
+    final tiles = [
+      for (final e in all.entries)
+        if (!inBar.contains(e.key)) e.value(),
       _Feature('Import', Icons.file_download_outlined, 'Bank statements', 'CSV, OFX, PayPal', () => pushPage(context, const ImportScreen())),
     ];
+    // Big phone text gets taller tiles, so nothing is cut off
+    final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0);
 
     return SafeArea(
       bottom: false,
@@ -78,7 +86,7 @@ class MoreScreen extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 10,
             crossAxisSpacing: 10,
-            childAspectRatio: 1.25,
+            childAspectRatio: 1.25 / scale,
             padding: EdgeInsets.zero,
             children: tiles,
           ),
@@ -90,6 +98,12 @@ class MoreScreen extends StatelessWidget {
                 title: sync.isSetUp ? 'Sync & devices' : 'Sync with your PC',
                 subtitle: sync.isSetUp ? '${sync.statusText} · ${sync.serverName}' : 'Connect to your WillowWallet Server',
                 onTap: () => SyncScreen.open(context),
+              ),
+              RowTile(
+                leading: const IconBox(Icons.space_bar_rounded, size: 40),
+                title: 'Bottom bar',
+                subtitle: 'Choose the pages beside the + button',
+                onTap: () => showBottomBarSheet(context),
               ),
               RowTile(
                 leading: const IconBox(Icons.settings_outlined, size: 40),
@@ -129,7 +143,7 @@ class _Feature extends StatelessWidget {
             ],
           ),
           const Spacer(),
-          Text(title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
           const SizedBox(height: 2),
           Text(note.isEmpty ? value : '$value · $note', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: p.muted, height: 1.25)),
         ],
