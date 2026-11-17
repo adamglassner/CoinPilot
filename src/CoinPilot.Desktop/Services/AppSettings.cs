@@ -29,6 +29,8 @@ public sealed class AppSettings
 
     /// <summary>Bill reminders already shown, as "billId|yyyy-MM-dd" (so each due date is announced once a day).</summary>
     public List<string> RemindersShown { get; set; } = [];
+    /// <summary>Spending alerts already shown as notifications on this PC (their keys).</summary>
+    public List<string> AlertsNotified { get; set; } = [];
 
     /// <summary>The version What's new was last shown for (it opens once after each update).</summary>
     public string LastSeenVersion { get; set; } = "";

@@ -67,6 +67,9 @@
             </Button>
         </UniformGrid>
 
+        <!-- Heads up: spending alerts -->
+        <ContentControl x:Name="AlertsHost" Focusable="False" />
+
         <!-- Forecast: where the month is headed, and safe to spend -->
         <ContentControl x:Name="ForecastHost" Focusable="False" />
 

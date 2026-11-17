@@ -785,6 +785,72 @@ public static class SelfTest
         await Step("Clean up", () => DataStore.EraseAll(syncDeletes: false));
     }
 
+    /// <summary>Spending alerts, the paycheck planner and this year vs last: the same example as mobile/test/insights_test.dart.</summary>
+    private static async Task InsightsFlow(MainWindow window)
+    {
+        var today = new DateTime(2026, 11, 20);
+        Transaction T(string payee, string cat, DateTime d, decimal amount) => new() { Payee = payee, Category = cat, Account = "Checking", Date = d, Amount = amount };
+        await Step("Alerts example", () =>
+        {
+            DataStore.Accounts.Add(new Account { Name = "Checking", Type = AccountTypes.Checking, StartingBalance = 5000m, BalanceDate = new DateTime(2026, 8, 1) });
+            DataStore.Budgets.Add(new Budget { Category = "Dining out", MonthlyLimit = 250m, StartMonth = new DateTime(2026, 11, 1) });
+            DataStore.Budgets.Add(new Budget { Category = "Groceries", MonthlyLimit = 400m, StartMonth = new DateTime(2026, 11, 1) });
+            DataStore.Transactions.Add(T("Taco Bros", "Dining out", new DateTime(2026, 11, 8), -210m));
+            DataStore.Transactions.Add(T("Kroger", "Groceries", new DateTime(2026, 11, 9), -450m));
+            DataStore.Transactions.Add(T("NETFLIX.COM 1234", "Subscriptions", new DateTime(2026, 10, 5), -17.99m));
+            DataStore.Transactions.Add(T("NETFLIX.COM 5678", "Subscriptions", new DateTime(2026, 11, 5), -17.99m));
+            foreach (int m in new[] { 8, 9, 10 }) DataStore.Transactions.Add(T("Duke Energy", "Utilities", new DateTime(2026, m, 18), -130m));
+            DataStore.Transactions.Add(T("Duke Energy", "Utilities", new DateTime(2026, 11, 18), -182m));
+            DataStore.Transactions.Add(T("Kroger", "Groceries", new DateTime(2025, 11, 10), -300m));
+            DataStore.Bills.Add(new Bill { Name = "Netflix", Amount = 15.49m, NextDue = new DateTime(2026, 12, 5), DueDay = 5, Category = "Subscriptions" });
+        });
+        var a = Insights.Alerts(today);
+        string Kinds(List<MoneyAlert> l) => string.Join(", ", l.Select(x => x.Kind));
+        Check("Alerts: over budget, a budget at 84%, a bill that went up, an unusual charge", Kinds(a) == "over, budget, bill-price, unusual", Kinds(a));
+        Check("Alerts: over budget says how much", a[0].Title == "Over budget: Groceries" && a[0].Body == "$450 of $400, $50 over with 11 days left.", a[0].Body);
+        Check("Alerts: budget warning", a[1].Title == "Dining out: 84% used" && a[1].Body == "$40 left for 11 days.", a[1].Title + " / " + a[1].Body);
+        Check("Alerts: bill price change", a[2].Title == "Netflix went up" && a[2].NewAmount == 17.99m, a[2].Title);
+        Check("Alerts: unusual charge", a[3].Title == "Duke Energy: $182.00" && a[3].Body == "About 40% more than usual ($130.00).", a[3].Title + " / " + a[3].Body);
+        await Step("Dashboard with alerts", () => window.GoTo("dashboard"));
+        await Step("Dismiss the budget warning and update the bill", () => { Insights.Dismiss(a[1]); Insights.ApplyBillPrice(a[2]); });
+        Check("Alerts: dismissed and updated ones go away", Kinds(Insights.Alerts(today)) == "over, unusual" && DataStore.Bills.Items.First(b => b.Name == "Netflix").Amount == 17.99m,
+            Kinds(Insights.Alerts(today)));
+        DataStore.Prefs.AlertsOn = false;
+        Check("Alerts: off means none", Insights.Alerts(today).Count == 0);
+        DataStore.Prefs.AlertsOn = true;
+        DataStore.Prefs.Save();
+
+        var y = Insights.Compare(new DateTime(2026, 11, 1), today);
+        Check("This year vs last: groceries $300 → $450 (+50%)", y.HasLastYear && y.SpentBefore == 300m && y.Categories.Any(c => c.Category == "Groceries" && c.Now == 450m && c.Before == 300m)
+            && YearOverYear.Change(450m, 300m) == 50, $"{y.SpentBefore}");
+
+        IncomeSource? pay = null;
+        await Step("Paycheck and rent", () =>
+        {
+            DataStore.Bills.Add(new Bill { Name = "Rent", Amount = 1200m, NextDue = new DateTime(2026, 11, 25), DueDay = 25, Category = "Housing" });
+            pay = new IncomeSource { Name = "Paycheck", Amount = 1500m, Repeats = IncomeSchedule.EveryTwoWeeks, NextDate = today, Day1 = 20 };
+            DataStore.Income.Add(pay);
+        });
+        var plan = Insights.PlanPaycheck(pay!, today);
+        Check("Paycheck plan: runs to the day before the next paycheck", plan.Next == new DateTime(2026, 12, 4) && string.Join(",", plan.Lines.Where(l => l.Kind == "bill").Select(l => l.Label)) == "Rent");
+        Check("Paycheck plan: budget money for those days (the same as the phone app)", plan.Total("budget") == 40m + 24.19m + 38.71m, plan.Total("budget").ToString());
+        Check("Paycheck plan: left over", plan.Leftover == 1500m - 1200m - 102.90m, plan.Leftover.ToString());
+        await Step("Income page with the plan", () => window.GoTo("income"));
+        await Step("Reports with this year vs last", () => window.GoTo("reports"));
+
+        await Step("A forecast dip", () =>
+        {
+            DataStore.EraseAll(syncDeletes: false);
+            DataStore.Accounts.Add(new Account { Name = "Checking", Type = AccountTypes.Checking, StartingBalance = 500m, BalanceDate = new DateTime(2026, 11, 1) });
+            DataStore.Bills.Add(new Bill { Name = "Rent", Amount = 1200m, NextDue = new DateTime(2026, 11, 25), DueDay = 25, Category = "Housing" });
+            DataStore.Income.Add(new IncomeSource { Name = "Paycheck", Amount = 1500m, Repeats = IncomeSchedule.Monthly, NextDate = new DateTime(2026, 11, 28), Day1 = 28 });
+        });
+        var dip = Insights.Alerts(today);
+        Check("Alerts: a forecast dip", dip.Count == 1 && dip[0].Kind == "dip" && dip[0].Title == "Your balance may dip to −$700" && dip[0].Body == "On Nov 25, before payday. See Forecast.",
+            string.Join(" | ", dip.Select(x => x.Title + " " + x.Body)));
+        await Step("Clean up", () => DataStore.EraseAll(syncDeletes: false));
+    }
+
     /// <summary>"Subscriptions you could cut" on the Budgets page, and skipping a suggestion for a month or for good.</summary>
     private static async Task CutsFlow(MainWindow window)
     {
@@ -858,6 +924,7 @@ public static class SelfTest
         await IncomeFlow();
         await CutsFlow(window);
         await ForecastFlow(window);
+        await InsightsFlow(window);
 
         // ----- Add data -----
         var month = Budgeting.MonthStart(DateTime.Today);

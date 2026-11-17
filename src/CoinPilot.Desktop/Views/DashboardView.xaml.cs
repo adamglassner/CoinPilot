@@ -38,6 +38,7 @@ public partial class DashboardView : UserControl
 
         BuildWelcome();
         BuildSummary(summary, now);
+        AlertsHost.Content = InsightViews.AlertsCard();
         ForecastHost.Content = ForecastView.DashboardCard(() => MainWindow.Instance?.GoTo("forecast"));
         BuildBudgets(summary);
         BuildWeekChart(summary, now);

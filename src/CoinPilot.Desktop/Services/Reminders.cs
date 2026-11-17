@@ -151,11 +151,29 @@ public static class Reminders
         App.Settings.Save();
     }
 
+    /// <summary>Spending alerts not shown yet on this PC: a notification (or a toast when the window is open) for each.</summary>
+    private static void CheckAlerts(DateTime today)
+    {
+        var sent = App.Settings.AlertsNotified.ToHashSet();
+        var fresh = Insights.Alerts(today).Where(a => !sent.Contains(a.Key)).ToList();
+        if (fresh.Count == 0) return;
+        foreach (var a in fresh.Take(3))
+        {
+            if (_tray != null) _tray.ShowBalloonTip(8000, a.Title, a.Body, Forms.ToolTipIcon.Info);
+            else if (MainWindow.Instance is { IsVisible: true }) Toaster.Show($"{a.Title}. {a.Body}");
+        }
+        var list = App.Settings.AlertsNotified;
+        list.AddRange(fresh.Select(a => a.Key));
+        if (list.Count > 300) list.RemoveRange(0, list.Count - 200);
+        App.Settings.Save();
+    }
+
     public static void Check()
     {
         if (SelfTest.IsRunning || !DataLock.IsOpen) return;
         var today = DateTime.Today;
         CheckPaydays(today);
+        CheckAlerts(today);
         var due = Due(today, onlyNew: true);
         if (due.Count == 0) return;
 

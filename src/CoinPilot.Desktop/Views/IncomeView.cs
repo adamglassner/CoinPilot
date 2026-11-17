@@ -54,6 +54,7 @@ public sealed class IncomeView : DataPage
         else
         {
             var list = new StackPanel();
+            Add(InsightViews.PlanCard(sources[0]));
             for (int i = 0; i < sources.Count; i++) list.Children.Add(Row(sources[i], today, i == 0));
             Add(PageKit.Card(list, padding: new Thickness(14, 8, 14, 8)));
         }

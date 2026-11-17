@@ -184,6 +184,20 @@ public sealed class SettingsView : DataPage
         background.Unchecked += (_, _) => Services.Reminders.SetBackground(false);
         panel.Children.Add(background);
         panel.Children.Add(Muted("WillowWallet starts when you sign in to Windows and waits in the notification area. Closing the window keeps it there; right-click its icon to exit. Bills set to auto-pay don't get reminders.", 6));
+
+        var alerts = new CheckBox { Content = "Spending alerts: a budget running low, a bill's price changing, an unusually big charge, or the forecast dipping", IsChecked = prefs.AlertsOn, Margin = new Thickness(0, 14, 0, 0) };
+        alerts.Checked += (_, _) => { prefs.AlertsOn = true; prefs.Save(); DataStore.RaiseChanged(); };
+        alerts.Unchecked += (_, _) => { prefs.AlertsOn = false; prefs.Save(); DataStore.RaiseChanged(); };
+        panel.Children.Add(alerts);
+        var level = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(27, 6, 0, 0) };
+        level.Children.Add(Ui.Text("Warn me when a budget is", muted: true).Also(t => t.Margin = new Thickness(0, 0, 10, 0)));
+        var pct = new ComboBox { Width = 120 };
+        foreach (int v in new[] { 70, 80, 90 }) pct.Items.Add(new ComboBoxItem { Content = $"{v}% used", Tag = v });
+        pct.SelectedItem = pct.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (int)i.Tag == (int)Math.Round(prefs.AlertPercent / 10.0) * 10) ?? pct.Items[1];
+        pct.SelectionChanged += (_, _) => { prefs.AlertPercent = (int)((ComboBoxItem)pct.SelectedItem).Tag; prefs.Save(); DataStore.RaiseChanged(); };
+        System.Windows.Automation.AutomationProperties.SetName(pct, "Budget warning level");
+        level.Children.Add(pct);
+        panel.Children.Add(level);
         return PageKit.Card(panel, "Bill reminders");
     }
 

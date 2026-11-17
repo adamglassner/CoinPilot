@@ -91,6 +91,7 @@ public sealed class ReportsView : DataPage
             list.Add(PageKit.Card(Charts.LineChart(history.Select(p => (p.Date.ToString("MMM", Money.Us), p.Value)).ToList(), 180), "Net worth"));
         }
         list.Add(PageKit.Card(MonthTable(months), "Month by month", padding: new Thickness(22, 20, 22, 10)));
+        if (!forPrint) list.Add(InsightViews.YearOverYearCard());
         return list;
     }
 
