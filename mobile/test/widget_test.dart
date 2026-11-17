@@ -304,7 +304,7 @@ void main() {
     expect(tester.takeException(), isNull);
 
     // Settings that aren't three real pages fall back to the default bar
-    Navigator.of(tester.element(find.byType(AppShell))).pop();
+    Navigator.of(tester.element(find.byType(AppShell, skipOffstage: false))).pop();
     await tester.pumpAndSettle();
     store.updateSettings((s) => s.navTabs = ['bills', 'goals', 'nonsense']);
     await tester.pumpAndSettle();
