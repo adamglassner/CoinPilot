@@ -231,7 +231,10 @@ void main() {
     testWidgets('forecast $mode', (t) => page(t, 'forecast', 50, const ForecastScreen()));
     testWidgets('forecast lower $mode', (t) => page(t, 'forecast-drivers', 51, const ForecastScreen(), then: () => scrollTo(t, find.text('What if…'))));
     testWidgets('forecast what if $mode', (t) => page(t, 'forecast-what-if', 52, const ForecastScreen(), then: () async {
-          await scrollTo(t, find.text('One-time expense'));
+          final list = find.descendant(of: find.byType(SubPage).last, matching: find.byType(Scrollable)).first;
+          await t.scrollUntilVisible(find.text('One-time expense'), 250, scrollable: list);
+          await t.ensureVisible(find.text('One-time expense'));
+          await t.pumpAndSettle();
           await t.tap(find.text('One-time expense'));
           await t.pumpAndSettle();
           await t.enterText(find.byType(TextField).at(0), 'New tires');

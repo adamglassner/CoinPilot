@@ -47,6 +47,14 @@
                             </StackPanel>
                         </DockPanel>
                     </Border>
+                    <Button x:Name="CalcButton" Style="{StaticResource SidebarButton}" Click="Calculator_Click" ToolTip="Calculator (Ctrl+K)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8EF;" Style="{StaticResource Icon}" FontSize="16" Width="30" />
+                            <TextBlock Text="Calculator" FontSize="14" />
+                        </StackPanel>
+                    </Button>
+                    <Popup x:Name="CalcPopup" PlacementTarget="{Binding ElementName=CalcButton}" Placement="Right" HorizontalOffset="22"
+                           VerticalOffset="-330" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade" />
                     <Button x:Name="ThemeButton" Style="{StaticResource SidebarButton}" Click="Theme_Click">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock x:Name="ThemeGlyph" Style="{StaticResource Icon}" FontSize="16" Width="30" />

@@ -416,21 +416,26 @@ public sealed class GoalDialog : DialogShell
     private readonly DatePicker _date;
     private readonly TextBox _note;
     private readonly WrapPanel _link;
+    private readonly WrapPanel? _repeats;
     private const string NotLinked = "Not linked";
 
     public Goal Result => _target;
 
-    public GoalDialog(Goal? existing)
-        : base(existing == null ? "New goal" : "Edit goal",
-               existing == null ? "Something to save toward, like an emergency fund, a trip or a new car." : "Change the goal, or delete it.",
-               allowDelete: existing != null, saveText: existing == null ? "Create goal" : "Save")
+    public GoalDialog(Goal? existing, bool fund = false)
+        : base((existing?.IsFund ?? fund) ? (existing == null ? "New sinking fund" : "Edit sinking fund") : existing == null ? "New goal" : "Edit goal",
+               (existing?.IsFund ?? fund)
+                   ? "For a cost that comes around again, like car registration or holidays. WillowWallet works out how much to set aside each month."
+                   : existing == null ? "Something to save toward, like an emergency fund, a trip or a new car." : "Change the goal, or delete it.",
+               allowDelete: existing != null, saveText: existing != null ? "Save" : fund ? "Create sinking fund" : "Create goal")
     {
-        _target = existing ?? new Goal();
+        _target = existing ?? new Goal { IsFund = fund };
+        bool isFund = _target.IsFund;
         _name = AddField("Name", new TextBox { Text = _target.Name }, required: true);
-        _amount = AddField("Target amount", AmountBox(existing?.Target), required: true);
-        _saved = AddField("Saved so far", AmountBox(existing?.Saved), hint: "Leave empty if you're starting from zero.");
-        _date = AddField("Target date", DateBox(_target.TargetDate),
-            hint: "Optional. With a date, WillowWallet works out how much to save each month.");
+        _amount = AddField(isFund ? "What it costs" : "Target amount", AmountBox(existing?.Target), required: true);
+        _saved = AddField(isFund ? "Set aside so far" : "Saved so far", AmountBox(existing?.Saved), hint: "Leave empty if you're starting from zero.");
+        _date = AddField(isFund ? "Next due" : "Target date", DateBox(_target.TargetDate), required: isFund,
+            hint: isFund ? null : "Optional. With a date, WillowWallet works out how much to save each month.");
+        if (isFund) _repeats = AddField("Comes around", Chips(FundSchedule.All, _target.Repeats));
         var accounts = DataStore.Accounts.Items.Where(a => !a.IsClosed && !a.IsLiability)
             .OrderBy(a => a.Type == AccountTypes.Savings ? 0 : 1).Select(a => a.Name).ToList();
         _link = AddField("Linked account", Chips(new[] { NotLinked }.Concat(accounts), _target.IsLinked ? _target.LinkedAccount : NotLinked),
@@ -448,7 +453,9 @@ public sealed class GoalDialog : DialogShell
     {
         string name = _name.Text.Trim();
         if (name.Length == 0) return "Enter a name for the goal.";
-        if (!ReadAmount(_amount, allowZero: false, out var target)) return "Enter the target amount, like 5000.";
+        if (!ReadAmount(_amount, allowZero: false, out var target)) return _target.IsFund ? "Enter what it costs, like 360." : "Enter the target amount, like 5000.";
+        if (_target.IsFund && _date.SelectedDate == null) return "Pick when it's next due.";
+        if (_repeats != null) _target.Repeats = Selected(_repeats) ?? FundSchedule.Yearly;
         string link = Selected(_link) ?? NotLinked;
         bool linked = link != NotLinked;
         decimal saved = _target.Saved;
@@ -465,15 +472,15 @@ public sealed class GoalDialog : DialogShell
         return null;
     }
 
-    public static bool Edit(Goal? existing)
+    public static bool Edit(Goal? existing, bool fund = false)
     {
-        var dialog = new GoalDialog(existing);
+        var dialog = new GoalDialog(existing, fund);
         if (dialog.ShowDialog() != true) return false;
         if (existing == null)
         {
             DataStore.Goals.Add(dialog.Result);
             GoalMath.RefreshLinked();
-            Toaster.Show($"Goal created: {dialog.Result.Name}.");
+            Toaster.Show(dialog.Result.IsFund ? $"Sinking fund created: {dialog.Result.Name}." : $"Goal created: {dialog.Result.Name}.");
         }
         else if (dialog.DeleteRequested)
         {

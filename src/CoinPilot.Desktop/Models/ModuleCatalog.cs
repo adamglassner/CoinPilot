@@ -56,6 +56,11 @@ public static class ModuleCatalog
         },
         new()
         {
+            Key = "forecast", Title = "Forecast", Glyph = "\uE9D2", IsComingSoon = false,
+            Tagline = "Where your money is headed, and what's safe to spend.",
+        },
+        new()
+        {
             Key = "accounts", Title = "Accounts", Glyph = "", IsComingSoon = false,
             Tagline = "Checking, savings, cards, cash and payment apps, together.",
             Description = "Keep track of every account's balance and see your net worth. Add accounts manually, or import statements to keep balances up to date.",

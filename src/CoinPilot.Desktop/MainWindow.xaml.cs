@@ -138,6 +138,7 @@ public partial class MainWindow : Window
             "dashboard" => new DashboardView(),
             "transactions" => new TransactionsView(),
             "budgets" => new BudgetsView(),
+            "forecast" => new ForecastView(),
             "accounts" => new AccountsView(),
             "debts" => new DebtsView(),
             "bills" => new BillsView(),
@@ -181,6 +182,35 @@ public partial class MainWindow : Window
 
     private void LockNow_Click(object sender, RoutedEventArgs e) => LockNow();
 
+    private CalculatorFlyout? _calculator;
+    private DateTime _calcClosedAt;
+
+    /// <summary>Opens or closes the calculator beside the sidebar (Calculator button or Ctrl+K).</summary>
+    public void ToggleCalculator()
+    {
+        if (CalcPopup.IsOpen)
+        {
+            CalcPopup.IsOpen = false;
+            return;
+        }
+        // Clicking the button while it's open closes it (the click outside already did), rather than opening it again
+        if (DateTime.Now - _calcClosedAt < TimeSpan.FromMilliseconds(250)) return;
+        if (_calculator == null)
+        {
+            CalcPopup.Closed += (_, _) => _calcClosedAt = DateTime.Now;
+            _calculator = new CalculatorFlyout { Margin = new Thickness(12) };
+            _calculator.CloseRequested += (_, _) => CalcPopup.IsOpen = false;
+            CalcPopup.Child = _calculator;
+        }
+        CalcPopup.IsOpen = true;
+        _calculator.Dispatcher.BeginInvoke(() => Keyboard.Focus(_calculator), System.Windows.Threading.DispatcherPriority.Input);
+    }
+
+    /// <summary>The open calculator, for the self-test.</summary>
+    public CalculatorFlyout? Calculator => CalcPopup.IsOpen ? _calculator : null;
+
+    private void Calculator_Click(object sender, RoutedEventArgs e) => ToggleCalculator();
+
     /// <summary>Opens the add-transaction dialog from anywhere (Ctrl+N).</summary>
     public void QuickAdd()
     {
@@ -216,6 +246,10 @@ public partial class MainWindow : Window
             case Key.OemComma:
                 e.Handled = true;
                 ShowSettings();
+                break;
+            case Key.K:
+                e.Handled = true;
+                ToggleCalculator();
                 break;
             case >= Key.D1 and <= Key.D9:
                 int index = e.Key - Key.D1;

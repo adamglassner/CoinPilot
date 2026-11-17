@@ -178,6 +178,9 @@ public sealed class BillsView : DataPage
     private UIElement BuildCalendar(DateTime month, DateTime today)
     {
         var occurrences = Occurrences(month);
+        // Projected balance each day from today (paydays in, bills and planned spending out)
+        var monthLast = new DateTime(month.Year, month.Month, DateTime.DaysInMonth(month.Year, month.Month));
+        var forecast = monthLast >= today.Date && (monthLast - today.Date).Days <= 120 ? Forecast.Run(today, until: monthLast) : null;
         var grid = new Grid();
         for (int c = 0; c < 7; c++) grid.ColumnDefinitions.Add(new ColumnDefinition());
         string[] days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -224,7 +227,21 @@ public sealed class BillsView : DataPage
             numberText.VerticalAlignment = VerticalAlignment.Center;
             number.Child = numberText;
             if (isToday) number.SetResourceReference(Border.BackgroundProperty, "Brush.Accent");
-            stack.Children.Add(number);
+            var top = new DockPanel();
+            if (inMonth && forecast?.DayOf(date) is ForecastDay fd)
+            {
+                var bal = Ui.Text(Money.Format(fd.Expected, cents: false), size: 11, weight: FontWeights.SemiBold, brushKey: fd.Expected < 0 ? "Brush.Danger" : "Brush.TextMuted");
+                bal.VerticalAlignment = VerticalAlignment.Center;
+                bal.ToolTip = "Expected balance at the end of the day";
+                DockPanel.SetDock(bal, Dock.Right);
+                top.Children.Add(bal);
+            }
+            top.Children.Add(number);
+            stack.Children.Add(top);
+            if (inMonth && forecast != null)
+                foreach (var pay in forecast.On(date).Where(e => e.Kind == "income"))
+                    stack.Children.Add(Ui.Text($"+{Money.Format(pay.Amount, cents: false)} {pay.Label}", size: 11, weight: FontWeights.SemiBold, brushKey: "Brush.Positive")
+                        .Also(t => { t.Margin = new Thickness(2, 2, 0, 0); t.TextTrimming = TextTrimming.CharacterEllipsis; t.ToolTip = $"Payday: {pay.Label}"; }));
             if (!inMonth)
             {
                 cell.Opacity = 0.55;
