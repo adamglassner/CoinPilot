@@ -333,15 +333,15 @@ class _BudgetsPreview extends StatelessWidget {
       children: [
         SectionTitle('Budgets', action: 'See all', onAction: onSeeAll),
         GridView.count(
-          crossAxisCount: 2,
+          crossAxisCount: isDesktop ? 4 : 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
-          childAspectRatio: 1.75,
+          childAspectRatio: isDesktop ? 1.9 : 1.75,
           padding: EdgeInsets.zero,
           children: [
-            for (final b in budgets.take(4))
+            for (final b in budgets.take(isDesktop ? 8 : 4))
               Builder(builder: (context) {
                 final spent = store.spentIn(month, category: b.category);
                 final available = store.availableFor(b, month);
