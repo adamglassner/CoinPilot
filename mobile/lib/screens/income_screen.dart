@@ -4,6 +4,7 @@ import '../categories.dart';
 import '../dates.dart';
 import '../finance.dart';
 import '../kit.dart';
+import '../insights.dart';
 import 'paycheck_plan.dart';
 import '../money.dart';
 import '../records.dart';

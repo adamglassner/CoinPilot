@@ -1,4 +1,3 @@
-import 'package:coinpilot/finance.dart';
 import 'package:coinpilot/insights.dart';
 import 'package:coinpilot/models.dart';
 import 'package:coinpilot/money.dart';
