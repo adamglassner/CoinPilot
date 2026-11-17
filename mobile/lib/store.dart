@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'categories.dart';
 import 'dates.dart';
+import 'form.dart';
 import 'models.dart';
 import 'money.dart';
 import 'records.dart';
@@ -22,7 +23,10 @@ class Store extends ChangeNotifier {
   factory Store.memory() => Store._(null, null);
 
   static Future<Store> open() async {
-    final dir = await getApplicationDocumentsDirectory();
+    // The phone's private app folder; on a Mac or Linux computer the app's support folder
+    // (~/Library/Application Support/… or ~/.local/share/…), not Documents.
+    final dir = isDesktop ? await getApplicationSupportDirectory() : await getApplicationDocumentsDirectory();
+    await dir.create(recursive: true);
     final store = Store._(File('${dir.path}${Platform.pathSeparator}coinpilot.json'), dir);
     await store._load();
     return store;

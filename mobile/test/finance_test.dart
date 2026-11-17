@@ -5,6 +5,9 @@ import 'package:archive/archive.dart';
 import 'package:coinpilot/backup.dart';
 import 'package:coinpilot/dates.dart';
 import 'package:coinpilot/finance.dart';
+import 'package:coinpilot/form.dart';
+import 'package:coinpilot/reminders.dart';
+import 'package:coinpilot/screens/whats_new.dart';
 import 'package:coinpilot/importer.dart';
 import 'package:coinpilot/models.dart';
 import 'package:coinpilot/money.dart';
@@ -21,9 +24,33 @@ void main() {
   setUp(() => Money.currency = currencies.first);
   final today = dayOnly(DateTime.now());
 
-  test('the app version matches pubspec.yaml', () {
+  test('one version number: pubspec.yaml, the app, WillowWallet for Windows and the server', () {
     final pub = File('pubspec.yaml').readAsStringSync();
     expect(RegExp(r'^version: ([0-9.]+)', multiLine: true).firstMatch(pub)!.group(1), appVersion);
+    String csproj(String path) => RegExp(r'<Version>([0-9.]+)</Version>').firstMatch(File(path).readAsStringSync())!.group(1)!;
+    expect(csproj('../src/CoinPilot.Desktop/CoinPilot.Desktop.csproj'), appVersion);
+    expect(csproj('../server/WillowWallet.Server/WillowWallet.Server.csproj'), appVersion);
+  });
+
+  test('What\'s new: each app\'s changelog starts with this version', () {
+    for (final file in ['CHANGELOG.md', 'CHANGELOG-desktop.md']) {
+      final releases = parseChangelog(File(file).readAsStringSync());
+      expect(releases.first.title, startsWith(appVersion), reason: file);
+      expect(releases.first.lines, isNotEmpty, reason: file);
+    }
+  });
+
+  test('bill reminders: due soon, not autopay', () {
+    final s = Store.memory();
+    s.put(Bill.create(name: 'Phone', amountCents: 6500, nextDue: today.add(const Duration(days: 2))));
+    s.put(Bill.create(name: 'Netflix', amountCents: 1549, nextDue: today.add(const Duration(days: 1)), autoPay: true));
+    s.put(Bill.create(name: 'Rent', amountCents: 145000, nextDue: today.add(const Duration(days: 20))));
+    s.updatePrefs((p) => p.reminderDays = 3);
+    final due = Reminders.due(s, today);
+    expect(due.map((b) => b.name), ['Phone']);
+    expect(Reminders.titleFor(due, today), 'Phone is due in 2 days');
+    s.updatePrefs((p) => p.remindersOn = false);
+    expect(Reminders.due(s, today), isEmpty);
   });
 
   group('Bills', () {
@@ -399,6 +426,30 @@ void main() {
       expect(Updater.pick(releases, '0.4.1'), isNull);
       expect(Updater.isNewer('0.10.0', '0.9.9'), isTrue);
       expect(Updater.isNewer('0.3.0', '0.3.0'), isFalse);
+    });
+
+    test('Mac and Linux take the Windows release (v…) and their own file', () {
+      final releases = [
+        {'tag_name': 'android-v1.7.0', 'draft': false, 'prerelease': false, 'assets': [{'name': 'WillowWallet-Android-1.7.0.apk', 'browser_download_url': 'a'}]},
+        {
+          'tag_name': 'v1.7.0', 'draft': false, 'prerelease': false,
+          'assets': [
+            {'name': 'WillowWallet-1.7.0-Setup.exe', 'browser_download_url': 'w'},
+            {'name': 'WillowWallet-1.7.0-macOS.dmg', 'browser_download_url': 'm'},
+            {'name': 'WillowWallet-1.7.0-x86_64.AppImage', 'browser_download_url': 'l'},
+          ],
+        },
+      ];
+      try {
+        hostOs = HostOs.macos;
+        expect(Updater.pick(releases, '1.6.0')!.apkUrl, 'm');
+        hostOs = HostOs.linux;
+        expect(Updater.pick(releases, '1.6.0')!.apkUrl, 'l');
+        hostOs = HostOs.android;
+        expect(Updater.pick(releases, '1.6.0')!.apkUrl, 'a');
+      } finally {
+        hostOs = HostOs.android;
+      }
     });
   });
 }

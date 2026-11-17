@@ -160,6 +160,13 @@ jobs:
             - **WillowWallet-${{ steps.ver.outputs.version }}-win-x64.zip**: portable. Unzip and run `WillowWallet.exe`. No install or .NET needed.
 
             Also available in the **Bytehawk Studio Launcher**, which installs WillowWallet and keeps it up to date.
+
+            **Mac and Linux** (added to this release a few minutes after the Windows files, by the "Mac and Linux" workflow):
+            - **WillowWallet-${{ steps.ver.outputs.version }}-macOS.dmg**: open it and drag WillowWallet to Applications. It isn't signed by Apple yet, so the first time, right-click WillowWallet → Open → Open.
+            - **WillowWallet-${{ steps.ver.outputs.version }}-x86_64.AppImage**: make it executable (`chmod +x`) and run it. Updates itself from Settings → Updates.
+            - **WillowWallet-${{ steps.ver.outputs.version }}-linux-x64.tar.gz**: the same app as a folder; run `willowwallet`.
+
+            **Android**: see the android-v${{ steps.ver.outputs.version }} release.
           files: |
             dist/WillowWallet-*-Setup.exe
             dist/WillowWallet-*-win-x64.zip

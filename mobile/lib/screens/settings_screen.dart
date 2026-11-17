@@ -4,7 +4,11 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../backup.dart';
+import '../biometrics.dart';
 import '../dates.dart';
+import '../form.dart';
+import '../reminders.dart';
+import '../startup.dart';
 import '../kit.dart';
 import '../lock.dart';
 import '../money.dart';
@@ -18,6 +22,7 @@ import '../widgets.dart';
 import 'categories_screen.dart';
 import 'get_started.dart';
 import 'sync_screen.dart';
+import 'whats_new.dart';
 
 export '../version.dart';
 
@@ -82,6 +87,52 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
         ),
+        const _Heading('Reminders'),
+        Panel(
+          padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SwitchRow(
+                title: 'Bill reminders',
+                subtitle: hostOs == HostOs.android
+                    ? 'A notification before bills are due (not for autopay), and on paydays that need an amount.'
+                    : 'A notification while WillowWallet is open, like on Windows. Turn on "Start when I sign in" to get them all day.',
+                value: store.prefs.remindersOn,
+                onChanged: (v) async {
+                  if (v && !await Reminders.requestPermission() && context.mounted) {
+                    toast(context, 'Notifications are off for WillowWallet. Turn them on in your ${hostOs == HostOs.android ? 'phone\'s' : 'system'} settings.');
+                  }
+                  store.updatePrefs((x) => x.remindersOn = v);
+                },
+              ),
+              if (store.prefs.remindersOn) ...[
+                const FieldLabel('Remind me'),
+                Choices(
+                  options: const ['On the day', '1 day before', '3 days before', '7 days before'],
+                  selected: switch (store.prefs.reminderDays) { 0 => 'On the day', 1 => '1 day before', 3 => '3 days before', _ => '7 days before' },
+                  onChanged: (v) => store.updatePrefs((x) => x.reminderDays = switch (v) { 'On the day' => 0, '1 day before' => 1, '3 days before' => 3, _ => 7 }),
+                ),
+              ],
+              if (isDesktop) ...[
+                const SizedBox(height: 6),
+                SwitchRow(
+                  title: 'Start when I sign in',
+                  subtitle: 'WillowWallet opens when you sign in to your ${hostOs == HostOs.macos ? 'Mac' : 'computer'}, so reminders arrive on time.',
+                  value: s.startAtLogin,
+                  onChanged: (v) async {
+                    final problem = await StartAtLogin.set(v);
+                    if (problem != null) {
+                      if (context.mounted) toast(context, problem);
+                      return;
+                    }
+                    store.updateSettings((x) => x.startAtLogin = v);
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
         const _Heading('Privacy'),
         Panel(
           padding: EdgeInsets.zero,
@@ -92,7 +143,7 @@ class SettingsScreen extends StatelessWidget {
                 title: s.isLocked ? 'Locked with a ${s.lockKind == 'PIN' ? 'PIN' : 'password'}' : 'Add a PIN or password',
                 subtitle: s.isLocked
                     ? 'Asked when WillowWallet opens${s.autoLockMinutes == 0 ? '' : ' and after ${s.autoLockMinutes} minute${s.autoLockMinutes == 1 ? '' : 's'} away'}'
-                    : 'Keep WillowWallet private on this phone',
+                    : 'Keep WillowWallet private on this $deviceWord',
                 onTap: () => showSheet<void>(context, _LockSheet(lock)),
               ),
             ],
@@ -107,8 +158,8 @@ class SettingsScreen extends StatelessWidget {
                 icon: syncLook(sync.status, p).$1,
                 title: sync.isSetUp ? 'Sync · ${sync.statusText}' : 'Sync with your PC',
                 subtitle: sync.isSetUp
-                    ? '${sync.username} on ${sync.serverName}. Everything is kept on this phone too.'
-                    : 'Saved on this phone. Connect to a WillowWallet Server to sync with WillowWallet for Windows.',
+                    ? '${sync.username} on ${sync.serverName}. Everything is kept on this $deviceWord too.'
+                    : 'Saved on this $deviceWord. Connect to a WillowWallet Server to sync with WillowWallet for Windows.',
                 onTap: () => SyncScreen.open(context),
               ),
               const Divider(indent: 64),
@@ -122,7 +173,7 @@ class SettingsScreen extends StatelessWidget {
               _Tile(
                 icon: Icons.settings_backup_restore_rounded,
                 title: 'Restore a backup',
-                subtitle: 'From this phone or from WillowWallet for Windows (Settings → Back up on the PC)',
+                subtitle: 'From this $deviceWord or from WillowWallet for Windows (Settings → Back up on the PC)',
                 onTap: () => restoreBackup(context),
               ),
               const Divider(indent: 64),
@@ -154,8 +205,8 @@ class SettingsScreen extends StatelessWidget {
                   final ok = await confirm(context,
                       title: 'Delete all data?',
                       message: sync.isSetUp
-                          ? 'This deletes every transaction, budget, account, bill, debt, goal and document on this phone and, because sync is on, on your other devices too. Back up first if you might want it. It can\'t be undone.'
-                          : 'This deletes every transaction, budget, account, bill, debt, goal and document on this phone. Back up first if you might want it. It can\'t be undone.',
+                          ? 'This deletes every transaction, budget, account, bill, debt, goal and document on this $deviceWord and, because sync is on, on your other devices too. Back up first if you might want it. It can\'t be undone.'
+                          : 'This deletes every transaction, budget, account, bill, debt, goal and document on this $deviceWord. Back up first if you might want it. It can\'t be undone.',
                       confirmText: 'Delete everything',
                       danger: true);
                   if (ok) {
@@ -168,13 +219,18 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
         const _Heading('Updates'),
+        Panel(
+          padding: EdgeInsets.zero,
+          child: _Tile(icon: Icons.new_releases_outlined, title: 'What\'s new', subtitle: 'Changes in each version of WillowWallet for $hostName', onTap: () => showWhatsNew(context)),
+        ),
+        const SizedBox(height: 10),
         const UpdatePanel(),
         const SizedBox(height: 28),
         Column(
           children: [
             const CoinLogo(size: 44),
             const SizedBox(height: 8),
-            Text('WillowWallet for Android', style: display(17, p.text)),
+            Text('WillowWallet for $hostName', style: display(17, p.text)),
             const SizedBox(height: 2),
             Text('Version $appVersion · Bytehawk Studio', style: TextStyle(fontSize: 13, color: p.muted)),
           ],
@@ -326,7 +382,7 @@ Future<void> restoreBackup(BuildContext context) async {
   final ok = await confirm(context,
       title: 'Restore this backup?',
       message: '${backup.count('transactions')} transactions, ${backup.count('accounts')} accounts, ${backup.count('bills')} bills and ${backup.count('budgets')} budgets. '
-          'It replaces everything on this phone${sync.isSetUp ? ' and, because sync is on, on your other devices' : ''}. Back up first if you might want what\'s here now.',
+          'It replaces everything on this $deviceWord${sync.isSetUp ? ' and, because sync is on, on your other devices' : ''}. Back up first if you might want what\'s here now.',
       confirmText: 'Restore');
   if (!ok || !context.mounted) return;
   await Backup.restore(store, backup);
@@ -449,6 +505,7 @@ class _LockSheetState extends State<_LockSheet> {
   final _current = TextEditingController();
   String? _error;
   bool _busy = false;
+  final Future<String?> _bioKind = Biometrics.available();
 
   @override
   void dispose() {
@@ -500,13 +557,32 @@ class _LockSheetState extends State<_LockSheet> {
             selected: switch (s.autoLockMinutes) { 0 => 'Every time', 1 => '1 minute', 5 => '5 minutes', _ => '15 minutes' },
             onChanged: (v) => store.updateSettings((x) => x.autoLockMinutes = switch (v) { 'Every time' => 0, '1 minute' => 1, '5 minutes' => 5, _ => 15 }),
           ),
+          FutureBuilder<String?>(
+            future: _bioKind,
+            builder: (context, snap) {
+              final kind = snap.data;
+              if (kind == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: SwitchRow(
+                  title: 'Unlock with ${kind == 'Touch ID' ? 'Touch ID' : kind.toLowerCase()}',
+                  subtitle: 'Your ${s.lockKind == 'PIN' ? 'PIN' : 'password'} still works too.',
+                  value: s.biometricUnlock,
+                  onChanged: (v) async {
+                    if (v && !await Biometrics.verify('Turn on ${kind == 'Touch ID' ? 'Touch ID' : kind.toLowerCase()} for WillowWallet')) return;
+                    store.updateSettings((x) => x.biometricUnlock = v);
+                  },
+                ),
+              );
+            },
+          ),
           LabeledField(label: 'To turn it off, enter your ${s.lockKind == 'PIN' ? 'PIN' : 'password'}', controller: _current, obscure: true, keyboard: s.lockKind == 'PIN' ? TextInputType.number : null),
         ],
       );
     }
     return SheetFrame(
       title: 'Add a PIN or password',
-      subtitle: 'Asked when WillowWallet opens and after time away. If you forget it, uninstalling removes it (and the data on this phone), so sync or back up.',
+      subtitle: 'Asked when WillowWallet opens and after time away. If you forget it, uninstalling removes it (and the data on this $deviceWord), so sync or back up.',
       error: _error,
       primary: _busy ? 'Turning on…' : 'Turn on',
       onPrimary: _busy ? null : _turnOn,

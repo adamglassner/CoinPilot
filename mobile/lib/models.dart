@@ -204,6 +204,19 @@ class AppSettings {
   String lastUpdateCheck = '';
   String skippedVersion = '';
 
+  /// Unlock with a fingerprint, face or Touch ID instead of typing (the PIN or password still works).
+  bool biometricUnlock = false;
+
+  /// Reminders already shown on Mac and Linux ("billId|due|today"), and the last day Android showed overdue bills.
+  List<String> remindersShown = [];
+  String lastReminderDay = '';
+
+  /// The version What's new was last shown for (it opens once after each update).
+  String lastSeenVersion = '';
+
+  /// Mac and Linux: start WillowWallet when you sign in (for bill reminders), like "Run in the background" on Windows.
+  bool startAtLogin = false;
+
   bool get isLocked => lockKind.isNotEmpty && lockHash.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
@@ -216,6 +229,11 @@ class AppSettings {
         'AutoLockMinutes': autoLockMinutes,
         'LastUpdateCheck': lastUpdateCheck,
         'SkippedVersion': skippedVersion,
+        'BiometricUnlock': biometricUnlock,
+        'RemindersShown': remindersShown,
+        'LastReminderDay': lastReminderDay,
+        'LastSeenVersion': lastSeenVersion,
+        'StartAtLogin': startAtLogin,
       };
 
   static AppSettings fromJson(Map<String, dynamic> j) => AppSettings()
@@ -227,5 +245,10 @@ class AppSettings {
     ..lockHash = j['LockHash'] as String? ?? ''
     ..autoLockMinutes = (j['AutoLockMinutes'] as num?)?.toInt() ?? 1
     ..lastUpdateCheck = j['LastUpdateCheck'] as String? ?? ''
-    ..skippedVersion = j['SkippedVersion'] as String? ?? '';
+    ..skippedVersion = j['SkippedVersion'] as String? ?? ''
+    ..biometricUnlock = j['BiometricUnlock'] == true
+    ..remindersShown = [for (final x in (j['RemindersShown'] as List? ?? const [])) '$x']
+    ..lastReminderDay = j['LastReminderDay'] as String? ?? ''
+    ..lastSeenVersion = j['LastSeenVersion'] as String? ?? ''
+    ..startAtLogin = j['StartAtLogin'] == true;
 }

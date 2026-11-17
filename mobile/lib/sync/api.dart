@@ -74,7 +74,7 @@ class SyncApi {
     return uri;
   }
 
-  static Map<String, dynamic> device(String name, String version) => {'name': name, 'platform': 'Android', 'appVersion': version};
+  static Map<String, dynamic> device(String name, String version, {String platform = 'Android'}) => {'name': name, 'platform': platform, 'appVersion': version};
 
   Future<ServerInfo> info() async {
     final j = await _json('GET', 'api/v1/info');

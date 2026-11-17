@@ -1,7 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'dates.dart';
+import 'desktop_shell.dart';
+import 'form.dart';
+import 'reminders.dart';
+import 'screens/whats_new.dart';
 import 'finance.dart';
 import 'lock.dart';
 import 'screens/budgets_screen.dart';
@@ -22,14 +28,22 @@ import 'widgets.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  hostOs = Platform.isMacOS
+      ? HostOs.macos
+      : Platform.isLinux
+          ? HostOs.linux
+          : HostOs.android;
+  if (!isDesktop) SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final store = await Store.open();
   final sync = SyncEngine(store, appVersion: appVersion)..start();
+  await Reminders.init();
+  Reminders.start(store);
   runApp(CoinPilotApp(store: store, sync: sync, startupTasks: true));
 }
 
 class CoinPilotApp extends StatefulWidget {
-  const CoinPilotApp({super.key, required this.store, this.sync, this.updater, this.initialTab = 0, this.startupTasks = false, this.showSetup = true});
+  const CoinPilotApp(
+      {super.key, required this.store, this.sync, this.updater, this.initialTab = 0, this.initialPage = 'dashboard', this.startupTasks = false, this.showSetup = true});
   final Store store;
 
   /// Syncing with a WillowWallet Server (tests and screenshots get one that never syncs on its own).
@@ -38,6 +52,9 @@ class CoinPilotApp extends StatefulWidget {
   /// Updates from GitHub (tests and screenshots pass one that never goes online).
   final Updater? updater;
   final int initialTab;
+
+  /// The Mac and Linux app: the page to open ("dashboard", "bills"…).
+  final String initialPage;
 
   /// Record paydays, ask about income and check for updates when it opens (off in tests).
   final bool startupTasks;
@@ -111,7 +128,9 @@ class _CoinPilotAppState extends State<CoinPilotApp> with WidgetsBindingObserver
                       ],
                     ),
                   ),
-                  home: AppShell(initialTab: widget.initialTab, startupTasks: widget.startupTasks, showSetup: widget.showSetup),
+                  home: isDesktop
+                      ? DesktopShell(initialPage: widget.initialPage, startupTasks: widget.startupTasks, showSetup: widget.showSetup)
+                      : AppShell(initialTab: widget.initialTab, startupTasks: widget.startupTasks, showSetup: widget.showSetup),
                 );
               },
             ),
@@ -158,6 +177,7 @@ class _AppShellState extends State<AppShell> {
       toast(context, added.length == 1 ? 'Payday: added ${added.first.payee}.' : 'Added ${added.length} paydays to Transactions.');
     }
     final asking = store.askingPaydays(today);
+    if (mounted && !_needsSetup(store)) await showWhatsNewAfterUpdate(context);
     if (asking.isNotEmpty && mounted && !_needsSetup(store)) await showPaydaySheet(context, asking);
     if (mounted) UpdaterScope.read(context).check();
   }

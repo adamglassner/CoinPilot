@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import 'form.dart';
 import 'platform.dart';
 import 'store.dart';
 import 'version.dart';
@@ -48,15 +49,24 @@ class Updater extends ChangeNotifier {
     return false;
   }
 
-  /// The newest Android release in a GitHub releases list, when it's newer than [current].
+  /// Releases for this app: android-v1.6.0 (APK) for the phone; v1.6.0 (the Windows release, which also carries the
+  /// Mac .dmg and the Linux .AppImage) for a computer.
+  static String get tagPrefix => isDesktop ? 'v' : 'android-v';
+  static String get assetSuffix => switch (hostOs) {
+        HostOs.android => '.apk',
+        HostOs.macos => '-macos.dmg',
+        HostOs.linux => '-x86_64.appimage',
+      };
+
+  /// The newest release for this app in a GitHub releases list, when it's newer than [current].
   static UpdateInfo? pick(List<dynamic> releases, String current) {
     UpdateInfo? best;
     for (final r in releases.whereType<Map>()) {
       final tag = '${r['tag_name'] ?? ''}';
-      if (!tag.startsWith('android-v') || r['draft'] == true || r['prerelease'] == true) continue;
-      final version = tag.substring('android-v'.length);
+      if (!tag.startsWith(tagPrefix) || r['draft'] == true || r['prerelease'] == true) continue;
+      final version = tag.substring(tagPrefix.length);
       if (!isNewer(version, current) || (best != null && !isNewer(version, best.version))) continue;
-      final assets = (r['assets'] as List? ?? const []).whereType<Map>().where((a) => '${a['name']}'.toLowerCase().endsWith('.apk')).toList();
+      final assets = (r['assets'] as List? ?? const []).whereType<Map>().where((a) => '${a['name']}'.toLowerCase().endsWith(assetSuffix)).toList();
       if (assets.isEmpty) continue;
       best = UpdateInfo(version, '${assets.first['browser_download_url']}', '${assets.first['name']}', (assets.first['size'] as num?)?.toInt() ?? 0,
           '${r['body'] ?? ''}', '${r['html_url'] ?? releasesPage}');
@@ -96,6 +106,23 @@ class Updater extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Linux: puts the new AppImage in place of the running one and starts it.
+  Future<String?> _replaceAppImage(File downloaded) async {
+    final current = Platform.environment['APPIMAGE'];
+    if (current == null || current.isEmpty) {
+      await Platform2.openUrl(releasesPage);
+      return 'Downloaded to ${downloaded.path}. This copy isn\'t an AppImage, so replace it with the new one yourself.';
+    }
+    await Process.run('chmod', ['755', downloaded.path]);
+    final target = File(current);
+    final temp = '$current.new';
+    await downloaded.copy(temp);
+    await Process.run('chmod', ['755', temp]);
+    await File(temp).rename(target.path);
+    await Process.start(target.path, const [], mode: ProcessStartMode.detached);
+    exit(0);
+  }
+
   /// Downloads the APK and opens Android's installer. Returns an error message, or null.
   Future<String?> install() async {
     final u = available;
@@ -125,6 +152,13 @@ class Updater extends ChangeNotifier {
       await sink.close();
       progress = null;
       notifyListeners();
+      if (hostOs == HostOs.linux) return await _replaceAppImage(file);
+      if (hostOs == HostOs.macos) {
+        final error = await Platform2.open(file.path);
+        return error == null
+            ? 'Downloaded. In the window that opened, drag WillowWallet to Applications (replace the old one), then open it again.'
+            : 'Downloaded to ${file.path}, but it didn\'t open ($error).';
+      }
       final error = await Platform2.open(file.path);
       if (error != null) return 'Downloaded, but Android didn\'t open the installer ($error). Allow WillowWallet to install apps when Android asks, then try again.';
       return null;

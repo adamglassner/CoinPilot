@@ -84,7 +84,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   Future<void> _options(BuildContext context, Store store, CategoryDef c) async {
     final used = store.isCategoryUsed(c.name) || store.childrenOf(c.name).isNotEmpty;
-    final choice = await showModalBottomSheet<String>(
+    final choice = await showAdaptiveSheet<String>(
       context: context,
       useSafeArea: true,
       builder: (context) => SafeArea(

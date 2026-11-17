@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:coinpilot/main.dart';
 import 'package:coinpilot/kit.dart';
+import 'package:coinpilot/form.dart';
 import 'package:coinpilot/screens/budgets_screen.dart';
 import 'package:coinpilot/records.dart';
 import 'package:coinpilot/screens/accounts_screen.dart';
@@ -273,6 +274,59 @@ void main() {
         }));
     testWidgets('update $mode', (t) => shot(t, id(33, 'update-available'), mode: mode, tab: 3,
         update: UpdateInfo('0.3.1', 'https://example.com/a.apk', 'WillowWallet-Android-0.3.1.apk', 31457280, '', 'https://github.com')));
+  }
+
+  // The Mac and Linux app (3xx): the sidebar layout, at 1440 × 900
+  Future<void> desk(WidgetTester t, String name, {String mode = 'light', String page = 'dashboard', Future<void> Function()? then}) async {
+    hostOs = HostOs.linux;
+    debugDisableShadows = false;
+    EditableText.debugDeterministicCursor = true;
+    try {
+      t.view.physicalSize = const Size(2880, 1800);
+      t.view.devicePixelRatio = 2;
+      addTearDown(t.view.reset);
+      final store = Store.memory();
+      store.settings.themeMode = mode;
+      store.loadSample();
+      prepareExtras(store);
+      final updater = Updater(store, client: MockClient((_) async => http.Response('[]', 200)));
+      final sync = SyncEngine(store, appVersion: '1.6.0', automatic: false, httpClient: () => _pretendServer());
+      await t.pumpWidget(CoinPilotApp(store: store, sync: sync, updater: updater, initialPage: page));
+      await t.runAsync(() async {
+        await precacheImage(const AssetImage('assets/coinpilot.png'), t.element(find.byType(MaterialApp)));
+      });
+      await t.pumpAndSettle();
+      if (then != null) await then();
+      await expectLater(find.byType(CoinPilotApp), matchesGoldenFile('screenshots/$name.png'));
+    } finally {
+      hostOs = HostOs.android;
+      debugDisableShadows = true;
+      EditableText.debugDeterministicCursor = false;
+    }
+  }
+
+  for (final mode in ['light', 'dark']) {
+    final n = mode == 'light' ? 300 : 320;
+    String id(int i, String what) => 'desktop-${n + i}-$what-$mode';
+    for (final (i, page) in ['dashboard', 'transactions', 'budgets', 'accounts', 'bills', 'debts', 'income', 'goals', 'reports', 'taxes', 'sync', 'settings'].indexed) {
+      testWidgets('desktop $page $mode', (t) => desk(t, id(i + 1, page), mode: mode, page: page));
+    }
+    testWidgets('desktop add $mode', (t) => desk(t, id(13, 'add-transaction'), mode: mode, page: 'transactions', then: () async {
+          await t.tap(find.text('Add transaction').first);
+          await t.pumpAndSettle();
+          await t.enterText(find.byType(TextField).at(1), '42.18');
+          await t.enterText(find.byType(TextField).at(2), 'Fresh Thyme Market');
+          await t.pumpAndSettle();
+        }));
+    testWidgets('desktop pay bill $mode', (t) => desk(t, id(14, 'bill-actions'), mode: mode, page: 'bills', then: () async {
+          await t.tap(find.text('Water & sewer'));
+          await t.pumpAndSettle();
+        }));
+    testWidgets('desktop whats new $mode', (t) => desk(t, id(15, 'whats-new'), mode: mode, page: 'settings', then: () async {
+          await scrollTo(t, find.text('What\'s new'));
+          await t.tap(find.text('What\'s new'));
+          await t.pumpAndSettle();
+        }));
   }
 
   testWidgets('sync recovery key', (t) => shot(t, '34-sync-recovery-key-light', then: () async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'dates.dart';
+import 'form.dart';
 import 'money.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -70,13 +71,47 @@ class SubPage extends StatelessWidget {
   }
 }
 
-/// Opens a bottom sheet for adding or editing something.
-Future<T?> showSheet<T>(BuildContext context, Widget sheet) => showModalBottomSheet<T>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => sheet,
+/// Opens a bottom sheet for adding or editing something (a dialog in the Mac and Linux apps, like on Windows).
+Future<T?> showSheet<T>(BuildContext context, Widget sheet) => showAdaptiveSheet<T>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => sheet);
+
+/// showModalBottomSheet on the phone; a centered dialog on a computer.
+Future<T?> showAdaptiveSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool isScrollControlled = false,
+  bool useSafeArea = false,
+  bool isDismissible = true,
+  bool enableDrag = true,
+}) {
+  if (!isDesktop) {
+    return showModalBottomSheet<T>(
+        context: context, isScrollControlled: isScrollControlled, useSafeArea: useSafeArea, isDismissible: isDismissible, enableDrag: enableDrag, builder: builder);
+  }
+  return showDialog<T>(context: context, barrierDismissible: isDismissible, builder: (context) => DesktopSheet(child: builder(context)));
+}
+
+/// A sheet shown as a dialog on a computer.
+class DesktopSheet extends StatelessWidget {
+  const DesktopSheet({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.pal;
+    final size = MediaQuery.sizeOf(context);
+    return Dialog(
+      backgroundColor: p.surface,
+      surfaceTintColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 600, maxHeight: size.height * 0.9),
+        child: Padding(padding: const EdgeInsets.only(top: 22), child: Material(color: p.surface, child: child)),
+      ),
     );
+  }
+}
 
 /// The frame every edit sheet uses: title with close (and delete), the fields, an error and the main button.
 class SheetFrame extends StatelessWidget {

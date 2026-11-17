@@ -1,5 +1,19 @@
 # WillowWallet for Android — changelog
 
+## 1.6.0 — 2026-11-17
+
+- **Unlock with your fingerprint or face.** With a PIN or password on, Settings → Privacy → **Unlock with
+  fingerprint** (or face unlock). WillowWallet asks as soon as it opens; your PIN or password still works.
+- **Bill reminders as notifications.** A notification on the reminder day (Settings → Reminders: on the day, or 1, 3
+  or 7 days before) and on the due day, even when WillowWallet is closed, plus paydays that need an amount. Autopay
+  bills aren't reminded. The settings are shared with your PC.
+- **What's new** in the app (Settings → Updates → What's new), and once after each update.
+- **Same version as the Windows app.** WillowWallet for Android, Windows, Mac and Linux are all 1.6.0 now (this was
+  0.3.0) and stay in step.
+- Signed with WillowWallet's permanent key, so updates install over each other from Settings → Updates. Coming from
+  0.3.0 or earlier: back up (or sync) first, uninstall the old app once, then install this one and restore.
+- Needs Android 7.0 or later.
+
 ## 0.3.0 — 2026-11-16
 
 **Everything WillowWallet for Windows does, on the phone**, and it all syncs.

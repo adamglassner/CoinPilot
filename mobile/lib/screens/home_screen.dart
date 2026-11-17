@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../form.dart';
+
 import '../dates.dart';
 import '../models.dart';
 import '../money.dart';
@@ -8,6 +10,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import '../sync/scope.dart';
 import '../finance.dart';
+import '../form.dart';
 import '../kit.dart';
 import 'bills_screen.dart';
 import 'budget_sheet.dart';
@@ -34,6 +37,7 @@ class HomeScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
         children: [
+          if (!isDesktop)
           Row(
             children: [
               const CoinLogo(size: 32),
@@ -164,7 +168,7 @@ class _Welcome extends StatelessWidget {
       icon: Icons.waving_hand_outlined,
       title: 'Welcome to WillowWallet',
       text: 'Add what you spend and earn, set a few budgets, and see what\'s left to spend this month. '
-          'Everything stays on this phone.',
+          'Everything stays on this $deviceWord.',
       actions: [
         SizedBox(
           width: double.infinity,

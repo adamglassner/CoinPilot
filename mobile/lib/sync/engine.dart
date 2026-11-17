@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../form.dart';
 import '../store.dart';
 import 'api.dart';
 import 'crypto.dart';
@@ -46,7 +47,17 @@ class SyncEngine extends ChangeNotifier {
   String get username => _s['username'] as String? ?? '';
   DateTime? get lastSync => DateTime.tryParse(_s['lastSync'] as String? ?? '');
   Map<String, dynamic> get _synced => (_s['synced'] ??= <String, dynamic>{}) as Map<String, dynamic>;
-  Map<String, dynamic> get device => SyncApi.device('Android phone', appVersion);
+  Map<String, dynamic> get device => isDesktop
+      ? SyncApi.device(_hostname(), appVersion, platform: hostOs == HostOs.macos ? 'macOS' : 'Linux')
+      : SyncApi.device('Android phone', appVersion);
+
+  static String _hostname() {
+    try {
+      return Platform.localHostname;
+    } catch (_) {
+      return hostName;
+    }
+  }
 
   /// Picks up a saved connection and starts syncing in the background.
   void start() {

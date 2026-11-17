@@ -5,6 +5,9 @@ import 'dart:math';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/material.dart';
 
+import 'form.dart';
+
+import 'biometrics.dart';
 import 'store.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -47,7 +50,8 @@ class AppLock extends ChangeNotifier {
     store.updateSettings((s) => s
       ..lockKind = ''
       ..lockSalt = ''
-      ..lockHash = '');
+      ..lockHash = ''
+      ..biometricUnlock = false);
     locked = false;
     notifyListeners();
   }
@@ -60,6 +64,17 @@ class AppLock extends ChangeNotifier {
 
   Future<bool> unlock(String secret) async {
     final ok = await check(secret);
+    if (ok) {
+      locked = false;
+      notifyListeners();
+    }
+    return ok;
+  }
+
+  /// Unlocks with a fingerprint, face or Touch ID (when turned on).
+  Future<bool> unlockWithBiometrics() async {
+    if (!store.settings.biometricUnlock) return false;
+    final ok = await Biometrics.verify('Unlock WillowWallet');
     if (ok) {
       locked = false;
       notifyListeners();
@@ -102,6 +117,25 @@ class _LockScreenState extends State<LockScreen> {
   String _pin = '';
   String? _error;
   bool _busy = false;
+  String? _bioKind;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || !StoreScope.read(context).settings.biometricUnlock) return;
+      final kind = await Biometrics.available();
+      if (!mounted || kind == null) return;
+      setState(() => _bioKind = kind);
+      _bio();
+    });
+  }
+
+  Future<void> _bio() async {
+    if (_busy) return;
+    final ok = await LockScope.read(context).unlockWithBiometrics();
+    if (!ok && mounted) setState(() => _error = null);
+  }
 
   @override
   void dispose() {
@@ -229,8 +263,16 @@ class _LockScreenState extends State<LockScreen> {
                     ),
                   ),
                 ],
+                if (_bioKind != null) ...[
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: _bio,
+                    icon: Icon(_bioKind == 'Face unlock' ? Icons.face_retouching_natural_rounded : Icons.fingerprint_rounded, size: 26),
+                    label: Text('Use ${_bioKind == 'Touch ID' ? 'Touch ID' : _bioKind!.toLowerCase()}'),
+                  ),
+                ],
                 const SizedBox(height: 18),
-                Text('Forgot it? Uninstalling WillowWallet removes the lock and the data on this phone. If you sync, your data is safe on your server.',
+                Text('Forgot it? Uninstalling WillowWallet removes the lock and the data on this $deviceWord. If you sync, your data is safe on your server.',
                     textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: p.muted, height: 1.4)),
               ],
             ),

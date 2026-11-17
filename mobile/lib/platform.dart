@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'form.dart';
+
 /// A file the person picked: its name and contents.
 class PickedFile {
   PickedFile(this.name, this.bytes);
@@ -37,6 +39,7 @@ class Platform2 {
 
   /// Takes a photo with the camera (or picks one from the gallery). Null when cancelled.
   static Future<PickedFile?> photo({bool camera = true}) async {
+    if (isDesktop) return pickFile(images: true); // no camera on a computer
     final x = await ImagePicker().pickImage(source: camera ? ImageSource.camera : ImageSource.gallery, maxWidth: 2200, imageQuality: 85);
     if (x == null) return null;
     return PickedFile(x.name, await x.readAsBytes());
@@ -45,12 +48,16 @@ class Platform2 {
   /// Asks where to save a file (Downloads, Drive…) and saves it. Returns false when cancelled.
   static Future<bool> saveFile(String name, Uint8List bytes) async {
     final path = await FilePicker.platform.saveFile(fileName: name, bytes: bytes);
-    return path != null;
+    if (path == null) return false;
+    // On a computer the picker only chooses where: write the file.
+    if (isDesktop) await File(path).writeAsBytes(bytes, flush: true);
+    return true;
   }
 
   /// Opens a file in the app that handles it (a PDF viewer, the photo viewer, the package installer).
   /// Returns an error message, or null when it opened.
   static Future<String?> open(String path) async {
+    if (isDesktop) return await launchUrl(Uri.file(path)) ? null : 'no app to open it';
     final r = await OpenFilex.open(path);
     return r.type == ResultType.done ? null : r.message;
   }

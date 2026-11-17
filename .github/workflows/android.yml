@@ -56,14 +56,9 @@ jobs:
           flutter create --platforms=android --org com.bytehawkstudio --project-name coinpilot --no-pub . > /dev/null
           rm -f test/widget_test.dart.orig
           cp -r android-res/. android/app/src/main/res/
-          m=android/app/src/main/AndroidManifest.xml
-          sed -i 's/android:label="coinpilot"/android:label="WillowWallet"/' $m
-          # Sync needs the network; home servers are often plain http://192.168.x.x:8484
-          grep -q 'android.permission.INTERNET' $m || sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' $m
-          sed -i 's|<application|<application android:usesCleartextTraffic="true"|' $m
-          # In-app updates hand the downloaded APK to Android's installer
-          grep -q 'REQUEST_INSTALL_PACKAGES' $m || sed -i 's|<uses-permission android:name="android.permission.INTERNET"/>|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>|' $m
-          grep -nE 'android:label|INTERNET|INSTALL_PACKAGES|Cleartext' $m
+          python3 tool/patch_native.py android
+          grep -nE 'android:label|uses-permission|Cleartext|Receiver' android/app/src/main/AndroidManifest.xml
+          grep -nE 'minSdk|Desugaring|desugar' android/app/build.gradle.kts
           git status --short .
 
       - run: flutter pub get

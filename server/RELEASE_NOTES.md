@@ -1,4 +1,4 @@
-Your own sync server for WillowWallet: keeps WillowWallet for Windows (1.1.0 and later) and WillowWallet for Android (0.2.0 and later) in step, with an account for each person and a web panel to run it. Data is end-to-end encrypted: devices lock it with your password before sending, so the server can't read it. See [server/README.md](https://github.com/adamglassner/coinpilot/blob/main/server/README.md) for setup.
+Your own sync server for WillowWallet: keeps WillowWallet for Windows, Mac, Linux and Android in step, with an account for each person and a web panel to run it. Data is end-to-end encrypted: devices lock it with your password before sending, so the server can't read it. See [server/README.md](https://github.com/adamglassner/coinpilot/blob/main/server/README.md) for setup.
 
 **Downloads**
 
@@ -9,7 +9,12 @@ Your own sync server for WillowWallet: keeps WillowWallet for Windows (1.1.0 and
 
 Then open `http://<server>:8484` to create the admin account, and make an invite for each person.
 
-**What's new in 0.1.1**
+**What's new in 1.6.0**
+
+- Version numbers now match the apps: everything WillowWallet makes is 1.6.0 (no change to the sync protocol; 0.1.x servers keep working with the new apps).
+- Works with the new WillowWallet for Mac and Linux, which show up under Devices as macOS and Linux.
+
+**0.1.1**
 
 - **Uninstall** from the Start Menu (Uninstall WillowWallet Server), Settings → Apps, or Get server → Uninstall in the Bytehawk Studio Launcher. It asks whether to delete the server's data too; the default keeps it so a reinstall picks up where it left off. Silent: `unins000.exe /SILENT /DELETEDATA=1`.
 - Linux: `install.sh` adds `sudo willowwallet-server-uninstall` (with `--delete-data` to remove the data too). `Uninstall-Service.ps1` takes `-DeleteData`.

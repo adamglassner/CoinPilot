@@ -1,5 +1,6 @@
 import 'package:coinpilot/main.dart';
 import 'package:coinpilot/dates.dart';
+import 'package:coinpilot/form.dart';
 import 'package:coinpilot/kit.dart';
 import 'package:coinpilot/screens/budgets_screen.dart';
 import 'package:coinpilot/screens/more_screen.dart';
@@ -205,6 +206,35 @@ void main() {
     final m = store.budgetMonth(DateTime.now());
     expect(store.prefs.skippedCuts, contains('netflix|${m.year}-${m.month.toString().padLeft(2, '0')}'));
     expect(find.byTooltip('Skip Netflix'), findsNothing);
+    await settle(tester);
+  });
+
+  testWidgets('Mac and Linux: the sidebar opens every page, and adding is a dialog', (tester) async {
+    hostOs = HostOs.linux;
+    addTearDown(() => hostOs = HostOs.android);
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final store = Store.memory()..loadSample();
+    await tester.pumpWidget(CoinPilotApp(store: store));
+    await tester.pumpAndSettle();
+    expect(find.textContaining(RegExp('Left to spend|Over budget')), findsOneWidget);
+    for (final page in ['Transactions', 'Budgets', 'Accounts', 'Debts', 'Bills', 'Income', 'Goals', 'Reports', 'Taxes', 'Sync & Devices', 'Settings', 'Dashboard']) {
+      await tester.tap(find.text(page).first);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: page);
+    }
+    await tester.tap(find.text('Add transaction').first);
+    await tester.pumpAndSettle();
+    expect(find.byType(Dialog), findsOneWidget);
+    await tester.enterText(find.byType(TextField).at(0), '9.99');
+    await tester.enterText(find.byType(TextField).at(1), 'Corner Cafe');
+    await tester.tap(find.text('Dining out').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Add spending'));
+    await tester.tap(find.text('Add spending'));
+    await tester.pumpAndSettle();
+    expect(store.transactions.any((t) => t.payee == 'Corner Cafe' && t.cents == -999), isTrue);
     await settle(tester);
   });
 }

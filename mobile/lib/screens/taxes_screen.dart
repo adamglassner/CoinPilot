@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../form.dart';
+
 import '../dates.dart';
 import '../kit.dart';
 import '../platform.dart';
@@ -52,7 +54,7 @@ class _TaxesScreenState extends State<TaxesScreen> {
     }
     return SubPage(
       title: 'Taxes',
-      subtitle: 'W-2s, 1099s, receipts and returns, kept by tax year. Files stay private on this phone (and your server, when syncing).',
+      subtitle: 'W-2s, 1099s, receipts and returns, kept by tax year. Files stay private on this $deviceWord (and your server, when syncing).',
       fab: () => addTaxDocument(context, year),
       fabLabel: 'Add document',
       fabIcon: Icons.upload_file_rounded,
@@ -128,7 +130,7 @@ class _TaxActions extends StatelessWidget {
                   if (error != null && context.mounted) toast(context, 'Couldn\'t open it: $error');
                 },
           icon: const Icon(Icons.open_in_new_rounded),
-          label: Text(here ? 'Open' : 'Not on this phone yet'),
+          label: Text(here ? 'Open' : 'Not on this $deviceWord yet'),
         ),
         if (!here) ...[
           const SizedBox(height: 8),

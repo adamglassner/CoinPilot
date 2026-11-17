@@ -1,2 +1,2 @@
-/// This app's version (the same as pubspec.yaml; a test checks they match).
-const appVersion = '0.3.0';
+/// This app's version: the same as pubspec.yaml and as WillowWallet for Windows (tests check both).
+const appVersion = '1.6.0';

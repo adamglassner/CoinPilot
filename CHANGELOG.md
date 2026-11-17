@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.0 — 2026-11-17
+
+- **Unlock with Windows Hello.** With a PIN or password on, Settings → Security → **Use Windows Hello** lets you unlock
+  with your fingerprint, face or Windows PIN. WillowWallet asks for it as soon as the lock screen opens; your PIN or
+  password and recovery key still work. The key it uses stays on this PC for your Windows account only (never in a
+  backup or synced).
+- **What's new** in the app: Settings → About → What's new, and once after each update.
+- **WillowWallet for Mac and Linux** are here, with the same features and a sidebar like this app. Get them from the
+  same GitHub release (.dmg for Mac, .AppImage or .tar.gz for Linux).
+- **One version number for everything.** WillowWallet for Windows, Mac, Linux and Android, and WillowWallet Server,
+  are all 1.6.0 and will stay in step from now on.
+- Requires Windows 10 version 1809 or later.
+
 ## 1.5.1 — 2026-11-16
 
 - **Fixed:** "Skip ▾" on Subscriptions you could cut didn't open its menu. It now offers "Skip for this month" and

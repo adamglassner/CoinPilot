@@ -12,7 +12,7 @@ import '../store.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
-Future<void> showTransactionSheet(BuildContext context, {Txn? existing, bool income = false, bool transfer = false}) => showModalBottomSheet<void>(
+Future<void> showTransactionSheet(BuildContext context, {Txn? existing, bool income = false, bool transfer = false}) => showAdaptiveSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,

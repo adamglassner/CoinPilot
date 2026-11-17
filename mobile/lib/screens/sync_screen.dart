@@ -1,8 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../form.dart';
 import 'package:flutter/services.dart';
 
+import '../kit.dart';
 import '../store.dart';
 import '../sync/api.dart';
 import '../sync/engine.dart';
@@ -270,7 +273,7 @@ class _Intro extends StatelessWidget {
               children: [
                 Text('Your budget on every device', style: display(17, p.heroText)),
                 const SizedBox(height: 4),
-                Text('Sync with WillowWallet for Windows through your own WillowWallet Server. Optional: without it, everything stays on this phone.',
+                Text('Sync with WillowWallet for Windows through your own WillowWallet Server. Optional: without it, everything stays on this $deviceWord.',
                     style: TextStyle(fontSize: 13, height: 1.35, color: p.heroMuted)),
               ],
             ),
@@ -344,10 +347,10 @@ class _HowItWorks extends StatelessWidget {
         children: [
           Text('How sync works', style: display(16, p.text)),
           const SizedBox(height: 4),
-          point(Icons.lock_outline_rounded, 'Encrypted on this phone',
+          point(Icons.lock_outline_rounded, 'Encrypted on this $deviceWord',
               'Your data is locked with your password before it leaves the phone. The server can\'t read it.'),
           point(Icons.phone_android_rounded, 'Still works offline',
-              'Everything is kept on this phone too. Changes sync when the server is reachable again.'),
+              'Everything is kept on this $deviceWord too. Changes sync when the server is reachable again.'),
           point(Icons.receipt_long_outlined, 'Transactions and budgets',
               'Accounts and categories from the PC show up here. Receipts and tax documents stay on the PC.'),
         ],
@@ -388,7 +391,7 @@ Future<void> _firstSync(BuildContext context, SyncEngine sync) async {
 /// Returns true for "use only the server's data", false for "combine", null if dismissed (combine).
 Future<bool?> showMergeChoice(BuildContext context) {
   final store = StoreScope.read(context);
-  return showModalBottomSheet<bool>(
+  return showAdaptiveSheet<bool>(
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
@@ -448,10 +451,10 @@ Future<bool?> showMergeChoice(BuildContext context) {
                   style: TextStyle(fontSize: 14, height: 1.4, color: p.muted)),
               const SizedBox(height: 16),
               option(false, Icons.merge_rounded, 'Combine',
-                  'Keep this phone\'s data and add the server\'s. Where both changed the same thing, the newest edit wins.'),
+                  'Keep this $deviceWord\'s data and add the server\'s. Where both changed the same thing, the newest edit wins.'),
               const SizedBox(height: 10),
               option(true, Icons.cloud_download_outlined, 'Use only the server\'s data',
-                  'Replace what\'s on this phone with your synced data. Good if this phone only has sample data.'),
+                  'Replace what\'s on this $deviceWord with your synced data. Good if this $deviceWord only has sample data.'),
               const SizedBox(height: 18),
               FilledButton(
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
@@ -544,7 +547,7 @@ Future<bool?> showRecoverSheet(BuildContext context, {required String url, requi
   final user = TextEditingController(text: username);
   final key = TextEditingController();
   final password = TextEditingController();
-  return showModalBottomSheet<bool>(
+  return showAdaptiveSheet<bool>(
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
@@ -792,7 +795,7 @@ class _ConnectedState extends State<_Connected> {
                 const Divider(indent: 64),
                 _ActionTile(
                   icon: Icons.link_off_rounded,
-                  title: 'Stop syncing on this phone',
+                  title: 'Stop syncing on this $deviceWord',
                   subtitle: 'Your data stays here and on the server',
                   danger: true,
                   onTap: () async {
@@ -815,7 +818,7 @@ class _ConnectedState extends State<_Connected> {
   Future<void> _changePassword(BuildContext context) async {
     final current = TextEditingController();
     final next = TextEditingController();
-    await showModalBottomSheet<void>(
+    await showAdaptiveSheet<void>(
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
