@@ -81,7 +81,7 @@ public sealed class IncomeView : DataPage
 
     private static Button Row(IncomeSource s, DateTime today, bool first)
     {
-        var g = Ui.Columns(0.2, 1, 0.52, 0.38, 0.4);
+        var g = Ui.Columns(0.2, 1, 0.46, 0.36, 0.52);
         var cell = new Thickness(8, 12, 8, 12);
 
         // Date tile

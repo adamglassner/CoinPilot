@@ -520,7 +520,7 @@ public sealed class GetStarted : UserControl
         AutomationProperties.SetName(nextBox, "Next payday");
         var day2Box = Box(_payDay2.ToString(), 90, "Second payday of the month").Also(b => b.TextAlignment = TextAlignment.Center);
         var day2Panel = new StackPanel().Also(p => { p.Children.Add(Label("And on day")); p.Children.Add(day2Box); });
-        var row2 = Ui.Columns(1, 0.06, 1, 0.06, 0.5);
+        var row2 = Ui.Columns(0.9, 0.06, 1.25, 0.06, 0.45);
         row2.Children.Add(new StackPanel().Also(p => { p.Children.Add(amountLabel); p.Children.Add(amountBox); }).At(0));
         row2.Children.Add(new StackPanel().Also(p => { p.Children.Add(Label("Next payday")); p.Children.Add(nextBox); }).At(2));
         row2.Children.Add(day2Panel.At(4));
