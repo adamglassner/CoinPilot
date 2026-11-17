@@ -377,7 +377,7 @@ public static class DemoData
             if (d.Day == 9) T(d, "Netflix", "Subscriptions", "Visa Signature", -15.49m);
             if (d.Day == 14) T(d, "Spotify P2D84C", "Subscriptions", "Visa Signature", -10.99m);
             if (d.Day == 21) T(d, "Hulu", "Subscriptions", "Visa Signature", -17.99m);
-            if (d.Day == 26) T(d, "DISNEY PLUS 8842", "Subscriptions", "Visa Signature", d < today.AddMonths(-2) ? -10.99m : -13.99m);
+            if (d.Day == 26) T(d, "DISNEY PLUS 8842", "Subscriptions", "Visa Signature", d < today.AddMonths(-3) ? -10.99m : -13.99m);
             if (d.Day == 5) T(d, "Planet Fitness", "Health", "Visa Signature", -24.99m);
             if (d.Day == 3) T(d, "Navient Student Loan", "Debt payments", "Chase Checking", -210m);
             if (d.Day == 15) T(d, "Toyota Financial", "Debt payments", "Chase Checking", -325m);
