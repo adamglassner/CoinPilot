@@ -135,7 +135,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   late int _tab = widget.initialTab;
-  bool _setupClosed = false;
+  bool? _inSetup;
   bool _started = false;
 
   void _go(int tab) => setState(() => _tab = tab);
@@ -162,7 +162,8 @@ class _AppShellState extends State<AppShell> {
     if (mounted) UpdaterScope.read(context).check();
   }
 
-  bool _needsSetup(Store store) => widget.showSetup && !_setupClosed && store.isEmpty && !store.prefs.setupDone;
+  /// Decided once when the app opens, so adding the first account doesn't end Get started halfway.
+  bool _needsSetup(Store store) => _inSetup ??= widget.showSetup && store.isEmpty && !store.prefs.setupDone;
 
   @override
   Widget build(BuildContext context) {
@@ -176,7 +177,7 @@ class _AppShellState extends State<AppShell> {
     if (_needsSetup(store)) {
       return AnnotatedRegion<SystemUiOverlayStyle>(
         value: overlay,
-        child: GetStartedScreen(onDone: () => setState(() => _setupClosed = true)),
+        child: GetStartedScreen(onDone: () => setState(() => _inSetup = false)),
       );
     }
     final asking = store.askingPaydays(DateTime.now()).isNotEmpty;

@@ -1,4 +1,6 @@
 import 'package:coinpilot/main.dart';
+import 'package:coinpilot/kit.dart';
+import 'package:coinpilot/screens/budgets_screen.dart';
 import 'package:coinpilot/screens/more_screen.dart';
 import 'package:coinpilot/store.dart';
 import 'package:flutter/material.dart';
@@ -171,7 +173,8 @@ void main() {
     await tester.tap(find.descendant(of: more, matching: find.text('Bills')).first);
     await tester.pumpAndSettle();
     final rent = store.bills.firstWhere((b) => b.name == 'Rent');
-    await tester.scrollUntilVisible(find.text('Rent'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(find.text('Rent'), 200, scrollable: find.descendant(of: find.byType(SubPage), matching: find.byType(Scrollable)).first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Rent'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Mark paid'));
@@ -192,7 +195,8 @@ void main() {
     await tester.pumpWidget(CoinPilotApp(store: store, initialTab: 2));
     await tester.pumpAndSettle();
     final skip = find.byTooltip('Skip Netflix');
-    await tester.scrollUntilVisible(skip, 300, scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(skip, 300, scrollable: find.descendant(of: find.byType(BudgetsScreen), matching: find.byType(Scrollable)).first);
+    await tester.pumpAndSettle();
     await tester.tap(skip);
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Skip for'));

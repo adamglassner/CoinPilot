@@ -2,6 +2,8 @@
 import 'dart:convert';
 
 import 'package:coinpilot/main.dart';
+import 'package:coinpilot/kit.dart';
+import 'package:coinpilot/screens/budgets_screen.dart';
 import 'package:coinpilot/records.dart';
 import 'package:coinpilot/screens/accounts_screen.dart';
 import 'package:coinpilot/screens/bills_screen.dart';
@@ -91,8 +93,15 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Scrolls the page that's open (a pushed page, or else the Budgets tab) until [f] is near the top.
   Future<void> scrollTo(WidgetTester tester, Finder f) async {
-    await tester.scrollUntilVisible(f, 250, scrollable: find.byType(Scrollable).last);
+    final pageFinder = find.byType(SubPage);
+    final scrollable = pageFinder.evaluate().isNotEmpty
+        ? find.descendant(of: pageFinder.last, matching: find.byType(Scrollable)).first
+        : find.descendant(of: find.byType(BudgetsScreen), matching: find.byType(Scrollable)).first;
+    await tester.scrollUntilVisible(f, 250, scrollable: scrollable);
+    await tester.pumpAndSettle();
+    await tester.drag(scrollable, const Offset(0, -260));
     await tester.pumpAndSettle();
   }
 
@@ -123,8 +132,7 @@ void main() {
         }));
     testWidgets('erase $mode', (t) => shot(t, id(7, 'confirm-delete-all'), mode: mode, then: () async {
           await push(t, const SettingsScreen());
-          await t.scrollUntilVisible(find.text('Delete all data'), 300, scrollable: find.byType(Scrollable).last);
-          await t.pumpAndSettle();
+          await scrollTo(t, find.text('Delete all data'));
           await t.tap(find.text('Delete all data'));
           await t.pumpAndSettle();
         }));
