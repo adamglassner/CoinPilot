@@ -261,8 +261,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Home'), findsOneWidget); // only the bar's
     await tester.scrollUntilVisible(find.text('Bottom bar'), 200, scrollable: find.descendant(of: find.byType(MoreScreen), matching: find.byType(Scrollable)).first);
-    await tester.tap(find.text('Bottom bar'));
+    expect(find.text('Choose the pages beside the + button'), findsOneWidget);
+    await tester.longPress(tab('Transactions'));
     await tester.pumpAndSettle();
+    expect(find.text('IN THE BAR · DRAG TO REORDER'), findsOneWidget);
 
     // Take Budgets out, put Bills in, save
     await tester.tap(find.byTooltip('Take Budgets out of the bar'));
