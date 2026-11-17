@@ -33,7 +33,7 @@ public static class Screenshots
         window.Width = Width; window.Height = Height;
         await Idle();
 
-        string[] pages = ["dashboard", "transactions", "budgets", "accounts", "debts", "bills", "income", "goals", "reports", "taxes", "sync", "settings"];
+        string[] pages = ["dashboard", "forecast", "transactions", "budgets", "accounts", "debts", "bills", "income", "goals", "reports", "taxes", "sync", "settings"];
         int n = 1;
         foreach (var mode in new[] { AppTheme.Light, AppTheme.Dark })
         {
@@ -66,6 +66,14 @@ public static class Screenshots
                     await Idle();
                     await Capture(window, $"{n++:00}-bills-calendar-{mode.ToLowerInvariant()}");
                     BillsView.ShowCalendar = false;
+                }
+                if (page == "dashboard")
+                {
+                    window.ToggleCalculator();
+                    foreach (var k in new[] { "1", "2", "4", "0", "+", "3", "6", "0", "=" }) window.Calculator?.Press(k);
+                    await Idle();
+                    await CapturePopup(window, window.Calculator!, $"{n++:00}-calculator-{mode.ToLowerInvariant()}");
+                    window.ToggleCalculator();
                 }
                 if (page == "reports")
                 {
@@ -256,6 +264,41 @@ public static class Screenshots
             var root = (FrameworkElement)window.Content;
             await Dispatcher.Yield(DispatcherPriority.Render);
             Save(root, root.ActualWidth, root.ActualHeight, (Brush)Application.Current.FindResource("Brush.Bg"), name);
+        }
+        catch (Exception ex)
+        {
+            _failures++;
+            File.WriteAllText(Path.Combine(OutputFolder!, name + ".error.txt"), ex.ToString());
+        }
+    }
+
+    /// <summary>Saves the main window with a popup (the calculator) drawn where it sits on screen.</summary>
+    private static async Task CapturePopup(MainWindow window, FrameworkElement popup, string name)
+    {
+        try
+        {
+            await Idle();
+            var root = (FrameworkElement)window.Content;
+            double Width = root.ActualWidth, Height = root.ActualHeight;
+            // Where the popup is, in the main window's coordinates
+            var toDevice = PresentationSource.FromVisual(root)!.CompositionTarget!.TransformFromDevice;
+            var at = toDevice.Transform(popup.PointToScreen(new Point(0, 0))) - toDevice.Transform(root.PointToScreen(new Point(0, 0)));
+            double w = popup.ActualWidth, h = popup.ActualHeight;
+            var visual = new DrawingVisual();
+            using (var dc = visual.RenderOpen())
+            {
+                dc.DrawRectangle((Brush)Application.Current.FindResource("Brush.Bg"), null, new Rect(0, 0, Width, Height));
+                dc.DrawRectangle(new VisualBrush(root) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top }, null, new Rect(0, 0, Width, Height));
+                // A soft shadow, then the popup itself
+                dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromArgb(40, 0, 0, 0)), null, new Rect(at.X + 2, at.Y + 6, w, h), 18, 18);
+                dc.DrawRectangle(new VisualBrush(popup) { Stretch = Stretch.None }, null, new Rect(at.X, at.Y, w, h));
+            }
+            var bitmap = new RenderTargetBitmap((int)(Width * Scale), (int)(Height * Scale), 96 * Scale, 96 * Scale, PixelFormats.Pbgra32);
+            bitmap.Render(visual);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var file = File.Create(Path.Combine(OutputFolder!, name + ".png"));
+            encoder.Save(file);
         }
         catch (Exception ex)
         {

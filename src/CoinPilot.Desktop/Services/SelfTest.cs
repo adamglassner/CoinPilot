@@ -708,6 +708,83 @@ public static class SelfTest
         await Step("Clean up", () => DataStore.EraseAll(syncDeletes: false));
     }
 
+    /// <summary>
+    /// Forecast, sinking funds and the calculator. The same example as the phone app's tests (mobile/test/forecast_test.dart):
+    /// Nov 10, 2026, $900 in checking, $1,500 every two weeks from Nov 14, $1,200 rent on the 20th, a $60 internet bill
+    /// that's overdue, $300 left in a $400 Groceries budget, and a $360 car registration fund due Mar 10.
+    /// </summary>
+    private static async Task ForecastFlow(MainWindow window)
+    {
+        var today = new DateTime(2026, 11, 10);
+        await Step("Forecast example", () =>
+        {
+            DataStore.Accounts.Add(new Account { Name = "Checking", Type = AccountTypes.Checking, StartingBalance = 1000m, BalanceDate = new DateTime(2026, 11, 1) });
+            DataStore.Transactions.Add(new Transaction { Payee = "Kroger", Category = "Groceries", Account = "Checking", Date = new DateTime(2026, 11, 5), Amount = -100m });
+            DataStore.Income.Add(new IncomeSource { Name = "Paycheck", Amount = 1500m, Repeats = IncomeSchedule.EveryTwoWeeks, NextDate = new DateTime(2026, 11, 14), Account = "Checking", Day1 = 14 });
+            DataStore.Bills.Add(new Bill { Name = "Rent", Amount = 1200m, NextDue = new DateTime(2026, 11, 20), DueDay = 20, Category = "Housing" });
+            DataStore.Bills.Add(new Bill { Name = "Internet", Amount = 60m, NextDue = new DateTime(2026, 11, 5), DueDay = 5, Category = "Utilities" });
+            DataStore.Budgets.Add(new Budget { Category = "Groceries", MonthlyLimit = 400m, StartMonth = new DateTime(2026, 11, 1) });
+            DataStore.Goals.Add(new Goal { Name = "Car registration", Target = 360m, TargetDate = new DateTime(2027, 3, 10), IsFund = true });
+        });
+        var f = Forecast.Run(today);
+        string Days() => string.Join(", ", f.Days.Take(5).Select(d => d.Expected.ToString("0.00")));
+        Check("Forecast: runs to the end of the month from $900", f.End == new DateTime(2026, 11, 30) && f.Start == 900m && f.Days.Count == 21, $"{f.End:d} {f.Start} {f.Days.Count}");
+        Check("Forecast: ends $2,250 over (the same as the phone app)", f.EndExpected == 2250m && f.EndLow == f.EndHigh && f.Verdict == ForecastVerdict.Over, f.EndExpected.ToString("0.00"));
+        Check("Forecast: today is $900 − $60 − a day of groceries", f.Days[0].Expected == 825.71m, Days());
+        Check("Forecast: lowest on Nov 13, the day before payday", f.LowPoint.Date == new DateTime(2026, 11, 13) && f.LowPoint.Expected == 782.86m && f.NextPayday == new DateTime(2026, 11, 14),
+            $"{f.LowPoint.Date:d} {f.LowPoint.Expected}");
+        Check("Forecast: safe to spend", f.SafeToSpend == 782.86m, f.SafeToSpend.ToString());
+        Check("Forecast: what moves the number", string.Join("; ", f.Drivers().Select(d => $"{d.Label} {d.Amount:0}")) ==
+            "Paycheck: Paycheck 3000; Bill: Rent -1200; Budget: Groceries -300; Sinking fund: Car registration -90; Bill: Internet -60",
+            string.Join("; ", f.Drivers().Select(d => $"{d.Label} {d.Amount:0}")));
+        var tires = Forecast.Run(today, whatIfs: [new WhatIf("Tires", -500m, new DateTime(2026, 11, 12))]);
+        Check("Forecast: a what-if expense", tires.EndExpected == 1750m && tires.LowPoint.Expected == 282.86m, $"{tires.EndExpected} {tires.LowPoint.Expected}");
+        var rent = DataStore.Bills.Items.First(b => b.Name == "Rent");
+        Check("Forecast: skipping a bill", Forecast.Run(today, skipBills: new HashSet<string> { rent.Id }).EndExpected == 3450m);
+        Check("Forecast: changing a budget", Forecast.Run(today, budgetChanges: new Dictionary<string, decimal> { ["Groceries"] = 200m }).EndExpected == 2450m);
+        DataStore.Prefs.ForecastTarget = 3000m;
+        var shortOf = Forecast.Run(today);
+        Check("Forecast: short of a $3,000 target", shortOf.Verdict == ForecastVerdict.Under && shortOf.Difference == -750m && shortOf.SafeToSpend == 0);
+        DataStore.Prefs.ForecastTarget = 0;
+        DataStore.Prefs.ForecastHorizon = "30";
+        var f30 = Forecast.Run(today);
+        Check("Forecast: 30 days ahead", f30.End == new DateTime(2026, 12, 10) && f30.Events.Count(e => e.Kind == "income") == 2);
+        DataStore.Prefs.ForecastHorizon = "Month";
+        DataStore.Prefs.Save();
+
+        await Step("Forecast page", () => window.GoTo("forecast"));
+        await Step("Goals page with a sinking fund", () => window.GoTo("goals"));
+        await Step("Bills calendar with balances", () => { BillsView.ShowCalendar = true; window.GoTo("bills"); });
+        BillsView.ShowCalendar = false;
+        await Step("Dashboard with the forecast card", () => window.GoTo("dashboard"));
+
+        var fund = new Goal { Name = "Registration", Target = 360m, Saved = 300m, TargetDate = new DateTime(2026, 11, 15), IsFund = true };
+        await Step("Pay a sinking fund", () => { DataStore.Goals.Add(fund); GoalMath.UseFund(fund, new DateTime(2026, 11, 16)); });
+        Check("Sinking fund: paying it starts saving for next year", fund.Saved == 0 && fund.TargetDate == new DateTime(2027, 11, 15) && fund.History.Last().Amount == -300m
+            && GoalMath.MonthlyNeeded(fund, new DateTime(2026, 11, 16)) == 30m, $"{fund.Saved} {fund.TargetDate:d}");
+        Check("Sinking fund: kind and schedule are saved", DataStore.Goals.Items.First(g => g.Id == fund.Id).IsFund && fund.Repeats == FundSchedule.Yearly);
+
+        var c = new CalcEngine();
+        foreach (var k in "12") c.Digit(k.ToString());
+        c.Op("+"); c.Digit("3"); c.Digit("0"); c.Op("+");
+        bool chained = c.Display == "42";
+        c.Digit("8"); c.Evaluate();
+        Check("Calculator: 12 + 30 + 8 = 50", chained && c.Display == "50" && c.History == "42 + 8 =", c.Display);
+        c.Op("+"); c.Digit("1"); c.Digit("0"); c.Percent(); c.Evaluate();
+        Check("Calculator: 50 + 10% = 55", c.Display == "55", c.Display);
+        c.Clear(); c.Digit("7"); c.Op("÷"); c.Digit("0"); c.Evaluate();
+        Check("Calculator: dividing by zero says so", c.IsError);
+        c.Clear(); c.Digit("0"); c.Digit("."); c.Digit("1"); c.Op("+"); c.Digit("0"); c.Digit("."); c.Digit("2"); c.Evaluate();
+        Check("Calculator: 0.1 + 0.2 = 0.3", c.Display == "0.3", c.Display);
+        await Step("Open the calculator (Ctrl+K)", window.ToggleCalculator);
+        await Step("Type 1240 + 360 =", () => { foreach (var k in new[] { "1", "2", "4", "0", "+", "3", "6", "0", "=" }) window.Calculator?.Press(k); });
+        Check("Calculator flyout opens from the sidebar and adds up", window.Calculator?.Display == "1600", window.Calculator?.Display ?? "closed");
+        await Step("Close the calculator", window.ToggleCalculator);
+        Check("Calculator closes again", window.Calculator == null);
+
+        await Step("Clean up", () => DataStore.EraseAll(syncDeletes: false));
+    }
+
     /// <summary>"Subscriptions you could cut" on the Budgets page, and skipping a suggestion for a month or for good.</summary>
     private static async Task CutsFlow(MainWindow window)
     {
@@ -780,6 +857,7 @@ public static class SelfTest
         await GetStartedFlow(window);
         await IncomeFlow();
         await CutsFlow(window);
+        await ForecastFlow(window);
 
         // ----- Add data -----
         var month = Budgeting.MonthStart(DateTime.Today);
