@@ -226,6 +226,13 @@ public sealed class GetStarted : UserControl
         MainWindow.Instance?.GoTo(goTo ?? "dashboard");
     }
 
+    /// <summary>The one error line moves to the current step's form (it can only have one parent).</summary>
+    private void AddError(Panel panel)
+    {
+        (_error.Parent as Panel)?.Children.Remove(_error);
+        panel.Children.Add(_error);
+    }
+
     private void ShowError(string text)
     {
         _error.Text = text;
@@ -409,7 +416,7 @@ public sealed class GetStarted : UserControl
         form.Children.Add(balanceRow);
         foreach (var box in new[] { nameBox, bankBox, balanceBox })
             box.KeyDown += (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; if (TryAdd(true)) nameBox.Focus(); } };
-        form.Children.Add(_error);
+        AddError(form);
         _body.Children.Add(Card(form));
 
         _body.Children.Add(list);
@@ -482,7 +489,7 @@ public sealed class GetStarted : UserControl
         form.Children.Add(chips);
         form.Children.Add(explain);
         form.Children.Add(preview);
-        form.Children.Add(_error);
+        AddError(form);
         _body.Children.Add(Card(form));
         income.TextChanged += (_, _) => { _income = income.Text; Refresh(); };
 
@@ -630,7 +637,7 @@ public sealed class GetStarted : UserControl
         var panel = new StackPanel();
         panel.Children.Add(rows);
         panel.Children.Add(addOther);
-        panel.Children.Add(_error);
+        AddError(panel);
         _body.Children.Add(Card(panel));
         _body.Children.Add(Hint("Not sure of an amount? Use a typical month; you can change it when the bill comes. Paid on different days? Pick the usual one."));
         Footer("Next", Next);
@@ -755,7 +762,7 @@ public sealed class GetStarted : UserControl
         add.HorizontalAlignment = HorizontalAlignment.Left;
         add.Margin = new Thickness(0, 16, 0, 0);
         form.Children.Add(add);
-        form.Children.Add(_error);
+        AddError(form);
         _body.Children.Add(Card(form));
 
         _body.Children.Add(list);
