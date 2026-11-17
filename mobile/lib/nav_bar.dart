@@ -6,6 +6,7 @@ import 'screens/accounts_screen.dart';
 import 'screens/bills_screen.dart';
 import 'screens/budgets_screen.dart';
 import 'screens/debts_screen.dart';
+import 'screens/forecast_screen.dart';
 import 'screens/goals_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/income_screen.dart';
@@ -26,6 +27,7 @@ class BarPage {
         'home' => HomeScreen(onNavigate: (i) => open(i == 1 ? 'transactions' : i == 2 ? 'budgets' : 'home')),
         'transactions' => const TransactionsScreen(),
         'budgets' => const BudgetsScreen(),
+        'forecast' => const ForecastScreen(),
         'accounts' => const AccountsScreen(),
         'bills' => const BillsScreen(),
         'income' => const IncomeScreen(),
@@ -40,6 +42,7 @@ const barPages = [
   BarPage('home', 'Home', Icons.home_outlined, Icons.home_rounded, 'This month at a glance'),
   BarPage('transactions', 'Transactions', Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Everything you spent and earned'),
   BarPage('budgets', 'Budgets', Icons.pie_chart_outline_rounded, Icons.pie_chart_rounded, 'How much is left in each'),
+  BarPage('forecast', 'Forecast', Icons.timeline_outlined, Icons.timeline_rounded, 'Where your money is headed'),
   BarPage('accounts', 'Accounts', Icons.account_balance_outlined, Icons.account_balance_rounded, 'Balances and net worth'),
   BarPage('bills', 'Bills', Icons.event_note_outlined, Icons.event_note_rounded, 'What\'s due and when'),
   BarPage('income', 'Income', Icons.payments_outlined, Icons.payments_rounded, 'Paychecks and paydays'),

@@ -1,4 +1,6 @@
+import 'package:coinpilot/forecast.dart';
 import 'package:coinpilot/main.dart';
+import 'package:coinpilot/screens/forecast_screen.dart';
 import 'package:coinpilot/dates.dart';
 import 'package:coinpilot/form.dart';
 import 'package:coinpilot/kit.dart';
@@ -309,5 +311,37 @@ void main() {
     store.updateSettings((s) => s.navTabs = ['bills', 'goals', 'nonsense']);
     await tester.pumpAndSettle();
     expect(tab('Home'), findsOneWidget, reason: 'bad settings fall back to the default');
+  });
+
+  testWidgets('forecast: the dashboard card opens the forecast, and what-ifs change it', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final store = Store.memory()..loadSample();
+    await tester.pumpWidget(CoinPilotApp(store: store));
+    await tester.pumpAndSettle();
+    final card = find.byKey(const Key('forecast-card'));
+    await tester.scrollUntilVisible(card, 200, scrollable: find.byType(Scrollable).first);
+    expect(find.descendant(of: card, matching: find.textContaining('Safe to spend')), findsOneWidget);
+    await tester.tap(card);
+    await tester.pumpAndSettle();
+    expect(find.byType(ForecastScreen), findsOneWidget);
+    final before = store.forecast(DateTime.now()).endExpected;
+
+    final list = find.descendant(of: find.byType(ForecastScreen), matching: find.byType(Scrollable)).first;
+    await tester.scrollUntilVisible(find.text('One-time expense'), 200, scrollable: list);
+    await tester.drag(list, const Offset(0, -150));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('One-time expense'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), 'New tires');
+    await tester.enterText(find.byType(TextField).at(1), '600');
+    await tester.tap(find.text('Try it'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('New tires'), findsWidgets);
+    expect(find.textContaining('with your what-ifs', skipOffstage: false), findsOneWidget);
+    // Nothing was saved
+    expect(store.forecast(DateTime.now()).endExpected, before);
+    expect(tester.takeException(), isNull);
   });
 }

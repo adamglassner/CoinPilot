@@ -279,6 +279,22 @@ class Goal extends Rec {
   set history(List<MoneyEntry> v) => setEntries('History', v);
 
   bool get isLinked => linkedAccount.isNotEmpty;
+
+  /// A sinking fund: money set aside every month for a cost that comes around again (car registration, holidays).
+  bool get isFund => str('Kind') == 'Fund';
+  set isFund(bool v) => j['Kind'] = v ? 'Fund' : 'Goal';
+
+  /// How often a sinking fund's cost comes around: 'Yearly', 'Every 6 months' or 'Every 3 months'.
+  String get repeats => str('Repeats').isEmpty ? FundSchedule.yearly : str('Repeats');
+  set repeats(String v) => j['Repeats'] = v;
+}
+
+class FundSchedule {
+  static const yearly = 'Yearly';
+  static const twiceAYear = 'Every 6 months';
+  static const quarterly = 'Every 3 months';
+  static const all = [yearly, twiceAYear, quarterly];
+  static int months(String repeats) => switch (repeats) { twiceAYear => 6, quarterly => 3, _ => 12 };
 }
 
 // ----- Categories and rules -----
@@ -450,6 +466,16 @@ class Prefs extends Rec {
   set skippedCuts(List<String> v) => j['SkippedCuts'] = v;
   bool get setupDone => flag('SetupDone');
   set setupDone(bool v) => j['SetupDone'] = v;
+
+  /// Forecast: how far ahead ('Month', '30', '60' or '90' days), the balance to aim for, and what it counts.
+  String get forecastHorizon => const ['30', '60', '90'].contains(str('ForecastHorizon')) ? str('ForecastHorizon') : 'Month';
+  set forecastHorizon(String v) => j['ForecastHorizon'] = v;
+  int get forecastTargetCents => money('ForecastTarget');
+  set forecastTargetCents(int v) => setMoney('ForecastTarget', v);
+  bool get forecastIncludeSavings => flag('ForecastIncludeSavings');
+  set forecastIncludeSavings(bool v) => j['ForecastIncludeSavings'] = v;
+  bool get forecastCountSavings => j['ForecastCountSavings'] != false;
+  set forecastCountSavings(bool v) => j['ForecastCountSavings'] = v;
 }
 
 /// Snowball or avalanche, and the extra monthly payment (the Windows app's debt-plan.json).

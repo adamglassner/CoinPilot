@@ -8,6 +8,8 @@ import 'screens/accounts_screen.dart';
 import 'screens/bills_screen.dart';
 import 'screens/budgets_screen.dart';
 import 'screens/debts_screen.dart';
+import 'calculator.dart';
+import 'screens/forecast_screen.dart';
 import 'screens/get_started.dart';
 import 'screens/goals_screen.dart';
 import 'screens/home_screen.dart';
@@ -48,6 +50,7 @@ class DesktopShellState extends State<DesktopShell> {
     _Section('dashboard', 'Dashboard', Icons.space_dashboard_outlined, Icons.space_dashboard_rounded),
     _Section('transactions', 'Transactions', Icons.receipt_long_outlined, Icons.receipt_long_rounded),
     _Section('budgets', 'Budgets', Icons.pie_chart_outline_rounded, Icons.pie_chart_rounded),
+    _Section('forecast', 'Forecast', Icons.timeline_outlined, Icons.timeline_rounded),
     _Section('accounts', 'Accounts', Icons.account_balance_outlined, Icons.account_balance_rounded),
     _Section('debts', 'Debts', Icons.credit_card_outlined, Icons.credit_card_rounded),
     _Section('bills', 'Bills', Icons.event_note_outlined, Icons.event_note_rounded),
@@ -68,6 +71,10 @@ class DesktopShellState extends State<DesktopShell> {
       final store = StoreScope.read(context);
       final dark = Theme.of(context).brightness == Brightness.dark;
       store.updateSettings((s) => s.themeMode = dark ? 'light' : 'dark');
+      return;
+    }
+    if (page == 'calculator') {
+      showCalculator(context);
       return;
     }
     if (page == _page) {
@@ -104,6 +111,7 @@ class DesktopShellState extends State<DesktopShell> {
         'dashboard' => HomeScreen(onNavigate: (i) => go(i == 1 ? 'transactions' : i == 2 ? 'budgets' : 'dashboard')),
         'transactions' => const TransactionsScreen(),
         'budgets' => const BudgetsScreen(),
+        'forecast' => const ForecastScreen(),
         'accounts' => const AccountsScreen(),
         'debts' => const DebtsScreen(),
         'bills' => const BillsScreen(),
@@ -126,6 +134,7 @@ class DesktopShellState extends State<DesktopShell> {
     final shortcuts = <ShortcutActivator, VoidCallback>{
       LogicalKeySet(mod, LogicalKeyboardKey.keyN): () => showTransactionSheet(context),
       LogicalKeySet(mod, LogicalKeyboardKey.comma): () => go('settings'),
+      LogicalKeySet(mod, LogicalKeyboardKey.keyK): () => go('calculator'),
       for (var i = 0; i < 9; i++) LogicalKeySet(mod, LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i)): () => go(sections[i].key),
     };
     final key = _navigators.putIfAbsent(_page, () => GlobalKey<NavigatorState>());
@@ -299,6 +308,7 @@ class _Sidebar extends StatelessWidget {
                 ),
               ),
             ),
+            item('calculator', 'Calculator', Icons.calculate_outlined, Icons.calculate_outlined, hint: '${mod}K'),
             item('theme', p.dark ? 'Light mode' : 'Dark mode', p.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                 p.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
             item('settings', 'Settings', Icons.settings_outlined, Icons.settings_rounded, hint: '$mod,'),

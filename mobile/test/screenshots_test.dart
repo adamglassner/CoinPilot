@@ -1,7 +1,9 @@
 // Renders every screen to test/screenshots/*.png (run with --update-goldens). CI publishes them.
 import 'dart:convert';
 
+import 'package:coinpilot/calculator.dart';
 import 'package:coinpilot/main.dart';
+import 'package:coinpilot/screens/forecast_screen.dart';
 import 'package:coinpilot/kit.dart';
 import 'package:coinpilot/form.dart';
 import 'package:coinpilot/screens/budgets_screen.dart';
@@ -226,6 +228,21 @@ void main() {
           await t.pumpAndSettle();
         }));
     testWidgets('reports $mode', (t) => page(t, 'reports', 17, const ReportsScreen()));
+    testWidgets('forecast $mode', (t) => page(t, 'forecast', 50, const ForecastScreen()));
+    testWidgets('forecast lower $mode', (t) => page(t, 'forecast-drivers', 51, const ForecastScreen(), then: () => scrollTo(t, find.text('What if…'))));
+    testWidgets('forecast what if $mode', (t) => page(t, 'forecast-what-if', 52, const ForecastScreen(), then: () async {
+          await scrollTo(t, find.text('One-time expense'));
+          await t.tap(find.text('One-time expense'));
+          await t.pumpAndSettle();
+          await t.enterText(find.byType(TextField).at(0), 'New tires');
+          await t.enterText(find.byType(TextField).at(1), '600');
+          await t.pumpAndSettle();
+        }));
+    testWidgets('sinking funds $mode', (t) => page(t, 'sinking-funds', 53, const GoalsScreen(), prepare: (s) {
+          final now = DateTime.now();
+          s.put(Goal.create(name: 'Car registration', targetCents: 36000, targetDate: DateTime(now.year, now.month + 4, 10))..isFund = true..savedCents = 9000);
+          s.put(Goal.create(name: 'Holiday gifts', targetCents: 80000, targetDate: DateTime(now.year, 12, 15))..isFund = true..savedCents = 52000);
+        }, then: () => scrollTo(t, find.text('Sinking funds'))));
     testWidgets('reports lower $mode', (t) => page(t, 'reports-categories', 18, const ReportsScreen(), then: () => scrollTo(t, find.text('Spending by category'))));
     testWidgets('year $mode', (t) => page(t, 'year-in-review', 19, YearReviewScreen(year: DateTime.now().year)));
     testWidgets('taxes $mode', (t) => page(t, 'taxes', 20, const TaxesScreen()));
@@ -325,6 +342,15 @@ void main() {
         }));
     testWidgets('desktop pay bill $mode', (t) => desk(t, id(14, 'bill-actions'), mode: mode, page: 'bills', then: () async {
           await t.tap(find.text('Water & sewer'));
+          await t.pumpAndSettle();
+        }));
+    testWidgets('desktop forecast $mode', (t) => desk(t, id(16, 'forecast'), mode: mode, page: 'forecast'));
+    testWidgets('desktop calculator $mode', (t) => desk(t, id(17, 'calculator'), mode: mode, page: 'dashboard', then: () async {
+          await t.tap(find.text('Calculator'));
+          await t.pumpAndSettle();
+          for (final k in ['1', '2', '4', '0', '+', '3', '6', '0', '=']) {
+            await t.tap(find.descendant(of: find.byType(CalculatorPanel), matching: find.text(k)).last);
+          }
           await t.pumpAndSettle();
         }));
     testWidgets('desktop whats new $mode', (t) => desk(t, id(15, 'whats-new'), mode: mode, page: 'settings', then: () async {

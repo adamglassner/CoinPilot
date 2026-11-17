@@ -16,25 +16,31 @@ class GoalsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
     final p = context.pal;
-    final goals = store.goals..sort((a, b) => (store.isReached(a) ? 1 : 0).compareTo(store.isReached(b) ? 1 : 0));
+    final goals = [for (final g in store.goals) if (!g.isFund) g]..sort((a, b) => (store.isReached(a) ? 1 : 0).compareTo(store.isReached(b) ? 1 : 0));
+    final funds = [for (final g in store.goals) if (g.isFund) g]..sort((a, b) => (a.targetDate ?? DateTime(9999)).compareTo(b.targetDate ?? DateTime(9999)));
+    final perMonth = funds.fold<int>(0, (s, g) => s + (store.monthlyNeeded(g, DateTime.now()) ?? 0));
     final saved = goals.fold<int>(0, (s, g) => s + store.savedFor(g));
     final target = goals.fold<int>(0, (s, g) => s + g.targetCents);
     return SubPage(
       title: 'Goals',
-      subtitle: 'Something to save toward: an emergency fund, a trip, a down payment.',
+      subtitle: 'Something to save toward, and sinking funds for costs that come around every year.',
       fab: () => showGoalSheet(context),
       fabLabel: 'New goal',
       children: [
-        if (goals.isEmpty)
+        if (goals.isEmpty && funds.isEmpty)
           EmptyState(
             icon: Icons.flag_outlined,
             title: 'No goals yet',
             text: 'Set a target (and a date if you like). WillowWallet shows how much to put away each month.',
             actions: [
               SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () => showGoalSheet(context), icon: const Icon(Icons.add_rounded), label: const Text('New goal'))),
+              const SizedBox(height: 8),
+              SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(onPressed: () => showGoalSheet(context, fund: true), icon: const Icon(Icons.savings_outlined), label: const Text('New sinking fund'))),
             ],
           )
-        else ...[
+        else if (goals.isNotEmpty) ...[
           HeroCard(
             label: 'Saved toward your goals',
             value: Money.format(saved),
@@ -49,6 +55,17 @@ class GoalsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           for (final g in goals) ...[_GoalCard(g), const SizedBox(height: 10)],
+        ],
+        if (goals.isNotEmpty || funds.isNotEmpty) ...[
+          SectionTitle('Sinking funds', action: 'Add', onAction: () => showGoalSheet(context, fund: true)),
+          Text(
+              funds.isEmpty
+                  ? 'Set aside a little each month for costs that come around every year or so: car registration, insurance, holidays. '
+                      'No more surprise bills.'
+                  : 'About ${Money.format(perMonth, whole: true)} a month covers all of them. The forecast sets it aside for you.',
+              style: TextStyle(fontSize: 13.5, color: p.muted, height: 1.35)),
+          const SizedBox(height: 10),
+          for (final g in funds) ...[_GoalCard(g), const SizedBox(height: 10)],
         ],
       ],
     );
@@ -68,7 +85,14 @@ class _GoalCard extends StatelessWidget {
     final reached = store.isReached(g);
     final needed = store.monthlyNeeded(g, today);
     final pct = (store.fraction(g) * 100).round();
-    final lines = [
+    final dueSoon = g.isFund && g.targetDate != null && !dayOnly(g.targetDate!).isAfter(today.add(const Duration(days: 14)));
+    final lines = g.isFund
+        ? [
+            if (g.targetDate != null) '${Money.format(g.targetCents, whole: true)} due ${shortDate(g.targetDate!)}',
+            g.repeats.toLowerCase(),
+            if (reached) 'ready' else if (needed != null) '${Money.format(needed, whole: true)}/month',
+          ]
+        : [
       if (reached) 'Reached! 🎉' else '${Money.format(store.remaining(g), whole: true)} to go',
       if (g.targetDate != null) 'by ${shortDate(g.targetDate!)}',
       if (needed != null) '${Money.format(needed, whole: true)}/month',
@@ -81,14 +105,15 @@ class _GoalCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              IconBox(reached ? Icons.emoji_events_outlined : Icons.flag_outlined, color: reached ? p.positive : null),
+              IconBox(g.isFund ? Icons.savings_outlined : (reached ? Icons.emoji_events_outlined : Icons.flag_outlined),
+                  color: dueSoon && !reached ? p.warn : (reached ? p.positive : null)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(g.name, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
-                    Text(lines.join(' · '), style: TextStyle(fontSize: 13, color: reached ? p.positive : p.muted)),
+                    Text(lines.join(' · '), style: TextStyle(fontSize: 13, color: dueSoon && !reached ? p.warn : (reached ? p.positive : p.muted))),
                   ],
                 ),
               ),
@@ -129,7 +154,8 @@ class _GoalActions extends StatelessWidget {
     final history = [...g.history]..sort((a, b) => b.date.compareTo(a.date));
     return SheetFrame(
       title: g.name,
-      leading: const IconBox(Icons.flag_outlined, size: 44),
+      subtitle: g.isFund && g.targetDate != null ? '${Money.format(g.targetCents)} due ${shortDate(g.targetDate!)}, ${g.repeats.toLowerCase()}.' : null,
+      leading: IconBox(g.isFund ? Icons.savings_outlined : Icons.flag_outlined, size: 44),
       children: [
         const SizedBox(height: 14),
         Row(
@@ -175,6 +201,19 @@ class _GoalActions extends StatelessWidget {
               ),
             ],
           ),
+        if (g.isFund) ...[
+          const SizedBox(height: 8),
+          FilledButton.tonalIcon(
+            onPressed: () {
+              Navigator.pop(context);
+              store.useFund(g, DateTime.now());
+              final next = store.goals.firstWhere((x) => x.id == g.id).targetDate;
+              toast(context, 'Paid. Saving for next time${next == null ? '' : ', due ${shortDate(next)}'}.');
+            },
+            icon: const Icon(Icons.check_rounded),
+            label: const Text('I paid it: start saving for next time'),
+          ),
+        ],
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () {
@@ -182,7 +221,7 @@ class _GoalActions extends StatelessWidget {
             showGoalSheet(context, existing: g);
           },
           icon: const Icon(Icons.edit_outlined, size: 19),
-          label: const Text('Edit goal'),
+          label: Text(g.isFund ? 'Edit sinking fund' : 'Edit goal'),
         ),
         if (history.isNotEmpty) ...[
           const SectionTitle('History'),
@@ -255,18 +294,21 @@ class _GoalMoneySheetState extends State<GoalMoneySheet> {
   }
 }
 
-Future<void> showGoalSheet(BuildContext context, {Goal? existing}) => showSheet<void>(context, GoalSheet(existing: existing));
+Future<void> showGoalSheet(BuildContext context, {Goal? existing, bool fund = false}) => showSheet<void>(context, GoalSheet(existing: existing, fund: fund));
 
 class GoalSheet extends StatefulWidget {
-  const GoalSheet({super.key, this.existing});
+  const GoalSheet({super.key, this.existing, this.fund = false});
   final Goal? existing;
+
+  /// A new sinking fund rather than a goal.
+  final bool fund;
 
   @override
   State<GoalSheet> createState() => _GoalSheetState();
 }
 
 class _GoalSheetState extends State<GoalSheet> {
-  late final Goal _g = widget.existing?.copy() ?? Goal.create(name: '');
+  late final Goal _g = widget.existing?.copy() ?? (Goal.create(name: '')..isFund = widget.fund);
   late final _name = TextEditingController(text: _g.name);
   late final _target = TextEditingController(text: _g.targetCents > 0 ? Money.editable(_g.targetCents) : '');
   late final _saved = TextEditingController(text: _g.savedCents > 0 ? Money.editable(_g.savedCents) : '');
@@ -285,9 +327,10 @@ class _GoalSheetState extends State<GoalSheet> {
   void _save() {
     final store = StoreScope.read(context);
     final name = _name.text.trim();
-    if (name.isEmpty) return setState(() => _error = 'Enter a name, like "Emergency fund".');
+    if (name.isEmpty) return setState(() => _error = _g.isFund ? 'Enter a name, like "Car registration".' : 'Enter a name, like "Emergency fund".');
     final target = readMoney(_target);
-    if (target == null || target <= 0) return setState(() => _error = 'Enter how much you want to save.');
+    if (target == null || target <= 0) return setState(() => _error = _g.isFund ? 'Enter what it costs.' : 'Enter how much you want to save.');
+    if (_g.isFund && _g.targetDate == null) return setState(() => _error = 'Pick when it\'s next due.');
     final saved = readMoney(_saved, emptyIsZero: true);
     if (saved == null) return setState(() => _error = 'Enter what\'s saved so far as a number.');
     _g
@@ -301,7 +344,7 @@ class _GoalSheetState extends State<GoalSheet> {
     }
     store.put(_g);
     Navigator.pop(context);
-    toast(context, widget.existing == null ? 'Goal added: $name.' : 'Saved $name.');
+    toast(context, widget.existing == null ? (_g.isFund ? 'Sinking fund added: $name.' : 'Goal added: $name.') : 'Saved $name.');
   }
 
   Future<void> _delete() async {
@@ -319,18 +362,25 @@ class _GoalSheetState extends State<GoalSheet> {
     final store = StoreScope.of(context);
     final isNew = widget.existing == null;
     final accounts = [for (final a in store.accountRecords) if (!a.isClosed && !a.isLiability) a.name];
+    final fund = _g.isFund;
     return SheetFrame(
-      title: isNew ? 'New goal' : 'Edit goal',
+      title: fund ? (isNew ? 'New sinking fund' : 'Edit sinking fund') : (isNew ? 'New goal' : 'Edit goal'),
+      subtitle: fund && isNew ? 'For a cost that comes around again. WillowWallet works out how much to set aside each month.' : null,
       onDelete: isNew ? null : _delete,
       error: _error,
-      primary: isNew ? 'Add goal' : 'Save',
+      primary: isNew ? (fund ? 'Add sinking fund' : 'Add goal') : 'Save',
       onPrimary: _save,
       children: [
-        LabeledField(label: 'Name', controller: _name, hint: 'Emergency fund, Hawaii trip…', caps: TextCapitalization.words, autofocus: isNew),
-        const FieldLabel('Target'),
+        LabeledField(
+            label: 'Name', controller: _name, hint: fund ? 'Car registration, holidays…' : 'Emergency fund, Hawaii trip…', caps: TextCapitalization.words, autofocus: isNew),
+        FieldLabel(fund ? 'What it costs' : 'Target'),
         MoneyField(controller: _target, size: 26),
-        const FieldLabel('Target date (optional)'),
-        DateTile(date: _g.targetDate, allowClear: true, emptyText: 'No date', onChanged: (d) => setState(() => _g.targetDate = d)),
+        FieldLabel(fund ? 'Next due' : 'Target date (optional)'),
+        DateTile(date: _g.targetDate, allowClear: !fund, emptyText: fund ? 'Pick a date' : 'No date', onChanged: (d) => setState(() => _g.targetDate = d)),
+        if (fund) ...[
+          const FieldLabel('Comes around'),
+          Choices(options: FundSchedule.all, selected: _g.repeats, onChanged: (v) => setState(() => _g.repeats = v)),
+        ],
         if (accounts.isNotEmpty) ...[
           const FieldLabel('Saved in'),
           Choices(

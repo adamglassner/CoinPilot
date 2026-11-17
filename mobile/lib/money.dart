@@ -63,3 +63,12 @@ class Money {
     return b.toString();
   }
 }
+
+/// "$1.2k", "$850", "-$40": a balance in a few characters (calendar days).
+String shortMoney(int cents) {
+  final neg = cents < 0;
+  final d = cents.abs() / 100;
+  final sym = Money.currency.symbol;
+  final body = d >= 10000 ? '${(d / 1000).round()}k' : d >= 1000 ? '${(d / 1000).toStringAsFixed(1)}k' : d.round().toString();
+  return '${neg ? '-' : ''}$sym$body';
+}

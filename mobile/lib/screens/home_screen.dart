@@ -12,7 +12,10 @@ import '../sync/scope.dart';
 import '../finance.dart';
 import '../form.dart';
 import '../kit.dart';
+import '../desktop_shell.dart' show DesktopShellState;
+import '../main.dart' show AppShellState;
 import 'bills_screen.dart';
+import 'forecast_screen.dart';
 import 'budget_sheet.dart';
 import 'income_screen.dart';
 import 'more_screen.dart';
@@ -72,6 +75,13 @@ class HomeScreen extends StatelessWidget {
             _Welcome(),
           ] else ...[
             _Hero(month: month, now: now),
+            const SizedBox(height: 12),
+            ForecastCard(onOpen: () {
+              final desk = context.findAncestorStateOfType<DesktopShellState>();
+              if (desk != null) return desk.go('forecast');
+              final shell = AppShellState.of(context);
+              shell != null ? shell.openPage('forecast') : pushPage(context, const ForecastScreen());
+            }),
             const SizedBox(height: 12),
             Row(
               children: [

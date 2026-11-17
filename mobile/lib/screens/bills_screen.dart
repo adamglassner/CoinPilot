@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../categories.dart';
 import '../dates.dart';
 import '../finance.dart';
+import '../forecast.dart';
 import '../kit.dart';
 import '../money.dart';
 import '../records.dart';
@@ -104,6 +105,14 @@ class _BillsScreenState extends State<BillsScreen> {
         d = Bills.next(d, b.repeats, b.dueDay);
       }
     }
+    // Projected balance on each day from today (paydays in, bills and planned spending out)
+    final monthLast = DateTime(first.year, first.month, days);
+    final f = !monthLast.isBefore(today) && monthLast.difference(today).inDays <= 120 ? store.forecast(today, until: monthLast) : null;
+    final paydays = <int>{
+      if (f != null)
+        for (final e in f.events)
+          if (e.kind == 'income' && sameMonth(e.date, first)) e.date.day,
+    };
     final selected = _calDay != null && sameMonth(_calDay!, first) ? _calDay!.day : null;
     final dayBills = selected == null ? <Bill>[] : (due[selected] ?? []);
     return Column(
@@ -141,17 +150,18 @@ class _BillsScreenState extends State<BillsScreen> {
                       Expanded(
                         child: Builder(builder: (context) {
                           final day = week * 7 + c - lead + 1;
-                          if (day < 1 || day > days) return const SizedBox(height: 46);
+                          if (day < 1 || day > days) return SizedBox(height: f == null ? 46 : 58);
                           final date = DateTime(first.year, first.month, day);
                           final bills = due[day] ?? const <Bill>[];
                           final isToday = sameDay(date, today);
                           final isSel = selected == day;
                           final late = bills.isNotEmpty && date.isBefore(today);
+                          final bal = f?.dayOf(date)?.expected;
                           return GestureDetector(
                             onTap: () => setState(() => _calDay = date),
                             behavior: HitTestBehavior.opaque,
                             child: Container(
-                              height: 46,
+                              height: f == null ? 46 : 58,
                               margin: const EdgeInsets.all(2),
                               decoration: BoxDecoration(
                                 color: isSel ? p.accent : (isToday ? p.accentSoft : null),
@@ -169,6 +179,13 @@ class _BillsScreenState extends State<BillsScreen> {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
+                                      if (paydays.contains(day))
+                                        Container(
+                                          width: 5,
+                                          height: 5,
+                                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                                          decoration: BoxDecoration(color: isSel ? p.onAccent : p.positive, shape: BoxShape.circle),
+                                        ),
                                       for (var i = 0; i < min(3, bills.length); i++)
                                         Container(
                                           width: 5,
@@ -179,6 +196,15 @@ class _BillsScreenState extends State<BillsScreen> {
                                         ),
                                     ],
                                   ),
+                                  if (bal != null) ...[
+                                    const SizedBox(height: 2),
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(shortMoney(bal),
+                                          maxLines: 1,
+                                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isSel ? p.onAccent : (bal < 0 ? p.danger : p.muted))),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -192,6 +218,13 @@ class _BillsScreenState extends State<BillsScreen> {
         ),
         if (selected != null) ...[
           SectionTitle(dayLabel(DateTime(first.year, first.month, selected))),
+          if (f?.dayOf(DateTime(first.year, first.month, selected)) case final d?) ...[
+            Text('Expected balance at the end of the day: ${Money.format(d.expected)}',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: d.expected < 0 ? p.danger : p.text)),
+            for (final e in f!.on(d.date).where((e) => e.kind == 'income'))
+              Padding(padding: const EdgeInsets.only(top: 4), child: Text('Payday: ${e.label} +${Money.format(e.cents)}', style: TextStyle(color: p.positive, fontWeight: FontWeight.w600))),
+            const SizedBox(height: 10),
+          ],
           dayBills.isEmpty
               ? Text('Nothing due this day.', style: TextStyle(color: p.muted))
               : _BillList(dayBills, today: today),

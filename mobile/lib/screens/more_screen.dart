@@ -38,6 +38,7 @@ class MoreScreen extends StatelessWidget {
       'home': () => _Feature('Home', Icons.home_outlined, 'Overview', 'this month', () => open('home')),
       'transactions': () => _Feature('Transactions', Icons.receipt_long_outlined, 'Search and edit', 'all accounts', () => open('transactions')),
       'budgets': () => _Feature('Budgets', Icons.pie_chart_outline_rounded, store.budgets.isEmpty ? 'Set one up' : '${store.budgets.length} budgets', 'this month', () => open('budgets')),
+      'forecast': () => _Feature('Forecast', Icons.timeline_rounded, 'Where you\'re headed', 'safe to spend', () => open('forecast')),
       'accounts': () => _Feature('Accounts', Icons.account_balance_outlined, store.accountRecords.isEmpty ? 'Add yours' : Money.format(store.netWorth, whole: true),
           store.accountRecords.isEmpty ? '' : 'net worth', () => open('accounts')),
       'bills': () => _Feature('Bills', Icons.event_note_outlined, store.openBills.isEmpty ? 'None yet' : (due.isEmpty ? 'Nothing due' : '${due.length} due'),

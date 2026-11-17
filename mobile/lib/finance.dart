@@ -405,6 +405,23 @@ extension GoalMath on Store {
     return (remaining(g) / months).ceil();
   }
 
+  /// A sinking fund's cost was paid: what was set aside is used, and saving starts again for the next due date.
+  void useFund(Goal fund, DateTime paidOn) {
+    final g = fund.copy();
+    final used = savedFor(g);
+    if (!g.isLinked && used > 0) {
+      g.history = [...g.history, MoneyEntry(dayOnly(paidOn), -used)];
+      g.savedCents = 0;
+    }
+    var due = g.targetDate ?? dayOnly(paidOn);
+    final months = FundSchedule.months(g.repeats);
+    for (var i = 0; i < 40 && !due.isAfter(dayOnly(paidOn)); i++) {
+      due = DateTime(due.year, due.month + months, min(due.day, daysInMonth(DateTime(due.year, due.month + months))));
+    }
+    g.targetDate = due;
+    put(g);
+  }
+
   /// Adds (positive) or takes out (negative) money and keeps the history. Returns a milestone crossed (25, 50, 75, 100).
   int? addToGoal(Goal goal, int cents, DateTime date) {
     final g = goal.copy();
