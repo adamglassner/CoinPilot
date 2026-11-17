@@ -867,6 +867,31 @@ public static class SelfTest
         await Step("Income page with the plan", () => window.GoTo("income"));
         await Step("Reports with this year vs last", () => window.GoTo("reports"));
 
+        var r = Insights.Monthly(today);
+        Check("Monthly report: the month on a page (the same as the phone app)", r.Month == new DateTime(2026, 11, 1) && r.Spent == 859.99m && r.BudgetsOver == 1
+            && r.TopCategories[0].Category == "Groceries" && r.Biggest?.Payee == "Kroger" && r.NetWorthEnd - r.NetWorthStart == -r.Spent, $"{r.Spent} {r.BudgetsOver}");
+        await Step("Reports: monthly report", () => { ReportsView.Range = ReportsView.MonthlyReport; ReportsView.ReportMonth = DateTime.Today; window.GoTo("reports"); });
+        ReportsView.Range = ReportsView.SixMonths;
+
+        await Step("A household: Alex paid $100, Sam paid $40", () =>
+        {
+            DataStore.Prefs.HouseholdPeople = ["Alex", "Sam"];
+            DataStore.Prefs.Save();
+            DataStore.Transactions.Add(new Transaction { Payee = "Shop", Category = "Groceries", Account = "Checking", Date = new DateTime(2026, 11, 10), Amount = -100m, PaidBy = "Alex" });
+            DataStore.Transactions.Add(new Transaction { Payee = "Shop", Category = "Groceries", Account = "Checking", Date = new DateTime(2026, 11, 10), Amount = -40m, PaidBy = "Sam" });
+        });
+        var hh = Insights.Household(today);
+        Check("Household: Sam owes Alex $30 on an even split", hh.Total == 140m && hh.Paid["Alex"] == 100m && hh.Settle.Count == 1 && hh.Settle[0] == ("Sam", "Alex", 30m),
+            string.Join("; ", hh.Settle.Select(x => $"{x.From}>{x.To} {x.Amount}")));
+        DataStore.Prefs.HouseholdShare = 60;
+        hh = Insights.Household(today);
+        Check("Household: 60/40 makes it $16", hh.Fair["Alex"] == 84m && hh.Settle[0] == ("Sam", "Alex", 16m));
+        await Step("Household page", () => { MonthSwitcher.Current = new DateTime(2026, 11, 1); window.GoTo("household"); });
+        MonthSwitcher.Current = Budgeting.MonthStart(DateTime.Today);
+        DataStore.Prefs.HouseholdPeople = [];
+        DataStore.Prefs.HouseholdShare = 50;
+        DataStore.Prefs.Save();
+
         await Step("A forecast dip", () =>
         {
             DataStore.EraseAll(syncDeletes: false);

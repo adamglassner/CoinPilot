@@ -91,6 +91,12 @@ public sealed class Preferences : JsonFile
     public decimal ForecastTarget { get; set; }
     /// <summary>Forecast: start from savings accounts too.</summary>
     public bool ForecastIncludeSavings { get; set; }
+    /// <summary>Shared household: the people (two or more turns it on).</summary>
+    public List<string> HouseholdPeople { get; set; } = [];
+    /// <summary>The first person's share of shared spending (50 = half), when there are two.</summary>
+    public int HouseholdShare { get; set; } = 50;
+    [System.Text.Json.Serialization.JsonIgnore] public bool Household => HouseholdPeople.Count >= 2;
+
     /// <summary>Spending alerts (budgets running low, bill price changes, unusual charges, a coming dip).</summary>
     public bool AlertsOn { get; set; } = true;
     /// <summary>Warn when a budget is this % used (50–99).</summary>

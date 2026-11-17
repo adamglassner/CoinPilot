@@ -145,6 +145,7 @@ public partial class MainWindow : Window
             "income" => new IncomeView(),
             "goals" => new GoalsView(),
             "receipts" => new ReceiptsView(),
+            "household" => new HouseholdView(),
             "reports" => new ReportsView(),
             "taxes" => new TaxesView(),
             "sync" => new SyncView(),

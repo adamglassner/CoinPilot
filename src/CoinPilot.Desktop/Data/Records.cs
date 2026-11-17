@@ -33,6 +33,9 @@ public sealed class Transaction : RecordBase
     /// <summary>Bank's id for an imported transaction (OFX FITID), used to skip duplicates.</summary>
     public string ImportId { get; set; } = "";
 
+    /// <summary>Shared household: who paid ("" when it isn't shared).</summary>
+    public string PaidBy { get; set; } = "";
+
     [JsonIgnore] public bool IsTransfer => TransferAccount.Length > 0;
     [JsonIgnore] public bool IsIncome => Amount > 0 && !IsTransfer;
     [JsonIgnore] public bool IsSpending => Amount < 0 && !IsTransfer;

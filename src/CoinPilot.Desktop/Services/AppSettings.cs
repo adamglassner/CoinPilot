@@ -31,6 +31,8 @@ public sealed class AppSettings
     public List<string> RemindersShown { get; set; } = [];
     /// <summary>Spending alerts already shown as notifications on this PC (their keys).</summary>
     public List<string> AlertsNotified { get; set; } = [];
+    /// <summary>Shared household: who usually pays on this PC (picked first in Add transaction).</summary>
+    public string LastPaidBy { get; set; } = "";
 
     /// <summary>The version What's new was last shown for (it opens once after each update).</summary>
     public string LastSeenVersion { get; set; } = "";

@@ -38,6 +38,8 @@ public sealed class TransactionDialog : DialogShell
     private bool _splitMode;
     private string _receipt;
     private string? _newReceiptSource;
+    private readonly WrapPanel? _paidBy;
+    private const string NotShared = "Not shared";
     private bool _removeReceipt;
 
     public Transaction Result => _target;
@@ -75,6 +77,13 @@ public sealed class TransactionDialog : DialogShell
         _account = AddField(_currentKind == Transfer ? "From account" : "Account", Chips(DataStore.AccountChoices(_target.Account), _target.Account));
         string to = existing?.TransferAccount is { Length: > 0 } t ? t : accounts.FirstOrDefault(a => !string.Equals(a, _target.Account, StringComparison.OrdinalIgnoreCase)) ?? accounts[0];
         _toAccount = AddField("To account", Chips(DataStore.AccountChoices(to), to));
+        if (DataStore.Prefs.Household)
+        {
+            var people = DataStore.Prefs.HouseholdPeople;
+            string who = existing != null ? (existing.PaidBy.Length == 0 ? NotShared : existing.PaidBy)
+                : people.Contains(App.Settings.LastPaidBy) ? App.Settings.LastPaidBy : people[0];
+            _paidBy = AddField("Paid by", Chips(people.Append(NotShared), who), hint: "Shared household: who paid. \"Not shared\" keeps it out of who-owes-whom.");
+        }
         _date = AddField("Date", DateBox(_target.Date), required: true);
         _tags = AddField("Tags", new TextBox { Text = string.Join(", ", _target.Tags) },
             hint: "Optional, separated by commas, like \"vacation, work\". Search and filters can use them.");
@@ -135,6 +144,7 @@ public sealed class TransactionDialog : DialogShell
         _splitToggle.Visibility = _currentKind == Spending ? Visibility.Visible : Visibility.Collapsed;
         _splitPanel.Visibility = _splitMode && _currentKind == Spending ? Visibility.Visible : Visibility.Collapsed;
         ShowField(_toAccount, transfer);
+        if (_paidBy != null) ShowField(_paidBy, !transfer);
         if (LogicalTreeHelper.GetParent(_account) is StackPanel p && p.Children[0] is TextBlock label)
         {
             label.Inlines.Clear();
@@ -429,6 +439,12 @@ public sealed class TransactionDialog : DialogShell
         _target.Tags = tags;
         _target.Note = _note.Text.Trim();
         _target.Receipt = _receipt;
+        if (_paidBy != null)
+        {
+            string who = Selected(_paidBy) ?? NotShared;
+            _target.PaidBy = _currentKind == Transfer || who == NotShared ? "" : who;
+            if (_target.PaidBy.Length > 0 && App.Settings.LastPaidBy != _target.PaidBy) { App.Settings.LastPaidBy = _target.PaidBy; App.Settings.Save(); }
+        }
 
         if (_remember.IsVisible && _remember.IsChecked == true && category != null)
             DataStore.Rules.Add(new CategoryRule { Contains = payee, Category = category });

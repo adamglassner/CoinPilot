@@ -132,6 +132,11 @@ public static class ModuleCatalog
         },
         new()
         {
+            Key = "household", Title = "Household", Glyph = "\uE716", IsComingSoon = false,
+            Tagline = "Shared spending: who paid what, and who owes whom.",
+        },
+        new()
+        {
             Key = "reports", Title = "Reports", Glyph = "", IsComingSoon = false,
             Tagline = "See where your money goes over time.",
             Description = "Charts of spending by category, income versus spending, and month-to-month trends. Pick any date range and export what you see.",

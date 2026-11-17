@@ -20,6 +20,10 @@ public sealed record MonthlyReport(DateTime Month, DateTime End, decimal Income,
     public int BudgetsOver => Budgets.Count(b => b.IsOver);
 }
 
+/// <summary>Shared household spending for a month: who paid what, each person's fair share, and how to settle up.</summary>
+public sealed record HouseholdMonth(List<string> People, Dictionary<string, decimal> Paid, Dictionary<string, decimal> Fair, decimal Total,
+    List<(string From, string To, decimal Amount)> Settle, List<Transaction> Transactions);
+
 public sealed record PlanLine(string Kind, string Label, decimal Amount, DateTime Date, string Category = "");
 
 public sealed record PaycheckPlan(IncomeSource Source, DateTime Payday, DateTime Next, decimal Amount, List<PlanLine> Lines, decimal Leftover)
@@ -216,6 +220,42 @@ public static class Insights
             DataStore.Goals.Items.SelectMany(g => g.History).Where(h => Budgeting.InMonth(h.Date, month)).Sum(h => h.Amount),
             DataStore.Debts.Items.SelectMany(d => d.Payments).Where(p => Budgeting.InMonth(p.Date, month)).Sum(p => p.Amount),
             NetWorthAt(month.AddDays(-1)), NetWorthAt(end), s.Transactions.Count);
+    }
+
+    // ----- Shared household -----
+
+    /// <summary>Shared spending in a budget month (transactions with a "Paid by"), split by the household's shares.</summary>
+    public static HouseholdMonth Household(DateTime anyDay)
+    {
+        var p = DataStore.Prefs;
+        var people = p.HouseholdPeople.ToList();
+        var month = Budgeting.MonthStart(anyDay);
+        decimal[] shares = people.Count == 2 ? [p.HouseholdShare, 100 - p.HouseholdShare] : people.Select(_ => 100m / Math.Max(1, people.Count)).ToArray();
+        var list = DataStore.Transactions.Items.Where(t => t.IsSpending && Budgeting.InMonth(t.Date, month) && people.Contains(t.PaidBy)).OrderByDescending(t => t.Date).ToList();
+        decimal total = -list.Sum(t => t.Amount);
+        var paid = people.ToDictionary(x => x, x => -list.Where(t => t.PaidBy == x).Sum(t => t.Amount));
+        var fair = new Dictionary<string, decimal>();
+        decimal given = 0;
+        for (int i = 0; i < people.Count; i++)
+        {
+            decimal f = i == people.Count - 1 ? total - given : Math.Round(total * shares[i] / 100, 2, MidpointRounding.AwayFromZero);
+            fair[people[i]] = f;
+            given += f;
+        }
+        var givers = people.Where(x => paid[x] < fair[x]).Select(x => (Name: x, Left: fair[x] - paid[x])).ToList();
+        var takers = people.Where(x => paid[x] > fair[x]).Select(x => (Name: x, Left: paid[x] - fair[x])).ToList();
+        var settle = new List<(string, string, decimal)>();
+        int gi = 0, ti = 0;
+        while (gi < givers.Count && ti < takers.Count)
+        {
+            decimal amount = Math.Min(givers[gi].Left, takers[ti].Left);
+            if (amount > 0) settle.Add((givers[gi].Name, takers[ti].Name, amount));
+            givers[gi] = (givers[gi].Name, givers[gi].Left - amount);
+            takers[ti] = (takers[ti].Name, takers[ti].Left - amount);
+            if (givers[gi].Left == 0) gi++;
+            if (takers[ti].Left == 0) ti++;
+        }
+        return new HouseholdMonth(people, paid, fair, total, settle, list);
     }
 
     // ----- This year vs last -----

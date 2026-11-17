@@ -33,7 +33,7 @@ public static class Screenshots
         window.Width = Width; window.Height = Height;
         await Idle();
 
-        string[] pages = ["dashboard", "forecast", "transactions", "budgets", "accounts", "debts", "bills", "income", "goals", "receipts", "reports", "taxes", "sync", "settings"];
+        string[] pages = ["dashboard", "forecast", "transactions", "budgets", "accounts", "debts", "bills", "income", "goals", "receipts", "household", "reports", "taxes", "sync", "settings"];
         int n = 1;
         foreach (var mode in new[] { AppTheme.Light, AppTheme.Dark })
         {
