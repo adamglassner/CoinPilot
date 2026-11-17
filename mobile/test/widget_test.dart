@@ -339,7 +339,10 @@ void main() {
     await tester.tap(find.text('Try it'));
     await tester.pumpAndSettle();
     expect(find.textContaining('New tires'), findsWidgets);
-    expect(find.textContaining('with your what-ifs', skipOffstage: false), findsOneWidget);
+    expect(find.byType(InputChip), findsOneWidget);
+    await tester.drag(list, const Offset(0, 4000)); // back to the top
+    await tester.pumpAndSettle();
+    expect(find.textContaining('with your what-ifs'), findsOneWidget);
     // Nothing was saved
     expect(store.forecast(DateTime.now()).endExpected, before);
     expect(tester.takeException(), isNull);

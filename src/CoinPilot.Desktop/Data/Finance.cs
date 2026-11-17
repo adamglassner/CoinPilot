@@ -406,6 +406,21 @@ public static class GoalMath
         return Math.Ceiling(g.Remaining / MonthsLeft(date, today) * 100) / 100;
     }
 
+    /// <summary>A sinking fund's cost was paid: what was set aside is used, and saving starts again for the next due date.</summary>
+    public static void UseFund(Goal g, DateTime paidOn)
+    {
+        if (!g.IsLinked && g.Saved > 0)
+        {
+            g.History.Add(new MoneyEntry { Date = paidOn.Date, Amount = -g.Saved });
+            g.Saved = 0;
+        }
+        var due = (g.TargetDate ?? paidOn).Date;
+        int months = FundSchedule.Months(g.Repeats);
+        for (int i = 0; i < 40 && due <= paidOn.Date; i++) due = due.AddMonths(months);
+        g.TargetDate = due;
+        DataStore.Goals.Update(g);
+    }
+
     /// <summary>Adds (positive) or takes out (negative) money and keeps the history.</summary>
     public static void AddMoney(Goal g, decimal amount, DateTime date)
     {

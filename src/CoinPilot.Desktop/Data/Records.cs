@@ -188,10 +188,25 @@ public sealed class Goal : RecordBase
     public string LinkedAccount { get; set; } = "";
     public List<MoneyEntry> History { get; set; } = [];
 
+    /// <summary>"Goal", or "Fund" for a sinking fund: money set aside every month for a cost that comes around again.</summary>
+    public string Kind { get; set; } = "Goal";
+    /// <summary>How often a sinking fund's cost comes around (<see cref="FundSchedule"/>).</summary>
+    public string Repeats { get; set; } = FundSchedule.Yearly;
+
+    [JsonIgnore] public bool IsFund { get => Kind == "Fund"; set => Kind = value ? "Fund" : "Goal"; }
     [JsonIgnore] public bool IsLinked => LinkedAccount.Length > 0;
     [JsonIgnore] public bool IsReached => Target > 0 && Saved >= Target;
     [JsonIgnore] public decimal Remaining => Math.Max(0, Target - Saved);
     [JsonIgnore] public double Fraction => Target <= 0 ? 0 : Math.Min(1.0, (double)(Saved / Target));
+}
+
+public static class FundSchedule
+{
+    public const string Yearly = "Yearly";
+    public const string TwiceAYear = "Every 6 months";
+    public const string Quarterly = "Every 3 months";
+    public static readonly string[] All = [Yearly, TwiceAYear, Quarterly];
+    public static int Months(string repeats) => repeats switch { TwiceAYear => 6, Quarterly => 3, _ => 12 };
 }
 
 /// <summary>A category you can pick for transactions. A subcategory has a <see cref="Parent"/>.</summary>

@@ -85,6 +85,15 @@ public sealed class Preferences : JsonFile
     /// <summary>Get started (the first-run setup) was finished or skipped.</summary>
     public bool SetupDone { get; set; }
 
+    /// <summary>Forecast: how far ahead ("Month", "30", "60" or "90" days).</summary>
+    public string ForecastHorizon { get; set; } = "Month";
+    /// <summary>Forecast: the balance to aim for (0 = just don't run out).</summary>
+    public decimal ForecastTarget { get; set; }
+    /// <summary>Forecast: start from savings accounts too.</summary>
+    public bool ForecastIncludeSavings { get; set; }
+    /// <summary>Forecast: take each month's goal and sinking fund savings out.</summary>
+    public bool ForecastCountSavings { get; set; } = true;
+
     public static Preferences Load(string folder) => Load<Preferences>(folder, "preferences");
 }
 
