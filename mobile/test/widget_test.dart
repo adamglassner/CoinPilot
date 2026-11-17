@@ -1,4 +1,5 @@
 import 'package:coinpilot/main.dart';
+import 'package:coinpilot/screens/more_screen.dart';
 import 'package:coinpilot/store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,7 +23,7 @@ void main() {
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     final store = Store.memory();
-    await tester.pumpWidget(CoinPilotApp(store: store));
+    await tester.pumpWidget(CoinPilotApp(store: store, showSetup: false));
     await tester.pumpAndSettle();
     expect(find.text('Welcome to WillowWallet'), findsOneWidget);
 
@@ -74,7 +75,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining(RegExp('Left to spend|Over budget')), findsOneWidget);
 
-    for (final name in ['Transactions', 'Budgets', 'Settings', 'Home']) {
+    for (final name in ['Transactions', 'Budgets', 'More', 'Home']) {
       await tester.tap(tab(name));
       await tester.pumpAndSettle();
     }
@@ -96,12 +97,109 @@ void main() {
     await settle(tester);
 
     // Settings: switch to dark and Ocean
-    await tester.tap(tab('Settings'));
+    await tester.tap(tab('More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Dark'));
     await tester.tap(find.text('Ocean'));
     await tester.pumpAndSettle();
     expect(store.settings.themeMode, 'dark');
     expect(store.settings.colorTheme, 'Ocean');
+  });
+
+  testWidgets('Get started on first launch sets up income, budgets and bills', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final store = Store.memory();
+    await tester.pumpWidget(CoinPilotApp(store: store));
+    await tester.pumpAndSettle();
+    expect(find.text('Set up step by step'), findsOneWidget);
+    await tester.tap(find.text('Set up step by step'));
+    await tester.pumpAndSettle();
+    expect(find.text('Your accounts'), findsOneWidget);
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Income and budgets'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '2000');
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Regular bills'), findsOneWidget);
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), '1450');
+    await tester.enterText(find.byType(TextField).at(1), '1');
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Loans and cards'), findsOneWidget);
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('All set'), findsOneWidget);
+    await tester.tap(find.text('Go to my dashboard'));
+    await tester.pumpAndSettle();
+    expect(store.prefs.setupDone, isTrue);
+    expect(store.incomeSources.single.amountCents, 200000);
+    expect(store.budgets, isNotEmpty);
+    expect(store.bills.single.name, 'Rent or mortgage');
+    expect(find.byTooltip('Add transaction'), findsOneWidget);
+    await settle(tester);
+  });
+
+  testWidgets('every page under More opens, and a bill can be paid', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final store = Store.memory()..loadSample();
+    await tester.pumpWidget(CoinPilotApp(store: store));
+    await tester.pumpAndSettle();
+    await tester.tap(tab('More'));
+    await tester.pumpAndSettle();
+    final more = find.byType(MoreScreen);
+    for (final title in ['Accounts', 'Bills', 'Income', 'Debts', 'Goals', 'Reports', 'Taxes', 'Import']) {
+      final tile = find.descendant(of: more, matching: find.text(title));
+      await tester.ensureVisible(tile.first);
+      await tester.pumpAndSettle();
+      await tester.tap(tile.first);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: title);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+    }
+
+    // Bills: pay Rent
+    await tester.tap(find.descendant(of: more, matching: find.text('Bills')).first);
+    await tester.pumpAndSettle();
+    final rent = store.bills.firstWhere((b) => b.name == 'Rent');
+    await tester.scrollUntilVisible(find.text('Rent'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Rent'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mark paid'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mark paid').last);
+    await tester.pumpAndSettle();
+    final after = store.bills.firstWhere((b) => b.id == rent.id);
+    expect(after.nextDue.isAfter(rent.nextDue), isTrue);
+    expect(store.transactions.any((t) => t.payee == 'Rent' && t.cents == -145000), isTrue);
+    await settle(tester);
+  });
+
+  testWidgets('skip a subscription suggestion for this month', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final store = Store.memory()..loadSample();
+    await tester.pumpWidget(CoinPilotApp(store: store, initialTab: 2));
+    await tester.pumpAndSettle();
+    final skip = find.byTooltip('Skip Netflix');
+    await tester.scrollUntilVisible(skip, 300, scrollable: find.byType(Scrollable).first);
+    await tester.tap(skip);
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Skip for'));
+    await tester.pumpAndSettle();
+    final m = store.budgetMonth(DateTime.now());
+    expect(store.prefs.skippedCuts, contains('netflix|${m.year}-${m.month.toString().padLeft(2, '0')}'));
+    expect(find.byTooltip('Skip Netflix'), findsNothing);
+    await settle(tester);
   });
 }

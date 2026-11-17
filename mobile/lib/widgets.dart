@@ -4,6 +4,7 @@ import 'categories.dart';
 import 'dates.dart';
 import 'models.dart';
 import 'money.dart';
+import 'store.dart';
 import 'theme.dart';
 
 /// The WillowWallet coin.
@@ -220,7 +221,7 @@ class TxnTile extends StatelessWidget {
   }
 }
 
-/// ‹ November 2026 ›
+/// ‹ November 2026 › (budget months: "Nov 15 – Dec 14" when they start mid-month)
 class MonthSwitcher extends StatelessWidget {
   const MonthSwitcher({super.key, required this.month, required this.onChanged});
   final DateTime month;
@@ -229,29 +230,28 @@ class MonthSwitcher extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.pal;
-    final isCurrent = sameMonth(month, DateTime.now());
+    final store = StoreScope.of(context);
+    final current = store.budgetMonth(DateTime.now());
+    final m = store.budgetMonth(month);
+    final isCurrent = sameDay(m, current);
     Widget arrow(IconData icon, String label, int step, bool enabled) => IconButton(
           tooltip: label,
-          onPressed: enabled ? () => onChanged(addMonths(month, step)) : null,
+          onPressed: enabled ? () => onChanged(DateTime(m.year, m.month + step, m.day)) : null,
           icon: Icon(icon, size: 22),
           color: p.text,
           disabledColor: p.border,
           visualDensity: VisualDensity.compact,
         );
+    final title = store.monthStartDay == 1
+        ? (isCurrent ? 'This month · ${shortMonths[m.month - 1]}' : monthLabel(m))
+        : (isCurrent ? 'This month · ${store.monthTitle(m)}' : store.monthTitle(m));
     return Container(
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: p.border),
-      ),
+      decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: p.border)),
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
         children: [
           arrow(Icons.chevron_left_rounded, 'Previous month', -1, true),
-          Expanded(
-            child: Text(isCurrent ? 'This month · ${shortMonths[month.month - 1]}' : monthLabel(month),
-                textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          ),
+          Expanded(child: Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
           arrow(Icons.chevron_right_rounded, 'Next month', 1, !isCurrent),
         ],
       ),

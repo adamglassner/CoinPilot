@@ -7,7 +7,13 @@ import '../store.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import '../sync/scope.dart';
+import '../finance.dart';
+import '../kit.dart';
+import 'bills_screen.dart';
 import 'budget_sheet.dart';
+import 'income_screen.dart';
+import 'more_screen.dart';
+import 'settings_screen.dart';
 import 'sync_screen.dart';
 import 'transaction_sheet.dart';
 
@@ -20,7 +26,8 @@ class HomeScreen extends StatelessWidget {
     final store = StoreScope.of(context);
     final p = context.pal;
     final now = DateTime.now();
-    final month = monthStart(now);
+    final month = store.budgetMonth(now);
+    final updater = UpdaterScope.of(context);
 
     return SafeArea(
       bottom: false,
@@ -45,6 +52,10 @@ class HomeScreen extends StatelessWidget {
           Text('${longDays[now.weekday - 1]}, ${monthNames[now.month - 1]} ${now.day}',
               style: TextStyle(fontSize: 14.5, color: p.muted)),
           const SizedBox(height: 16),
+          if (updater.available != null && !updater.dismissed) ...[
+            UpdateBanner(onOpen: () => pushPage(context, const SettingsScreen())),
+            const SizedBox(height: 12),
+          ],
           if (store.isEmpty) ...[
             _Welcome(),
           ] else ...[
@@ -66,6 +77,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ],
             ),
+            _ComingUp(now: now),
             _BudgetsPreview(month: month, onSeeAll: () => onNavigate(2)),
             const SectionTitle('Spending by week'),
             _WeekChart(month: month, now: now),
@@ -84,6 +96,62 @@ class HomeScreen extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Bills due in the next week and paydays that need an answer.
+class _ComingUp extends StatelessWidget {
+  const _ComingUp({required this.now});
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = StoreScope.of(context);
+    final p = context.pal;
+    final today = dayOnly(now);
+    final bills = store.billsDueWithin(7, today);
+    final asking = store.askingPaydays(today);
+    final paydays = [
+      for (final s in store.incomeSources.where((s) => !s.isDone && !s.needsAsking))
+        if (!dayOnly(s.nextDate).isAfter(today.add(const Duration(days: 7)))) s,
+    ];
+    if (bills.isEmpty && asking.isEmpty && paydays.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionTitle('Coming up', action: 'All bills', onAction: () => pushPage(context, const BillsScreen())),
+        ListPanel(
+          children: [
+            for (final s in asking)
+              RowTile(
+                leading: const IconBox(Icons.payments_outlined, size: 40),
+                title: 'Payday: ${s.name}',
+                subtitle: s.varies ? 'Tap to enter how much came in' : 'Tap to confirm it came in',
+                trailing: dayLabel(s.nextDate),
+                trailingColor: p.accent,
+                onTap: () => showPaydaySheet(context, asking),
+              ),
+            for (final b in bills.take(5))
+              RowTile(
+                leading: CategoryAvatar(b.category, size: 40),
+                title: b.name,
+                subtitle: '${Bills.statusText(b, today)}${b.autoPay ? ' · autopay' : ''}',
+                subtitleColor: Bills.status(b, today) == BillStatus.overdue ? p.danger : null,
+                trailing: Money.format(b.amountCents),
+                onTap: () => showBillActions(context, b),
+              ),
+            for (final s in paydays.take(2))
+              RowTile(
+                leading: IconBox(Icons.south_west_rounded, size: 40, color: p.positive),
+                title: s.name,
+                subtitle: 'Payday ${dayLabel(s.nextDate).toLowerCase()}',
+                trailing: Money.format(s.amountCents, signed: true),
+                trailingColor: p.positive,
+              ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -136,13 +204,13 @@ class _Hero extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
     final p = context.pal;
-    final spent = store.spentIn(month);
-    final budgeted = store.budgetedTotal;
-    final hasBudgets = budgeted > 0;
+    final hasBudgets = store.budgets.isNotEmpty;
+    final spent = hasBudgets ? store.spentInBudgets(month) : store.spentIn(month);
+    final budgeted = store.availableIn(month);
     final left = store.leftToSpend(month);
     final over = hasBudgets && left < 0;
-    final days = daysLeftInMonth(now);
-    final monthName = monthNames[month.month - 1];
+    final days = store.monthEnd(month).difference(dayOnly(now)).inDays + 1;
+    final monthName = store.monthName(month);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
@@ -249,7 +317,10 @@ class _BudgetsPreview extends StatelessWidget {
     final p = context.pal;
     final budgets = store.budgets.toList()
       ..sort((a, b) {
-        double f(Budget x) => x.limitCents <= 0 ? 0 : store.spentIn(month, category: x.category) / x.limitCents;
+        double f(Budget x) {
+          final a = store.availableFor(x, month);
+          return a <= 0 ? 0 : store.spentIn(month, category: x.category) / a;
+        }
         return f(b).compareTo(f(a));
       });
     if (budgets.isEmpty) return const SizedBox.shrink();
@@ -269,10 +340,11 @@ class _BudgetsPreview extends StatelessWidget {
             for (final b in budgets.take(4))
               Builder(builder: (context) {
                 final spent = store.spentIn(month, category: b.category);
-                final left = b.limitCents - spent;
+                final available = store.availableFor(b, month);
+                final left = available - spent;
                 return Panel(
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-                  onTap: () => showBudgetSheet(context, existing: b),
+                  onTap: () => showBudgetSheet(context, existing: b, month: month),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -282,8 +354,8 @@ class _BudgetsPreview extends StatelessWidget {
                       Text(left >= 0 ? '${Money.format(left, whole: true)} left' : '${Money.format(-left, whole: true)} over',
                           style: TextStyle(fontSize: 13, color: left >= 0 ? p.muted : p.danger, fontWeight: left >= 0 ? FontWeight.w400 : FontWeight.w600)),
                       ProgressBar(
-                        value: b.limitCents == 0 ? 0 : spent / b.limitCents,
-                        color: budgetColor(p, spent, b.limitCents),
+                        value: available <= 0 ? 0 : spent / available,
+                        color: budgetColor(p, spent, available),
                         height: 6,
                       ),
                     ],

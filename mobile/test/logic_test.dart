@@ -70,7 +70,7 @@ void main() {
       expect(s.inMonth(nov).length, 4);
       expect(s.inMonth(nov).first.payee, 'Chipotle'); // newest first
       expect(s.budgetedTotal, 60000);
-      expect(s.leftToSpend(nov), 60000 - 8750);
+      expect(s.leftToSpend(nov), 60000 - 7550); // only spending in budgeted categories counts
       expect(s.unbudgeted(nov).single.key, 'Dining out');
       expect(s.weeklySpending(nov), [5000, 2550, 0, 0, 1200]);
     });

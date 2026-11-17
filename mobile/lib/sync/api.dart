@@ -47,8 +47,8 @@ class Device {
   final bool isThisDevice;
 }
 
-class Account {
-  Account(this.username, this.records, this.fileBytes, this.devices);
+class ServerAccount {
+  ServerAccount(this.username, this.records, this.fileBytes, this.devices);
   final String username;
   final int records, fileBytes;
   final List<Device> devices;
@@ -90,9 +90,9 @@ class SyncApi {
   Future<void> logout() => _json('POST', 'api/v1/auth/logout', {});
   Future<void> signOutDevice(String id) => _json('DELETE', 'api/v1/account/devices/${Uri.encodeComponent(id)}');
 
-  Future<Account> account() async {
+  Future<ServerAccount> account() async {
     final j = await _json('GET', 'api/v1/account');
-    return Account(j['username'], j['records'] ?? 0, j['fileBytes'] ?? 0, [
+    return ServerAccount(j['username'], j['records'] ?? 0, j['fileBytes'] ?? 0, [
       for (final d in (j['devices'] as List? ?? const []))
         Device(d['id'], d['name'] ?? '', d['platform'] ?? '', d['appVersion'] ?? '', DateTime.tryParse(d['lastSeen'] ?? '') ?? DateTime.now(),
             d['isThisDevice'] == true),
@@ -116,6 +116,57 @@ class SyncApi {
       {for (final r in results) '${r['collection']}/${r['id']}': '${r['status']}'},
       [for (final r in results) if (r['status'] == 'stale') (r['seq'] as num?)?.toInt() ?? 0],
     );
+  }
+
+  static String _escape(String name) => name.split('/').map(Uri.encodeComponent).join('/');
+
+  /// Receipts and tax documents (already sealed with the data key).
+  Future<void> uploadFile(String name, List<int> sealedBytes) async {
+    final req = http.Request('PUT', base.resolve('api/v1/files/${_escape(name)}'))
+      ..headers['Content-Type'] = 'application/octet-stream'
+      ..bodyBytes = sealedBytes;
+    await _bytes(req);
+  }
+
+  /// The sealed file, or null when the server doesn't have it.
+  Future<Uint8List?> downloadFile(String name) async {
+    try {
+      return await _bytes(http.Request('GET', base.resolve('api/v1/files/${_escape(name)}')));
+    } on SyncException catch (e) {
+      if (e.status == 404) return null;
+      rethrow;
+    }
+  }
+
+  Future<void> deleteFile(String name) async {
+    try {
+      await _bytes(http.Request('DELETE', base.resolve('api/v1/files/${_escape(name)}')));
+    } on SyncException catch (e) {
+      if (e.status != 404) rethrow;
+    }
+  }
+
+  Future<Uint8List> _bytes(http.Request req) async {
+    if (token != null) req.headers['Authorization'] = 'Bearer $token';
+    http.Response res;
+    try {
+      res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(minutes: 3)));
+    } on TimeoutException {
+      throw SyncException('offline', 'The server didn\'t answer in time.');
+    } on SocketException catch (e) {
+      throw SyncException('offline', 'Couldn\'t reach the server (${e.osError?.message ?? e.message}).');
+    } on http.ClientException catch (e) {
+      throw SyncException('offline', 'Couldn\'t reach the server (${e.message}).');
+    }
+    if (res.statusCode >= 200 && res.statusCode < 300) return res.bodyBytes;
+    var message = 'The server said ${res.statusCode}.';
+    var error = 'error';
+    try {
+      final j = jsonDecode(res.body) as Map<String, dynamic>;
+      message = j['message'] as String? ?? message;
+      error = j['error'] as String? ?? error;
+    } catch (_) {}
+    throw SyncException(error, message, status: res.statusCode);
   }
 
   Future<Map<String, dynamic>> _json(String method, String path, [Object? body]) async {

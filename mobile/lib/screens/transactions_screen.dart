@@ -6,7 +6,12 @@ import '../money.dart';
 import '../store.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../kit.dart';
+import 'import_screen.dart';
 import 'transaction_sheet.dart';
+
+/// Opens a transaction to edit it.
+Future<void> openTransaction(BuildContext context, Txn t) => showTransactionSheet(context, existing: t);
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -16,7 +21,8 @@ class TransactionsScreen extends StatefulWidget {
 }
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
-  DateTime _month = monthStart(DateTime.now());
+  DateTime? _month;
+  String _account = '';
   final _search = TextEditingController();
   int _filter = 0; // all, spending, income
 
@@ -29,12 +35,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   bool _matches(Txn t) {
     if (_filter == 1 && !t.isSpending) return false;
     if (_filter == 2 && !t.isIncome) return false;
+    if (_filter == 3 && !t.isTransfer) return false;
+    if (_account.isNotEmpty && t.account != _account && t.transferAccount != _account) return false;
     final q = _search.text.trim().toLowerCase();
     if (q.isEmpty) return true;
     return t.payee.toLowerCase().contains(q) ||
         t.category.toLowerCase().contains(q) ||
         t.account.toLowerCase().contains(q) ||
         t.note.toLowerCase().contains(q) ||
+        t.tags.any((x) => x.toLowerCase().contains(q)) ||
         Money.editable(t.cents).contains(q);
   }
 
@@ -48,10 +57,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Widget build(BuildContext context) {
     final store = StoreScope.of(context);
     final p = context.pal;
-    final all = store.inMonth(_month);
+    final month = _month ?? store.budgetMonth(DateTime.now());
+    final all = store.inMonth(month);
     final list = all.where(_matches).toList();
-    final spent = store.spentIn(_month);
-    final income = store.incomeIn(_month);
+    final spent = store.spentIn(month);
+    final income = store.incomeIn(month);
+    final accounts = {for (final t in all) t.account, for (final t in all) if (t.isTransfer) t.transferAccount}.where((a) => a.isNotEmpty).toList()..sort();
 
     // Group by day
     final groups = <List<Txn>>[];
@@ -68,8 +79,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
             sliver: SliverList.list(
               children: [
-                ScreenHeader(title: 'Transactions', subtitle: '${all.length} in ${monthLabel(_month)}'),
-                MonthSwitcher(month: _month, onChanged: (m) => setState(() => _month = m)),
+                ScreenHeader(
+                  title: 'Transactions',
+                  subtitle: '${all.length} in ${store.monthTitle(month)}',
+                  trailing: IconButton.filled(
+                    tooltip: 'Import a bank statement',
+                    onPressed: () => pushPage(context, const ImportScreen()),
+                    style: IconButton.styleFrom(backgroundColor: p.accentSoft, foregroundColor: p.accent, fixedSize: const Size(46, 46)),
+                    icon: const Icon(Icons.file_download_outlined),
+                  ),
+                ),
+                MonthSwitcher(month: month, onChanged: (m) => setState(() => _month = store.budgetMonth(m))),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -105,13 +125,35 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final (i, label) in const ['All', 'Spending', 'Income'].indexed)
-                      ChoicePill(label: label, selected: _filter == i, onTap: () => setState(() => _filter = i)),
-                  ],
+                SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      for (final (i, label) in const ['All', 'Spending', 'Income', 'Transfers'].indexed)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoicePill(label: label, selected: _filter == i, onTap: () => setState(() => _filter = i)),
+                        ),
+                      if (accounts.length > 1)
+                        PopupMenuButton<String>(
+                          tooltip: 'Account',
+                          onSelected: (v) => setState(() => _account = v),
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(value: '', child: Text('All accounts')),
+                            for (final a in accounts) PopupMenuItem(value: a, child: Text(a)),
+                          ],
+                          child: IgnorePointer(
+                            child: ChoicePill(
+                              label: _account.isEmpty ? 'All accounts' : _account,
+                              icon: Icons.account_balance_wallet_outlined,
+                              selected: _account.isNotEmpty,
+                              onTap: () {},
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 6),
               ],
@@ -124,7 +166,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 child: all.isEmpty
                     ? EmptyState(
                         icon: Icons.receipt_long_outlined,
-                        title: 'Nothing in ${monthNames[_month.month - 1]}',
+                        title: 'Nothing in ${store.monthName(month)}',
                         text: 'Tap + to add what you spend or earn. WillowWallet fills in the category next time.',
                       )
                     : EmptyState(
@@ -221,7 +263,7 @@ class _DayGroup extends StatelessWidget {
                       ],
                     ),
                   ),
-                  child: TxnTile(t, onTap: () => showTransactionSheet(context, existing: t)),
+                  child: TxnTile(t, onTap: () => openTransaction(context, t)),
                 ),
               ],
             ],

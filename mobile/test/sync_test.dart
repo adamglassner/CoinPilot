@@ -180,7 +180,7 @@ void main() {
       expect(await b.syncNow(manual: true), isTrue, reason: b.problem);
       final t = find(storeB, 'pc-split-1');
       expect(t.isSplit, isTrue);
-      expect(storeB.accounts, contains('Visa'));
+      expect(storeB.accountNames(), contains('Visa'));
 
       // Editing the note on the phone keeps the splits and tags for the PC
       storeB.saveTxn(Txn.fromJson({...t.toJson(), 'Note': 'from the phone', 'UpdatedAt': DateTime.now().toUtc().toIso8601String()}));

@@ -624,7 +624,7 @@ class _Connected extends StatefulWidget {
 
 class _ConnectedState extends State<_Connected> {
   late final SyncEngine _sync = SyncScope.read(context);
-  Account? _account;
+  ServerAccount? _account;
   String? _accountProblem;
 
   @override

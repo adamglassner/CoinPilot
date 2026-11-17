@@ -201,18 +201,27 @@ public partial class BudgetsView : UserControl
     /// <summary>"Skip ▾": for this month, or don't suggest it again.</summary>
     private Button SkipButton(CutSuggestion cut, DateTime month)
     {
-        var button = PageKit.Link("Skip \u25BE", () => { });
+        var menu = new ContextMenu { Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        Button? button = null;
+        // PageKit.Link marks the click handled, so the menu has to open from its own action.
+        button = PageKit.Link("Skip \u25BE", () => { menu.PlacementTarget = button; menu.IsOpen = true; });
         System.Windows.Automation.AutomationProperties.SetName(button, $"Skip {cut.Sub.Name}");
-        var menu = new ContextMenu { PlacementTarget = button, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
         var month1 = new MenuItem { Header = $"Skip for {Money.MonthName(month)}" };
-        month1.Click += (_, _) => { SubscriptionCuts.Skip(cut.Key, month); Toaster.Show($"Skipped {cut.Sub.Name} for {Money.MonthName(month)}."); Refresh(); };
+        month1.Click += (_, _) => SkipCut(cut, month);
         var forever = new MenuItem { Header = "Don't suggest it again" };
-        forever.Click += (_, _) => { SubscriptionCuts.Skip(cut.Key, null); Toaster.Show($"WillowWallet won't suggest cutting {cut.Sub.Name} again."); Refresh(); };
+        forever.Click += (_, _) => SkipCut(cut, null);
         menu.Items.Add(month1);
         menu.Items.Add(forever);
         button.ContextMenu = menu;
-        button.Click += (_, _) => menu.IsOpen = true;
         return button;
+    }
+
+    /// <summary>Skips a suggestion for one budget month, or for good (<paramref name="month"/> null).</summary>
+    internal void SkipCut(CutSuggestion cut, DateTime? month)
+    {
+        SubscriptionCuts.Skip(cut.Key, month);
+        Toaster.Show(month is DateTime m ? $"Skipped {cut.Sub.Name} for {Money.MonthName(m)}." : $"WillowWallet won't suggest cutting {cut.Sub.Name} again.");
+        Refresh();
     }
 
     private void Canceled(CutSuggestion cut)

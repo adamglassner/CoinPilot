@@ -58,6 +58,26 @@ class Txn {
   bool get isSplit => (extra['Splits'] as List? ?? const []).isNotEmpty;
   String get transferAccount => extra['TransferAccount'] as String? ?? '';
   List<String> get tags => [for (final t in (extra['Tags'] as List? ?? const [])) '$t'];
+  /// File name of an attached receipt photo (kept in the app's receipts folder, synced like on the PC).
+  String get receipt => extra['Receipt'] as String? ?? '';
+  String get importId => extra['ImportId'] as String? ?? '';
+  /// The split pieces as (category, cents), always positive.
+  List<(String, int)> get splits => [
+        for (final s in (extra['Splits'] as List? ?? const []).whereType<Map>()) ('${s['Category'] ?? ''}', _cents(s['Amount']).abs()),
+      ];
+
+  /// A copy with other fields changed (anything not given stays the same). Extra fields can be set or removed.
+  Txn copyWith({String? payee, String? category, String? account, DateTime? date, int? cents, String? note, Map<String, dynamic>? extra}) => Txn(
+        id: id,
+        payee: payee ?? this.payee,
+        category: category ?? this.category,
+        account: account ?? this.account,
+        date: date ?? this.date,
+        cents: cents ?? this.cents,
+        note: note ?? this.note,
+        createdAt: createdAt,
+        extra: {...this.extra, ...?extra},
+      );
 
   /// Category pieces with signed cents: one normally, one per split, none for transfers (same as the PC).
   Iterable<(String, int)> parts() sync* {
@@ -121,6 +141,27 @@ class Budget {
   /// Rollover, one-month amounts and start month from the PC.
   final Map<String, dynamic> extra;
 
+  /// Leftover money (or overspending) carries into the next month.
+  bool get rollover => extra['Rollover'] == true;
+  /// Amounts for single months, keyed by the month's start date ("yyyy-MM-dd").
+  Map<String, int> get overrides => {
+        for (final e in ((extra['Overrides'] as Map?) ?? const {}).entries) '${e.key}': _cents(e.value),
+      };
+  DateTime? get startMonth => extra['StartMonth'] is String ? DateTime.tryParse(extra['StartMonth'] as String) : null;
+
+  Budget copyWith({int? limitCents, bool? rollover, Map<String, int>? overrides, String? category}) => Budget(
+        id: id,
+        category: category ?? this.category,
+        limitCents: limitCents ?? this.limitCents,
+        createdAt: createdAt,
+        extra: {
+          ...extra,
+          if (rollover != null) 'Rollover': rollover,
+          if (overrides != null) 'Overrides': {for (final e in overrides.entries) e.key: e.value / 100},
+          if (rollover == true && extra['StartMonth'] == null) 'StartMonth': _isoDay(DateTime(DateTime.now().year, DateTime.now().month)),
+        },
+      );
+
   Budget touched() => Budget.fromJson({...toJson(), 'UpdatedAt': DateTime.now().toUtc().toIso8601String()});
 
   static const _known = {'Id', 'Category', 'MonthlyLimit', 'CreatedAt', 'UpdatedAt'};
@@ -145,16 +186,46 @@ class Budget {
       );
 }
 
+/// Settings for this phone only (not synced).
 class AppSettings {
   /// "system", "light" or "dark"
   String themeMode = 'system';
   String colorTheme = 'Pine';
   String currency = 'USD';
 
-  Map<String, dynamic> toJson() => {'ThemeMode': themeMode, 'ColorTheme': colorTheme, 'Currency': currency};
+  /// App lock: "" (off), "PIN" or "Password", with a salted PBKDF2 hash of it.
+  String lockKind = '';
+  String lockSalt = '';
+  String lockHash = '';
+  /// Minutes away before the app asks again (0 = every time it opens).
+  int autoLockMinutes = 1;
+
+  /// Updates: when GitHub was last checked, and a version you chose to skip.
+  String lastUpdateCheck = '';
+  String skippedVersion = '';
+
+  bool get isLocked => lockKind.isNotEmpty && lockHash.isNotEmpty;
+
+  Map<String, dynamic> toJson() => {
+        'ThemeMode': themeMode,
+        'ColorTheme': colorTheme,
+        'Currency': currency,
+        'LockKind': lockKind,
+        'LockSalt': lockSalt,
+        'LockHash': lockHash,
+        'AutoLockMinutes': autoLockMinutes,
+        'LastUpdateCheck': lastUpdateCheck,
+        'SkippedVersion': skippedVersion,
+      };
 
   static AppSettings fromJson(Map<String, dynamic> j) => AppSettings()
     ..themeMode = j['ThemeMode'] as String? ?? 'system'
     ..colorTheme = j['ColorTheme'] as String? ?? 'Pine'
-    ..currency = j['Currency'] as String? ?? 'USD';
+    ..currency = j['Currency'] as String? ?? 'USD'
+    ..lockKind = j['LockKind'] as String? ?? ''
+    ..lockSalt = j['LockSalt'] as String? ?? ''
+    ..lockHash = j['LockHash'] as String? ?? ''
+    ..autoLockMinutes = (j['AutoLockMinutes'] as num?)?.toInt() ?? 1
+    ..lastUpdateCheck = j['LastUpdateCheck'] as String? ?? ''
+    ..skippedVersion = j['SkippedVersion'] as String? ?? '';
 }

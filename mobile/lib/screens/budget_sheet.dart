@@ -1,25 +1,23 @@
 import 'package:flutter/material.dart';
 
 import '../categories.dart';
+import '../finance.dart';
+import '../kit.dart';
 import '../models.dart';
 import '../money.dart';
 import '../store.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
-Future<void> showBudgetSheet(BuildContext context, {Budget? existing, String? category}) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => BudgetSheet(existing: existing, category: category),
-    );
+Future<void> showBudgetSheet(BuildContext context, {Budget? existing, String? category, DateTime? month}) =>
+    showSheet<void>(context, BudgetSheet(existing: existing, category: category, month: month));
 
-/// Create or change a monthly budget.
+/// Create or change a monthly budget (with rollover, or a different amount for one month).
 class BudgetSheet extends StatefulWidget {
-  const BudgetSheet({super.key, this.existing, this.category});
+  const BudgetSheet({super.key, this.existing, this.category, this.month});
   final Budget? existing;
   final String? category;
+  final DateTime? month;
 
   @override
   State<BudgetSheet> createState() => _BudgetSheetState();
@@ -27,17 +25,30 @@ class BudgetSheet extends StatefulWidget {
 
 class _BudgetSheetState extends State<BudgetSheet> {
   late String _category = widget.existing?.category ?? widget.category ?? '';
-  late final _amount = TextEditingController(
-      text: widget.existing == null ? '' : Money.editable(widget.existing!.limitCents));
+  late final _amount = TextEditingController(text: widget.existing == null ? '' : Money.editable(widget.existing!.limitCents));
+  late final _monthAmount = TextEditingController();
+  late bool _rollover = widget.existing?.rollover ?? false;
+  bool _oneMonth = false;
   String? _error;
   bool _filled = false;
+
+  DateTime get _month => widget.month ?? DateTime.now();
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_filled && widget.existing == null && _category.isNotEmpty) {
-      _filled = true;
-      final s = StoreScope.read(context).suggestedBudget(_category);
+    if (_filled) return;
+    _filled = true;
+    final store = StoreScope.read(context);
+    final b = widget.existing;
+    if (b != null) {
+      final m = store.limitFor(b, _month);
+      if (m != b.limitCents) {
+        _oneMonth = true;
+        _monthAmount.text = Money.editable(m);
+      }
+    } else if (_category.isNotEmpty) {
+      final s = store.suggestedBudget(_category);
       if (s > 0) _amount.text = Money.editable(s);
     }
   }
@@ -45,6 +56,7 @@ class _BudgetSheetState extends State<BudgetSheet> {
   @override
   void dispose() {
     _amount.dispose();
+    _monthAmount.dispose();
     super.dispose();
   }
 
@@ -58,28 +70,28 @@ class _BudgetSheetState extends State<BudgetSheet> {
 
   void _save() {
     final cents = Money.parse(_amount.text);
-    if (_category.isEmpty) {
-      setState(() => _error = 'Pick a category.');
-      return;
-    }
-    if (cents == null || cents <= 0) {
-      setState(() => _error = 'Enter how much you want to spend each month.');
-      return;
+    if (_category.isEmpty) return setState(() => _error = 'Pick a category.');
+    if (cents == null || cents <= 0) return setState(() => _error = 'Enter how much you want to spend each month.');
+    int? monthCents;
+    if (_oneMonth) {
+      monthCents = Money.parse(_monthAmount.text);
+      if (monthCents == null || monthCents < 0) return setState(() => _error = 'Enter the amount for ${StoreScope.read(context).monthName(_month)}.');
     }
     final store = StoreScope.read(context);
     final old = widget.existing ?? store.budgetFor(_category);
-    store.saveBudget(Budget(id: old?.id, category: _category, limitCents: cents, createdAt: old?.createdAt, extra: old?.extra));
+    var b = old == null ? Budget(category: _category, limitCents: cents) : old.copyWith(limitCents: cents);
+    b = b.copyWith(rollover: _rollover);
+    store.saveBudget(b);
+    final saved = store.budgetFor(_category)!;
+    store.setMonthAmount(saved, _month, _oneMonth ? monthCents : null);
     Navigator.pop(context);
-    toast(context, '$_category: ${Money.format(cents, whole: true)} a month');
+    toast(context, _oneMonth ? '$_category: ${Money.format(monthCents!, whole: true)} for ${store.monthName(_month)}' : '$_category: ${Money.format(cents, whole: true)} a month');
   }
 
   Future<void> _delete() async {
     final b = widget.existing!;
     final ok = await confirm(context,
-        title: 'Delete this budget?',
-        message: 'Your ${b.category} transactions stay. Only the monthly limit is removed.',
-        confirmText: 'Delete',
-        danger: true);
+        title: 'Delete this budget?', message: 'Your ${b.category} transactions stay. Only the monthly limit is removed.', confirmText: 'Delete', danger: true);
     if (!ok || !mounted) return;
     final store = StoreScope.read(context);
     store.deleteBudget(b.id);
@@ -94,79 +106,57 @@ class _BudgetSheetState extends State<BudgetSheet> {
     final editing = widget.existing != null;
     final available = store.categoriesFor(income: false).where((c) => c == _category || store.budgetFor(c) == null).toList();
     final suggestion = _category.isEmpty ? 0 : store.suggestedBudget(_category);
+    final carry = editing ? store.carryFor(widget.existing!, _month) : 0;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                if (editing) ...[CategoryAvatar(_category, size: 44), const SizedBox(width: 12)],
-                Expanded(child: Text(editing ? _category : 'New budget', style: display(24, p.text))),
-                if (editing)
-                  IconButton(
-                      tooltip: 'Delete', onPressed: _delete, icon: Icon(Icons.delete_outline_rounded, color: p.danger)),
-                IconButton(
-                    tooltip: 'Close',
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.close_rounded, color: p.muted)),
-              ],
-            ),
-            if (!editing) ...[
-              const SizedBox(height: 4),
-              Text('A monthly limit for one kind of spending.', style: TextStyle(fontSize: 14.5, color: p.muted)),
-              const FieldLabel('Category'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final c in available)
-                    ChoicePill(label: c, icon: categoryIcon(c), selected: c == _category, onTap: () => _pick(c)),
-                ],
+    return SheetFrame(
+      title: editing ? _category : 'New budget',
+      leading: editing ? CategoryAvatar(_category, size: 44) : null,
+      subtitle: editing ? null : 'A monthly limit for one kind of spending.',
+      onDelete: editing ? _delete : null,
+      error: _error,
+      primary: editing ? 'Save budget' : 'Create budget',
+      onPrimary: _save,
+      children: [
+        if (!editing) ...[
+          const FieldLabel('Category'),
+          Choices(options: available, selected: _category, icons: categoryIcon, onChanged: _pick),
+        ],
+        const FieldLabel('Each month'),
+        MoneyField(controller: _amount, autofocus: editing, hint: '0'),
+        if (suggestion > 0) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.auto_awesome_rounded, size: 16, color: p.accent),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text('You\'ve spent about ${Money.format(suggestion, whole: true)} a month here lately.', style: TextStyle(fontSize: 13.5, color: p.muted)),
               ),
             ],
-            const FieldLabel('Each month'),
-            TextField(
-              controller: _amount,
-              autofocus: editing,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: display(30, p.text),
-              decoration: InputDecoration(
-                hintText: '0',
-                hintStyle: display(30, p.border),
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.only(left: 18, right: 6),
-                  child: Text(Money.currency.symbol, style: display(30, p.muted)),
-                ),
-                prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              ),
-            ),
-            if (suggestion > 0) ...[
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Icon(Icons.auto_awesome_rounded, size: 16, color: p.accent),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text('You\'ve spent about ${Money.format(suggestion, whole: true)} a month here lately.',
-                        style: TextStyle(fontSize: 13.5, color: p.muted)),
-                  ),
-                ],
-              ),
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: 14),
-              Text(_error!, style: TextStyle(color: p.danger, fontWeight: FontWeight.w600)),
-            ],
-            const SizedBox(height: 24),
-            FilledButton(onPressed: _save, child: Text(editing ? 'Save budget' : 'Create budget')),
-          ],
+          ),
+        ],
+        const SizedBox(height: 12),
+        SwitchRow(
+          title: 'Roll over',
+          subtitle: 'Money left at the end of a month carries into the next (and overspending comes out of it).'
+              '${carry != 0 ? ' ${carry > 0 ? '+' : '−'}${Money.format(carry.abs(), whole: true)} carried into ${store.monthName(_month)}.' : ''}',
+          value: _rollover,
+          onChanged: (v) => setState(() => _rollover = v),
         ),
-      ),
+        SwitchRow(
+          title: 'Different amount for ${store.monthName(_month)}',
+          subtitle: 'Just this month, like a holiday month for Gifts.',
+          value: _oneMonth,
+          onChanged: (v) => setState(() {
+            _oneMonth = v;
+            if (v && _monthAmount.text.isEmpty) _monthAmount.text = _amount.text;
+          }),
+        ),
+        if (_oneMonth) ...[
+          const SizedBox(height: 6),
+          MoneyField(controller: _monthAmount, size: 24),
+        ],
+      ],
     );
   }
 }

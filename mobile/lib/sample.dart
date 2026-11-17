@@ -1,11 +1,14 @@
 import 'dart:math';
 
 import 'models.dart';
+import 'records.dart';
 
 class SampleData {
-  SampleData(this.transactions, this.budgets);
+  SampleData(this.transactions, this.budgets, this.records);
   final List<Txn> transactions;
   final List<Budget> budgets;
+  /// Accounts, bills, debts, goals and income.
+  final List<Rec> records;
 }
 
 /// About three months of an ordinary household's money, for trying WillowWallet out (and screenshots).
@@ -41,6 +44,13 @@ SampleData sampleData(DateTime now) {
     if (d.day == 22) t(d, 'Comcast Xfinity', 'Utilities', 'Checking', -7999);
     if (d.day == 9) t(d, 'Netflix', 'Subscriptions', 'Credit card', -1549);
     if (d.day == 14) t(d, 'Spotify', 'Subscriptions', 'Credit card', -1099);
+    if (d.day == 21) t(d, 'Hulu', 'Subscriptions', 'Credit card', -1799);
+    if (d.day == 26) t(d, 'DISNEY PLUS 8842', 'Subscriptions', 'Credit card', d.isBefore(DateTime(today.year, today.month - 1, 1)) ? -1099 : -1399);
+    if (d.day == 3) t(d, 'Navient Student Loan', 'Debt payments', 'Checking', -30000);
+    if (d.day == 20) {
+      tx.add(Txn(payee: 'Monthly savings', category: 'Transfer', account: 'Checking', date: d, cents: -40000,
+          createdAt: d, updatedAt: d, extra: {'TransferAccount': 'High-Yield Savings'}));
+    }
     if (d.day == 5) t(d, 'Planet Fitness', 'Health', 'Credit card', -2499);
     if (rng.nextDouble() < 0.08) {
       t(d, const ['Target', 'Amazon', 'Best Buy', 'Home Depot'][rng.nextInt(4)], 'Shopping', 'Credit card', -r(18, 120));
@@ -62,5 +72,35 @@ SampleData sampleData(DateTime now) {
     Budget(category: 'Subscriptions', limitCents: 4000),
     Budget(category: 'Entertainment', limitCents: 10000),
   ];
-  return SampleData(tx, budgets);
+  DateTime next(int day) {
+    final d = DateTime(today.year, today.month, day);
+    return d.isAfter(today) ? d : DateTime(today.year, today.month + 1, day);
+  }
+
+  final loan = Debt.create(name: 'Student loan', type: 'Student loan', balanceCents: 1842000, rate: 5.5, minimumCents: 30000)
+    ..originalCents = 2400000;
+  final card = Debt.create(name: 'Visa Signature', type: DebtTypes.creditCard, balanceCents: 214000, rate: 22.99, minimumCents: 6500);
+  final records = <Rec>[
+    Account.create(name: 'Checking', type: AccountTypes.checking, institution: 'Chase', startingCents: 284512, balanceDate: start.subtract(const Duration(days: 1))),
+    Account.create(name: 'High-Yield Savings', type: AccountTypes.savings, institution: 'Ally', startingCents: 640000, balanceDate: start.subtract(const Duration(days: 1))),
+    Account.create(name: 'Credit card', type: AccountTypes.creditCard, institution: 'Chase', startingCents: -38240, balanceDate: start.subtract(const Duration(days: 1))),
+    Account.create(name: 'Venmo', type: AccountTypes.paymentApp, institution: 'PayPal', startingCents: 4200, balanceDate: start),
+    loan,
+    card,
+    Bill.create(name: 'Rent', amountCents: 145000, nextDue: next(1), category: 'Housing', account: 'Checking'),
+    Bill.create(name: 'Duke Energy', amountCents: 13000, nextDue: next(18), category: 'Utilities', account: 'Checking'),
+    Bill.create(name: 'Comcast Xfinity', amountCents: 7999, nextDue: next(22), category: 'Utilities', account: 'Checking', autoPay: true),
+    Bill.create(name: 'Netflix', amountCents: 1549, nextDue: next(9), category: 'Subscriptions', account: 'Credit card', autoPay: true),
+    Bill.create(name: 'Amazon Prime', amountCents: 13900, nextDue: today.add(const Duration(days: 19)), repeats: BillSchedule.yearly, category: 'Subscriptions', account: 'Credit card', autoPay: true),
+    Bill.create(name: 'Car insurance', amountCents: 61800, nextDue: today.add(const Duration(days: 5)), repeats: BillSchedule.quarterly, category: 'Transportation', account: 'Checking'),
+    Bill.create(name: 'Water & sewer', amountCents: 4620, nextDue: today.subtract(const Duration(days: 2)), category: 'Utilities', account: 'Checking'),
+    Bill.create(name: 'Student loan', amountCents: 30000, nextDue: next(3), category: 'Debt payments', account: 'Checking', debtId: loan.id),
+    Goal.create(name: 'Emergency fund', targetCents: 1200000, linkedAccount: 'High-Yield Savings')..note = 'Six months of expenses',
+    Goal.create(name: 'Hawaii trip', targetCents: 450000, targetDate: DateTime(today.year + 1, 6, 1))..savedCents = 182000,
+    IncomeSource.create(name: 'Paycheck · Acme Corp', amountCents: 218640, repeats: IncomeSchedule.twiceAMonth, nextDate: next(today.day < 15 ? 15 : 1), account: 'Checking')
+      ..day1 = 1
+      ..day2 = 15,
+    IncomeSource.create(name: 'DoorDash', varies: true, repeats: IncomeSchedule.weekly, nextDate: today.add(const Duration(days: 3)), category: 'Side income', account: 'Checking'),
+  ];
+  return SampleData(tx, budgets, records);
 }

@@ -61,7 +61,9 @@ jobs:
           # Sync needs the network; home servers are often plain http://192.168.x.x:8484
           grep -q 'android.permission.INTERNET' $m || sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' $m
           sed -i 's|<application|<application android:usesCleartextTraffic="true"|' $m
-          grep -nE 'android:label|INTERNET|Cleartext' $m
+          # In-app updates hand the downloaded APK to Android's installer
+          grep -q 'REQUEST_INSTALL_PACKAGES' $m || sed -i 's|<uses-permission android:name="android.permission.INTERNET"/>|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>|' $m
+          grep -nE 'android:label|INTERNET|INSTALL_PACKAGES|Cleartext' $m
           git status --short .
 
       - run: flutter pub get
@@ -81,7 +83,7 @@ jobs:
           echo "WW_TEST_ADMIN_PASSWORD=android-test-admin" >> "$GITHUB_ENV"
 
       - name: Tests
-        run: flutter test test/logic_test.dart test/widget_test.dart test/sync_test.dart
+        run: flutter test test/logic_test.dart test/finance_test.dart test/widget_test.dart test/sync_test.dart
 
       - name: Screenshots
         run: |

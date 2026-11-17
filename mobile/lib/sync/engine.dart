@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
@@ -56,12 +57,27 @@ class SyncEngine extends ChangeNotifier {
     _api = _newApi(serverUrl)..token = token;
     if (token == null || key == null) return _set(SyncStatus.signedOut, 'Sign in again to keep syncing.');
     _key = base64.decode(key);
+    _upgrade();
     _set(SyncStatus.idle);
     if (automatic) {
       _every?.cancel();
       _every = Timer.periodic(const Duration(seconds: 60), (_) => syncNow());
       syncSoon();
     }
+  }
+
+  /// Version 0.3 keeps every kind of record (0.2 kept only transactions and budgets, and read accounts and
+  /// categories): fetch everything again once, without sending back what came from the server.
+  void _upgrade() {
+    if ((_s['schema'] as int? ?? 0) >= 2) return;
+    for (final c in ['accounts', 'categories']) {
+      for (final (id, ms) in store.syncEntries(c)) {
+        _synced['$c/$id'] = ms;
+      }
+    }
+    _s['lastSeq'] = 0;
+    _s['schema'] = 2;
+    store.saveSyncState();
   }
 
   /// A change was made here: sync in a few seconds (changes made close together go in one trip).
@@ -137,7 +153,8 @@ class SyncEngine extends ChangeNotifier {
       ..['serverName'] = info.name
       ..['username'] = signedIn.session.username
       ..['token'] = signedIn.session.token
-      ..['key'] = base64.encode(signedIn.dataKey);
+      ..['key'] = base64.encode(signedIn.dataKey)
+      ..['schema'] = 2;
     store.saveSyncState();
     start();
   }
@@ -160,7 +177,7 @@ class SyncEngine extends ChangeNotifier {
     return SyncAccount.changePassword(_api!, username, current, next, _key!, iterations: iterations);
   }
 
-  Future<Account> account() {
+  Future<ServerAccount> account() {
     if (!isConnected) throw SyncException('unauthorized', 'Sign in first.');
     return _api!.account();
   }
@@ -206,6 +223,7 @@ class SyncEngine extends ChangeNotifier {
       _set(SyncStatus.syncing);
       await _push();
       await _pull();
+      await _syncFiles();
       _s['lastSync'] = DateTime.now().toIso8601String();
       store.saveSyncState();
       _set(SyncStatus.idle);
@@ -328,7 +346,9 @@ class SyncEngine extends ChangeNotifier {
         _synced.remove(key);
       } else if (c.payload != null) {
         if (editable && localModified != null && _synced[key] == localModified && localModified == c.modified) continue;
-        (upserts[c.collection] ??= []).add(await SyncCrypto.openRecord(_key!, c.collection, c.id, c.payload!));
+        final record = await SyncCrypto.openRecord(_key!, c.collection, c.id, c.payload!);
+        record['Id'] ??= c.id; // settings files from the PC have no Id: it's the file's name
+        (upserts[c.collection] ??= []).add(record);
       }
     }
     for (final MapEntry(key: c, value: ids) in deletes.entries) {
@@ -344,6 +364,43 @@ class SyncEngine extends ChangeNotifier {
       }
     }
   }
+
+  // ----- Receipts and tax documents -----
+
+  List<String> get _files => ((_s['files'] ??= <dynamic>[]) as List).cast<String>();
+
+  static final _validName = RegExp(r'^[A-Za-z0-9._/-]{1,200}$');
+
+  /// Uploads files the server doesn't have, downloads ones this phone is missing, and removes ones no record uses.
+  Future<void> _syncFiles() async {
+    final files = [..._files];
+    final wanted = store.wantedFiles();
+    for (final (name, path) in wanted) {
+      if (!_validName.hasMatch(name) || name.contains('..')) continue;
+      final file = File(path);
+      final here = await file.exists();
+      if (here && !files.contains(name)) {
+        final sealed = await SyncCrypto.sealBytes(_key!, await file.readAsBytes(), fileAad(name));
+        await _api!.uploadFile(name, sealed);
+        files.add(name);
+      } else if (!here) {
+        final sealed = await _api!.downloadFile(name);
+        if (sealed == null) continue;
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(await SyncCrypto.openBytes(_key!, sealed, fileAad(name)), flush: true);
+        if (!files.contains(name)) files.add(name);
+      }
+    }
+    final keep = {for (final (name, _) in wanted) name};
+    for (final name in files.where((f) => !keep.contains(f)).toList()) {
+      await _api!.deleteFile(name);
+      files.remove(name);
+    }
+    _s['files'] = files;
+    store.saveSyncState();
+  }
+
+  static String fileAad(String name) => 'ww-file-v1:$name';
 
   // ----- Words -----
 
