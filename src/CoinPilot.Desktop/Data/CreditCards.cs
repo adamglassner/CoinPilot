@@ -48,7 +48,7 @@ public static class CreditCards
     {
         if (Find(account) is not { } a) return null;
         return a.PaymentDueDay > 0
-            ? $"Charged to {a.Name}: marking it paid adds it to what you owe on the card. The forecast takes it out of your cash when you pay the card (due on the {Paydays.Ordinal(a.PaymentDueDay)})."
+            ? $"Charged to {a.Name}: marking it paid adds it to what you owe on the card. The forecast takes it out of your cash when you pay the card (due on the {IncomeSchedule.Ordinal(a.PaymentDueDay)})."
             : $"Charged to {a.Name}: marking it paid adds it to what you owe on the card. Add the card's payment due day (edit it under Accounts) so the forecast knows when the money leaves your bank.";
     }
 }

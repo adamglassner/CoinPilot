@@ -142,7 +142,7 @@ public sealed class AccountsView : DataPage
         if (a.IsLiability)
         {
             var notes = new List<string>();
-            if (a.PaymentDueDay > 0) notes.Add($"Due on the {Paydays.Ordinal(a.PaymentDueDay)}");
+            if (a.PaymentDueDay > 0) notes.Add($"Due on the {IncomeSchedule.Ordinal(a.PaymentDueDay)}");
             if (a.CreditLimit > 0) notes.Add($"{Math.Round(Math.Max(0, -balance) / a.CreditLimit * 100)}% of {Money.Format(a.CreditLimit)} limit used");
             var bills = CreditCards.BillsOn(a);
             if (bills.Count > 0) notes.Add($"Bills on it: {string.Join(", ", bills.Select(b => b.Name))} (about {Money.Format(Math.Round(bills.Sum(BillSchedule.MonthlyCost)))} a month)");
