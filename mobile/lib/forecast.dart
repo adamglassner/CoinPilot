@@ -28,7 +28,8 @@ class ForecastEvent {
   final int cents;
   final int? lowCents, highCents;
 
-  /// 'income', 'bill', 'budget', 'other', 'debt', 'savings' or 'whatif'.
+  /// 'income', 'bill', 'budget', 'other', 'debt', 'savings' or 'whatif'. Bills charged to a credit card are 'bill'
+  /// events on the card's payment date, grouped under "Card payment: <card>".
   final String kind;
 
   int get worst => lowCents ?? cents;
@@ -144,6 +145,29 @@ class Forecast {
 /// Accounts the forecast counts: checking, cash and payment apps (and savings when chosen).
 const forecastAccountTypes = [AccountTypes.checking, AccountTypes.cash, AccountTypes.paymentApp];
 
+/// When a charge made on [charge] gets paid off: the card's first payment due date whose statement includes it.
+/// The statement closes on [statementDay] (or, without one, 21 days before the due date, a typical grace period).
+DateTime cardPaymentDate(DateTime charge, int dueDay, {int statementDay = 0}) {
+  final c = dayOnly(charge);
+  DateTime on(int y, int m, int d) {
+    final first = DateTime(y, m);
+    return DateTime(first.year, first.month, min(d, daysInMonth(first)));
+  }
+
+  for (var i = 0; i < 4; i++) {
+    final due = on(c.year, c.month + i, dueDay);
+    DateTime close;
+    if (statementDay > 0) {
+      close = on(due.year, due.month, statementDay);
+      if (!close.isBefore(due)) close = on(due.year, due.month - 1, statementDay);
+    } else {
+      close = due.subtract(const Duration(days: 21));
+    }
+    if (!close.isBefore(c)) return due;
+  }
+  return on(c.year, c.month + 4, dueDay);
+}
+
 extension ForecastMath on Store {
   /// The day the forecast runs to: the end of the budget month, or 30, 60 or 90 days from today.
   DateTime forecastEnd(DateTime today, {String? horizon}) {
@@ -155,6 +179,12 @@ extension ForecastMath on Store {
       '90' => DateTime(t.year, t.month, t.day + 90),
       _ => monthEnd(budgetMonth(t)),
     };
+  }
+
+  /// The credit card a bill is charged to, when that card has a payment due day (so the forecast knows when it's paid).
+  Account? cardFor(Bill b) {
+    final a = accountRecords.where((a) => a.isLiability && a.name.toLowerCase() == b.account.toLowerCase()).firstOrNull;
+    return a != null && a.paymentDueDay > 0 ? a : null;
   }
 
   List<Account> forecastAccounts() {
@@ -242,10 +272,17 @@ extension ForecastMath on Store {
     final billsByMonthCat = <String, int>{};
     for (final b in bills) {
       if (b.isDone || skipBills.contains(b.id)) continue;
+      // A bill charged to a credit card leaves your cash when the card is paid, not on its due date
+      final card = cardFor(b);
       var d = dayOnly(b.nextDue);
       for (var i = 0; i < 200 && !d.isAfter(end); i++) {
         final day = clampDay(d);
-        events.add(ForecastEvent(day, b.name, 'Bill: ${b.name}', -b.amountCents, kind: 'bill'));
+        if (card != null) {
+          final pay = clampDay(cardPaymentDate(day, card.paymentDueDay, statementDay: card.statementDay));
+          if (!pay.isAfter(end)) events.add(ForecastEvent(pay, '${b.name} on ${card.name}', 'Card payment: ${card.name}', -b.amountCents, kind: 'bill'));
+        } else {
+          events.add(ForecastEvent(day, b.name, 'Bill: ${b.name}', -b.amountCents, kind: 'bill'));
+        }
         final key = '${isoDay(budgetMonth(day))}|${rootOf(b.category).toLowerCase()}';
         billsByMonthCat[key] = (billsByMonthCat[key] ?? 0) + b.amountCents;
         if (b.repeats == BillSchedule.once) break;

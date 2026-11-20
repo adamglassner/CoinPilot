@@ -26,8 +26,12 @@ class Runway {
 }
 
 class CardStatus {
-  const CardStatus({required this.account, required this.owedCents, this.limitCents, this.nextDue, this.statementDay});
+  const CardStatus({required this.account, required this.owedCents, this.limitCents, this.nextDue, this.statementDay, this.bills = const [], this.billsPerMonth = 0});
   final Account account;
+
+  /// Bills charged to this card, and what they add to it in a typical month.
+  final List<Bill> bills;
+  final int billsPerMonth;
   final int owedCents;
   final int? limitCents;
   final DateTime? nextDue;
@@ -130,6 +134,8 @@ extension Extras on Store {
         if (a.isLiability && !a.isClosed)
           CardStatus(
             account: a,
+            bills: billsOnCard(a),
+            billsPerMonth: billsOnCard(a).fold<double>(0, (s, b) => s + Bills.monthlyCost(b.amountCents, b.repeats)).round(),
             owedCents: max(0, -balance(a)),
             limitCents: a.creditLimitCents > 0 ? a.creditLimitCents : null,
             statementDay: a.statementDay > 0 ? a.statementDay : null,
@@ -137,6 +143,19 @@ extension Extras on Store {
           ),
     ];
   }
+
+  bool isCardAccount(String name) => accountRecords.any((a) => a.isLiability && a.name.toLowerCase() == name.toLowerCase());
+
+  /// What charging a bill to a card means, for the bill sheet.
+  String cardHint(String name) {
+    final a = accountRecords.firstWhere((a) => a.isLiability && a.name.toLowerCase() == name.toLowerCase());
+    return a.paymentDueDay > 0
+        ? 'Charged to $name: marking it paid adds it to what you owe on the card. The forecast takes it out of your cash when you pay the card (due on the ${ordinal(a.paymentDueDay)}).'
+        : 'Charged to $name: marking it paid adds it to what you owe on the card. Add the card\'s payment due day (edit it under Accounts) so the forecast knows when the money leaves your bank.';
+  }
+
+  /// Open bills paid with (charged to) a credit card account.
+  List<Bill> billsOnCard(Account card) => [for (final b in bills) if (!b.isDone && b.account.toLowerCase() == card.name.toLowerCase()) b];
 
   static DateTime _nextDay(DateTime today, int day) {
     final thisMonth = DateTime(today.year, today.month, min(day, daysInMonth(today)));

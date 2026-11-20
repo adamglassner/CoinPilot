@@ -449,6 +449,14 @@ class _CardHelper extends StatelessWidget {
                     ),
                     if (c.used != null && c.used! > 0.3)
                       Text('Keeping it under 30% of the limit helps your credit score.', style: TextStyle(fontSize: 12.5, color: p.warn)),
+                    if (c.bills.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Bills on this card: ${c.bills.map((b) => b.name).join(', ')} · about ${Money.format(c.billsPerMonth, whole: true)} a month',
+                          style: TextStyle(fontSize: 12.5, color: p.muted, height: 1.3),
+                        ),
+                      ),
                   ],
                 ),
               ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../categories.dart';
 import '../dates.dart';
+import '../extras.dart';
 import '../finance.dart';
 import '../forecast.dart';
 import '../kit.dart';
@@ -364,7 +365,7 @@ class _BillActions extends StatelessWidget {
         const SizedBox(height: 12),
         HintNote(
           [
-            b.account.isEmpty ? 'Paid from your first account' : 'Paid from ${b.account}',
+            b.account.isEmpty ? 'Paid from your first account' : store.isCardAccount(b.account) ? 'Charged to ${b.account}' : 'Paid from ${b.account}',
             b.category,
             if (b.autoPay) 'pays itself automatically',
             if (debt != null) 'pays down ${debt.name} (${Money.format(debt.balanceCents)} left)',
@@ -588,8 +589,12 @@ class _BillSheetState extends State<BillSheet> {
           const FieldLabel('Category'),
           Choices(options: store.categoriesFor(income: false), selected: _b.category, icons: categoryIcon, onChanged: (v) => setState(() => _b.category = v)),
         ],
-        const FieldLabel('Paid from'),
+        const FieldLabel('Paid from (an account or a credit card)'),
         Choices(options: store.accountNames(current: _b.account), selected: _b.account.isEmpty ? store.accountNames().first : _b.account, onChanged: (v) => setState(() => _b.account = v)),
+        if (store.isCardAccount(_b.account)) ...[
+          const SizedBox(height: 8),
+          HintNote(store.cardHint(_b.account), icon: Icons.credit_card_rounded),
+        ],
         const SizedBox(height: 10),
         SwitchRow(
           title: 'Autopay',

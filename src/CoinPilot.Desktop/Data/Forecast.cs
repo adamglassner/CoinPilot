@@ -205,11 +205,18 @@ public static class Forecast
         foreach (var b in DataStore.Bills.Items)
         {
             if (b.IsDone || (skipBills?.Contains(b.Id) ?? false)) continue;
+            // A bill charged to a credit card leaves your cash when the card is paid, not on its due date
+            var card = CreditCards.For(b);
             var d = b.NextDue.Date;
             for (int i = 0; i < 200 && d <= end; i++)
             {
                 var day = Clamp(d);
-                events.Add(new ForecastEvent(day, b.Name, "Bill: " + b.Name, -b.Amount, "bill"));
+                if (card != null)
+                {
+                    var pay = Clamp(CreditCards.PaymentDate(day, card.PaymentDueDay, card.StatementDay));
+                    if (pay <= end) events.Add(new ForecastEvent(pay, $"{b.Name} on {card.Name}", "Card payment: " + card.Name, -b.Amount, "bill"));
+                }
+                else events.Add(new ForecastEvent(day, b.Name, "Bill: " + b.Name, -b.Amount, "bill"));
                 string key = Budgeting.Key(day) + "|" + Categories.Root(b.Category);
                 billsByMonthCat[key] = billsByMonthCat.GetValueOrDefault(key) + b.Amount;
                 if (b.Repeats == BillSchedule.Once) break;

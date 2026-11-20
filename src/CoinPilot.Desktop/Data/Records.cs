@@ -97,6 +97,13 @@ public sealed class Account : RecordBase
     public DateTime BalanceDate { get; set; } = DateTime.Today;
     public bool IsClosed { get; set; }
 
+    // Credit cards (0 = not set). WillowWallet for Android uses the same fields.
+    public decimal CreditLimit { get; set; }
+    /// <summary>The day of the month the statement closes.</summary>
+    public int StatementDay { get; set; }
+    /// <summary>The day of the month the card payment is due.</summary>
+    public int PaymentDueDay { get; set; }
+
     [JsonIgnore] public bool IsLiability => Type == AccountTypes.CreditCard;
 }
 

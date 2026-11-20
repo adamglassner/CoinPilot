@@ -18,6 +18,7 @@ public sealed class AccountDialog : DialogShell
     private readonly DatePicker _date;
     private readonly CheckBox? _closed;
     private readonly Account? _existing;
+    private readonly TextBox _limit, _statementDay, _dueDay;
 
     public Account Result => _target;
 
@@ -61,6 +62,22 @@ public sealed class AccountDialog : DialogShell
         _balance = AddField("Balance", AmountBox(existing == null ? null : Math.Abs(existing.StartingBalance)),
             hint: "What's in the account on the date below. For a credit card, enter what you owe. Transactions after that date are added automatically.", required: true);
         _date = AddField("Balance as of", DateBox(_target.BalanceDate), required: true);
+
+        // Credit cards: the limit and the statement and payment days (for the card helper, reminders and the forecast)
+        _limit = AddField("Credit limit (optional)", AmountBox(_target.CreditLimit > 0 ? _target.CreditLimit : null), hint: "Shows how much of it you're using.");
+        _statementDay = AddField("Statement closes on day (optional)", new TextBox { Text = _target.StatementDay > 0 ? _target.StatementDay.ToString() : "", MaxWidth = 120, HorizontalAlignment = System.Windows.HorizontalAlignment.Left },
+            hint: "1 to 31. Charges after this day go on next month's statement.");
+        _dueDay = AddField("Payment due on day (optional)", new TextBox { Text = _target.PaymentDueDay > 0 ? _target.PaymentDueDay.ToString() : "", MaxWidth = 120, HorizontalAlignment = System.Windows.HorizontalAlignment.Left },
+            hint: "1 to 31. Bills charged to this card come out of your cash in the forecast when the card is paid.");
+        void ShowCardFields()
+        {
+            var vis = Selected(_type) == AccountTypes.CreditCard ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+            foreach (var box in new System.Windows.FrameworkElement[] { _limit, _statementDay, _dueDay })
+                if (box.Parent is System.Windows.FrameworkElement panel) panel.Visibility = vis;
+        }
+        ShowCardFields();
+        foreach (var chip in _type.Children.OfType<RadioButton>()) chip.Checked += (_, _) => ShowCardFields();
+
         if (existing != null) _closed = AddField("Status", Check("This account is closed (hide it from lists and new transactions)", existing.IsClosed));
 
         Loaded += (_, _) => _name.Focus();
@@ -74,6 +91,12 @@ public sealed class AccountDialog : DialogShell
             return $"You already have an account called \"{name}\".";
         if (!ReadAmount(_balance, allowZero: true, out var balance)) return "Enter the balance as a number, like 1250.00 (or 0).";
         if (_date.SelectedDate is not DateTime date) return "Pick the date of that balance.";
+        bool card = Selected(_type) == AccountTypes.CreditCard;
+        decimal limit = 0;
+        if (card && _limit.Text.Trim().Length > 0 && !ReadAmount(_limit, allowZero: true, out limit)) return "Enter the credit limit as a number, like 5000.";
+        static int? Day(TextBox box) => box.Text.Trim().Length == 0 ? 0 : int.TryParse(box.Text.Trim(), out var d) && d is >= 1 and <= 31 ? d : null;
+        if (card && Day(_statementDay) == null) return "Enter the statement day as a number from 1 to 31.";
+        if (card && Day(_dueDay) == null) return "Enter the payment due day as a number from 1 to 31.";
 
         _target.Name = name;
         _target.Type = Selected(_type) ?? AccountTypes.Checking;
@@ -81,6 +104,12 @@ public sealed class AccountDialog : DialogShell
         _target.StartingBalance = _target.IsLiability ? -balance : balance;
         _target.BalanceDate = date.Date;
         _target.IsClosed = _closed?.IsChecked == true;
+        if (card)
+        {
+            _target.CreditLimit = limit;
+            _target.StatementDay = Day(_statementDay) ?? 0;
+            _target.PaymentDueDay = Day(_dueDay) ?? 0;
+        }
         return null;
     }
 
@@ -329,7 +358,18 @@ public sealed class BillDialog : DialogShell
         var categories = Categories.Spending.ToList();
         if (!categories.Contains(_target.Category, StringComparer.OrdinalIgnoreCase)) categories.Add(_target.Category);
         _category = AddField("Category", CategoryChips(categories, _target.Category));
-        _account = AddField("Paid from", Chips(DataStore.AccountChoices(_target.Account), _target.Account));
+        _account = AddField("Paid from (an account or a credit card)", Chips(DataStore.AccountChoices(_target.Account), _target.Account));
+        var cardHint = new TextBlock { FontSize = 12, TextWrapping = System.Windows.TextWrapping.Wrap, Margin = new System.Windows.Thickness(0, -8, 0, 14) };
+        cardHint.SetResourceReference(TextBlock.ForegroundProperty, "Brush.TextMuted");
+        Body.Children.Add(cardHint);
+        void ShowCardHint()
+        {
+            string? hint = CreditCards.BillHint(Selected(_account) ?? "");
+            cardHint.Text = hint ?? "";
+            cardHint.Visibility = hint == null ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+        }
+        ShowCardHint();
+        foreach (var chip in _account.Children.OfType<RadioButton>()) chip.Checked += (_, _) => ShowCardHint();
         _autoPay = AddField("Auto-pay", Check("This bill pays itself automatically", _target.AutoPay));
 
         // Pays down a debt (student loan, car loan, card…) or not (insurance, subscriptions, utilities)

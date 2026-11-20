@@ -139,6 +139,20 @@ public sealed class AccountsView : DataPage
         var name = new StackPanel { VerticalAlignment = VerticalAlignment.Center }.At(0, cell);
         name.Children.Add(Ui.Text(a.Name, weight: FontWeights.SemiBold));
         if (a.Institution.Length > 0) name.Children.Add(Ui.Text(a.Institution, muted: true, size: 12));
+        if (a.IsLiability)
+        {
+            var notes = new List<string>();
+            if (a.PaymentDueDay > 0) notes.Add($"Due on the {Paydays.Ordinal(a.PaymentDueDay)}");
+            if (a.CreditLimit > 0) notes.Add($"{Math.Round(Math.Max(0, -balance) / a.CreditLimit * 100)}% of {Money.Format(a.CreditLimit)} limit used");
+            var bills = CreditCards.BillsOn(a);
+            if (bills.Count > 0) notes.Add($"Bills on it: {string.Join(", ", bills.Select(b => b.Name))} (about {Money.Format(Math.Round(bills.Sum(BillSchedule.MonthlyCost)))} a month)");
+            if (notes.Count > 0)
+            {
+                var t = Ui.Text(string.Join(" · ", notes), muted: true, size: 12);
+                t.TextWrapping = TextWrapping.Wrap;
+                name.Children.Add(t);
+            }
+        }
         g.Children.Add(name);
 
         g.Children.Add(Ui.Chip(a.Type).At(1, cell));

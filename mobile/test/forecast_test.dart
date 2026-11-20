@@ -49,6 +49,36 @@ void main() {
     ]);
   });
 
+  test('bills charged to a credit card come out of cash when the card is paid', () {
+    expect(cardPaymentDate(DateTime(2026, 11, 12), 25), DateTime(2026, 12, 25)); // statement closes 21 days before: Nov 4
+    expect(cardPaymentDate(DateTime(2026, 11, 3), 25), DateTime(2026, 11, 25));
+    expect(cardPaymentDate(DateTime(2026, 11, 12), 25, statementDay: 15), DateTime(2026, 11, 25));
+    expect(cardPaymentDate(DateTime(2026, 11, 16), 25, statementDay: 15), DateTime(2026, 12, 25));
+    expect(cardPaymentDate(DateTime(2026, 11, 12), 5, statementDay: 31), DateTime(2026, 12, 5)); // closes Nov 30
+    expect(cardPaymentDate(DateTime(2027, 1, 30), 31, statementDay: 3), DateTime(2027, 2, 28));
+
+    final s = example();
+    final visa = Account.create(name: 'Visa', type: AccountTypes.creditCard, balanceDate: DateTime(2026, 11, 1))..paymentDueDay = 25;
+    s.put(visa);
+    s.put(Bill.create(name: 'Netflix', amountCents: 2000, nextDue: DateTime(2026, 11, 12), category: 'Subscriptions', account: 'Visa'));
+    // Charged Nov 12, after the statement closed (Nov 4), so it's paid Dec 25: not this month
+    expect(s.forecast(today).endExpected, 225000);
+    s.put(visa.copy()..statementDay = 15);
+    final f = s.forecast(today);
+    expect(f.endExpected, 223000); // on the statement that closes Nov 15, paid Nov 25
+    expect(f.events.firstWhere((e) => e.group == 'Card payment: Visa').date, DateTime(2026, 11, 25));
+    // Without a due day the card isn't known, so the bill comes out on its own date
+    s.put(visa.copy()
+      ..statementDay = 0
+      ..paymentDueDay = 0);
+    expect(s.forecast(today).events.any((e) => e.group == 'Bill: Netflix' && e.date == DateTime(2026, 11, 12)), isTrue);
+
+    // Marking it paid puts the charge on the card
+    final t = s.markPaid(s.bills.firstWhere((b) => b.name == 'Netflix'), DateTime(2026, 11, 12));
+    expect(t!.account, 'Visa');
+    expect(s.balance(s.accountRecords.firstWhere((a) => a.name == 'Visa')), -2000);
+  });
+
   test('forecast: what ifs, a target, and looking 30 days ahead', () {
     final s = example();
     final tires = s.forecast(today, whatIfs: [WhatIf('Tires', -50000, DateTime(2026, 11, 12))]);

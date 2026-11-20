@@ -752,6 +752,28 @@ public static class SelfTest
         DataStore.Prefs.ForecastHorizon = "Month";
         DataStore.Prefs.Save();
 
+        // Bills charged to a credit card (the same as mobile/test/forecast_test.dart)
+        Check("Card: charged after the statement closes, paid next month", CreditCards.PaymentDate(new DateTime(2026, 11, 12), 25) == new DateTime(2026, 12, 25)
+            && CreditCards.PaymentDate(new DateTime(2026, 11, 3), 25) == new DateTime(2026, 11, 25)
+            && CreditCards.PaymentDate(new DateTime(2026, 11, 12), 25, 15) == new DateTime(2026, 11, 25)
+            && CreditCards.PaymentDate(new DateTime(2026, 11, 16), 25, 15) == new DateTime(2026, 12, 25)
+            && CreditCards.PaymentDate(new DateTime(2026, 11, 12), 5, 31) == new DateTime(2026, 12, 5)
+            && CreditCards.PaymentDate(new DateTime(2027, 1, 30), 31, 3) == new DateTime(2027, 2, 28));
+        var visa = new Account { Name = "Visa", Type = AccountTypes.CreditCard, BalanceDate = new DateTime(2026, 11, 1), PaymentDueDay = 25 };
+        var netflix = new Bill { Name = "Netflix", Amount = 20m, NextDue = new DateTime(2026, 11, 12), DueDay = 12, Category = "Subscriptions", Account = "Visa" };
+        await Step("A bill charged to a credit card", () => { DataStore.Accounts.Add(visa); DataStore.Bills.Add(netflix); });
+        Check("Card: a bill paid next month doesn't touch this month", Forecast.Run(today).EndExpected == 2250m, Forecast.Run(today).EndExpected.ToString("0.00"));
+        visa.StatementDay = 15;
+        var onCard = Forecast.Run(today);
+        Check("Card: on this statement, it comes out when the card is paid", onCard.EndExpected == 2230m
+            && onCard.Events.First(e => e.Group == "Card payment: Visa").Date == new DateTime(2026, 11, 25), onCard.EndExpected.ToString("0.00"));
+        await Step("Bills page with a card bill", () => window.GoTo("bills"));
+        await Step("Accounts page with the card", () => window.GoTo("accounts"));
+        visa.StatementDay = 0; visa.PaymentDueDay = 0;
+        Check("Card: without a due day, it comes out on the bill's date", Forecast.Run(today).Events.Any(e => e.Group == "Bill: Netflix" && e.Date == new DateTime(2026, 11, 12)));
+        var charged = BillSchedule.MarkPaid(netflix, new DateTime(2026, 11, 12));
+        Check("Card: marking it paid puts the charge on the card", charged?.Account == "Visa" && AccountMath.Balance(visa) == -20m, AccountMath.Balance(visa).ToString());
+
         await Step("Forecast page", () => window.GoTo("forecast"));
         await Step("Goals page with a sinking fund", () => window.GoTo("goals"));
         await Step("Bills calendar with balances", () => { BillsView.ShowCalendar = true; window.GoTo("bills"); });

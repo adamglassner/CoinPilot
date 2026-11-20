@@ -342,7 +342,7 @@ public sealed class BillsView : DataPage
         var middle = new StackPanel { VerticalAlignment = VerticalAlignment.Center }.At(1);
         middle.Children.Add(Ui.Text(b.Name, weight: FontWeights.SemiBold, size: 14.5));
         var parts = new List<string> { b.Repeats, b.Category };
-        if (b.Account.Length > 0) parts.Add(b.Account);
+        if (b.Account.Length > 0) parts.Add(CreditCards.Find(b.Account) != null ? "Charged to " + b.Account : b.Account);
         if (b.AutoPay) parts.Add("Auto-pay");
         middle.Children.Add(Ui.Text(string.Join(" · ", parts), muted: true, size: 12.5));
         if (DebtLink.DebtFor(b) is { } debt)
